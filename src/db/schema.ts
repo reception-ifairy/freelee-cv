@@ -1532,6 +1532,35 @@ export type MenuItem = typeof menuItems.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Theme = typeof themes.$inferSelect;
 
+/* =============================== Translations ==============================
+ * Platform-wide (not team-scoped, unlike almost everything else built this
+ * session) — the whole point is one admin-controlled site language, not a
+ * per-team preference. `namespace` splits the frontend/landing surface from
+ * the admin panel so they can be switched independently (frontend_locale/
+ * admin_locale settings, src/lib/i18n/translate.ts). Plain text, not an
+ * enum, for both `namespace` and `locale` — same reasoning as
+ * `personas.modelTier`: closed vocabularies that are still just app config,
+ * not worth a migration to extend. English is never stored here — it's
+ * always the literal fallback string already at each `t(key, fallback)`
+ * call site, so there's nothing to keep in sync and no row to go stale.
+ * See docs/17-translations.md.
+ * ------------------------------------------------------------------------- */
+export const translations = pgTable(
+  'translations',
+  {
+    id: serial('id').primaryKey(),
+    namespace: text('namespace').notNull(),
+    key: text('key').notNull(),
+    locale: text('locale').notNull(),
+    value: text('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('translations_unique_idx').on(t.namespace, t.key, t.locale)],
+);
+
+export type TranslationRow = typeof translations.$inferSelect;
+export type NewTranslationRow = typeof translations.$inferInsert;
+
 /* ========================== Data portability (Phase 8) ====================
  * Core, always-on capability (src/lib/portability/**, docs/15-data-portability.md)
  * — not a src/modules/<key> feature module, same reasoning as the AI model

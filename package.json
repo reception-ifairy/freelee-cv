@@ -17,7 +17,11 @@
     "modules:verify": "tsx scripts/verify-module-graph.ts",
     "modules:sync": "tsx scripts/sync-modules.ts",
     "data:export": "tsx scripts/export-bundle.ts",
-    "data:import": "tsx scripts/import-bundle.ts"
+    "data:import": "tsx scripts/import-bundle.ts",
+    "i18n:extract": "tsx scripts/extract-translations.ts",
+    "i18n:translate": "tsx scripts/translate-bank.ts",
+    "i18n:export": "tsx scripts/export-translations.ts",
+    "i18n:import": "tsx scripts/import-translations.ts"
   },
   "dependencies": {
     "next": "^16.2.12",

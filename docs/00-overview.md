@@ -103,3 +103,4 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Crews** (bot-to-bot orchestration — sequential/parallel/supervisor modes, budget + turn caps, phase 7 of the marketplace-concept integration) — `14-crews.md`
 - **Data portability** (export/import bundles, idempotent via externalIdMap, self-service + scriptable, phase 8 of the marketplace-concept integration) — `15-data-portability.md`
 - **Marketplace** (external vendors, install-as-clone, credit-markup revenue share, phase 9 — optional, last — of the marketplace-concept integration) — `16-marketplace.md`
+- **Translations** (admin-controlled global site language — Polish + English, DB-backed, AI-assisted "word bank" pipeline, phase 1 of a separate translation module) — `17-translations.md`

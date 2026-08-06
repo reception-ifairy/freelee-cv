@@ -8,6 +8,7 @@ import { PricingCard } from '@/components/site/pricing-card';
 import { Badge } from '@/components/ui/badge';
 import { formatCredits, formatDate, truncate } from '@/lib/utils';
 import { getSettingInt, getSettingString } from '@/lib/settings';
+import { getFrontendT } from '@/lib/i18n/translate';
 
 export const revalidate = 300;
 
@@ -26,6 +27,7 @@ export default async function HomePage() {
     ctaTitle,
     ctaSubtitleRaw,
     ctaButtonLabel,
+    { t },
   ] = await Promise.all([
     db
       .select({ persona: personas, audienceType: personaVersions.audienceType })
@@ -76,6 +78,7 @@ export default async function HomePage() {
       'Create an account and get {credits} credits to try every persona — no card required.',
     ),
     getSettingString('cta_button_label', 'Create free account'),
+    getFrontendT(),
   ]);
 
   const totals = stats[0] ?? { personas: 0, messages: 0 };
@@ -92,7 +95,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-3xl text-center">
             <Badge tone="brand" className="animate-in-up">
               <Bolt className="size-3.5" />
-              {totals.personas} AI specialists ready to work
+              {t('home.hero_badge', '{count} AI specialists ready to work', { count: totals.personas })}
             </Badge>
 
             <h1 className="animate-in-up mt-6 text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
@@ -126,9 +129,9 @@ export default async function HomePage() {
 
             <dl className="animate-in-up mx-auto mt-14 grid max-w-lg grid-cols-3 gap-6 text-center">
               {[
-                { label: 'Personas', value: String(totals.personas) },
-                { label: 'Messages', value: formatCredits(totals.messages) },
-                { label: 'Categories', value: String(categoryRows.length) },
+                { label: t('home.stat_personas', 'Personas'), value: String(totals.personas) },
+                { label: t('home.stat_messages', 'Messages'), value: formatCredits(totals.messages) },
+                { label: t('home.stat_categories', 'Categories'), value: String(categoryRows.length) },
               ].map((stat) => (
                 <div key={stat.label}>
                   <dt className="text-2xl font-bold tracking-tight sm:text-3xl">{stat.value}</dt>
@@ -165,13 +168,13 @@ export default async function HomePage() {
       <section className="container-app py-16">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Featured personas</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('home.featured_title', 'Featured personas')}</h2>
             <p className="mt-2 text-slate-500 dark:text-slate-400">
-              Hand-picked specialists to get you started.
+              {t('home.featured_subtitle', 'Hand-picked specialists to get you started.')}
             </p>
           </div>
           <Link href="/personas" className="text-sm font-semibold text-brand-600 hover:underline">
-            View all →
+            {t('home.view_all', 'View all →')}
           </Link>
         </div>
 
@@ -183,7 +186,7 @@ export default async function HomePage() {
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500 dark:border-slate-700">
-            No personas yet — run <code className="font-mono">npm run db:seed</code> or add one in the admin panel.
+            {t('home.no_personas', 'No personas yet — run')} <code className="font-mono">npm run db:seed</code> {t('home.no_personas_2', 'or add one in the admin panel.')}
           </p>
         )}
       </section>
@@ -192,9 +195,9 @@ export default async function HomePage() {
       <section className="border-y border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900/40">
         <div className="container-app">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Three steps, no setup</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('home.how_title', 'Three steps, no setup')}</h2>
             <p className="mt-3 text-slate-500 dark:text-slate-400">
-              No prompt engineering, no configuration files. Pick someone and start talking.
+              {t('home.how_subtitle', 'No prompt engineering, no configuration files. Pick someone and start talking.')}
             </p>
           </div>
 
@@ -202,18 +205,18 @@ export default async function HomePage() {
             {[
               {
                 icon: Users,
-                title: 'Pick a persona',
-                body: 'Each persona carries its own expertise, tone and teaching level — from early years to professional.',
+                title: t('home.step1_title', 'Pick a persona'),
+                body: t('home.step1_body', 'Each persona carries its own expertise, tone and teaching level — from early years to professional.'),
               },
               {
                 icon: MessageSquare,
-                title: 'Talk naturally',
-                body: 'Replies stream in as they are written. Adjust tone, format and length mid-conversation.',
+                title: t('home.step2_title', 'Talk naturally'),
+                body: t('home.step2_body', 'Replies stream in as they are written. Adjust tone, format and length mid-conversation.'),
               },
               {
                 icon: Bolt,
-                title: 'Pay per use',
-                body: 'Credits are deducted per message based on real token usage. No subscription, no lock-in.',
+                title: t('home.step3_title', 'Pay per use'),
+                body: t('home.step3_body', 'Credits are deducted per message based on real token usage. No subscription, no lock-in.'),
               },
             ].map((step) => (
               <div key={step.title} className="text-center">
@@ -232,9 +235,9 @@ export default async function HomePage() {
       {packs.length > 0 ? (
         <section className="container-app py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Simple credit packs</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('home.pricing_title', 'Simple credit packs')}</h2>
             <p className="mt-3 text-slate-500 dark:text-slate-400">
-              Buy once, spend whenever. Credits never expire.
+              {t('home.pricing_subtitle', 'Buy once, spend whenever. Credits never expire.')}
             </p>
           </div>
 
@@ -250,9 +253,9 @@ export default async function HomePage() {
       {latestPosts.length > 0 ? (
         <section className="container-app pb-20">
           <div className="mb-8 flex items-end justify-between gap-4">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">From the blog</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('home.blog_title', 'From the blog')}</h2>
             <Link href="/blog" className="text-sm font-semibold text-brand-600 hover:underline">
-              All posts →
+              {t('home.blog_all', 'All posts →')}
             </Link>
           </div>
 
@@ -265,7 +268,7 @@ export default async function HomePage() {
                 <div className="aurora h-40 w-full" />
                 <div className="p-5">
                   <p className="text-xs text-slate-400">
-                    {formatDate(post.publishedAt)} · {post.readingMinutes} min read
+                    {formatDate(post.publishedAt)} · {t('home.min_read', '{minutes} min read', { minutes: post.readingMinutes })}
                   </p>
                   <h3 className="mt-2 font-semibold leading-snug">
                     <Link href={`/blog/${post.slug}`} className="after:absolute after:inset-0">

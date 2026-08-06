@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { themes } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
+import { getFrontendT } from '@/lib/i18n/translate';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,7 +66,7 @@ const getActiveTheme = unstable_cache(
 );
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const theme = await getActiveTheme();
+  const [theme, { locale }] = await Promise.all([getActiveTheme(), getFrontendT()]);
 
   const cssVariables = theme
     ? `:root{${Object.entries(theme.tokens)
@@ -73,8 +74,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         .join(';')}}`
     : '';
 
+  // Mirrors the frontend locale only — this single root layout also wraps
+  // /admin, but the admin panel isn't translated yet (phase 2, not this
+  // pass; see docs/17-translations.md), and detecting "is this an admin
+  // route" here would need a middleware-injected header for no real benefit
+  // yet. Revisit once admin_locale actually drives admin panel text.
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />

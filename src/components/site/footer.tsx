@@ -3,10 +3,11 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { menuItems, personas } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
+import { getFrontendT } from '@/lib/i18n/translate';
 import { Logo } from './logo';
 
 export async function SiteFooter() {
-  const [siteName, tagline, links, featured] = await Promise.all([
+  const [siteName, tagline, links, featured, { t }] = await Promise.all([
     getSettingString('site_name', 'Freelee'),
     getSettingString('site_description', 'Hire an AI specialist for every task.'),
     db
@@ -20,6 +21,7 @@ export async function SiteFooter() {
       .where(and(eq(personas.isActive, true), eq(personas.isFeatured, true)))
       .orderBy(desc(personas.messagesCount))
       .limit(5),
+    getFrontendT(),
   ]);
 
   return (
@@ -35,17 +37,17 @@ export async function SiteFooter() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">Product</h3>
+            <h3 className="text-sm font-semibold">{t('footer.product', 'Product')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
-              <li><Link href="/personas" className="hover:text-brand-600">Personas</Link></li>
-              <li><Link href="/chat" className="hover:text-brand-600">Chat</Link></li>
-              <li><Link href="/pricing" className="hover:text-brand-600">Pricing</Link></li>
-              <li><Link href="/blog" className="hover:text-brand-600">Blog</Link></li>
+              <li><Link href="/personas" className="hover:text-brand-600">{t('footer.personas', 'Personas')}</Link></li>
+              <li><Link href="/chat" className="hover:text-brand-600">{t('footer.chat', 'Chat')}</Link></li>
+              <li><Link href="/pricing" className="hover:text-brand-600">{t('footer.pricing', 'Pricing')}</Link></li>
+              <li><Link href="/blog" className="hover:text-brand-600">{t('footer.blog', 'Blog')}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">Popular personas</h3>
+            <h3 className="text-sm font-semibold">{t('footer.popular_personas', 'Popular personas')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
               {featured.map((persona) => (
                 <li key={persona.slug}>
@@ -58,7 +60,7 @@ export async function SiteFooter() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">Company</h3>
+            <h3 className="text-sm font-semibold">{t('footer.company', 'Company')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
               {links.map((link) => (
                 <li key={link.id}>
@@ -70,7 +72,7 @@ export async function SiteFooter() {
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          <p>&copy; {new Date().getFullYear()} {siteName}. All rights reserved.</p>
+          <p>{t('footer.copyright', '© {year} {siteName}. All rights reserved.', { year: new Date().getFullYear(), siteName })}</p>
         </div>
       </div>
     </footer>

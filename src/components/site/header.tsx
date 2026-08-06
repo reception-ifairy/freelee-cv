@@ -7,13 +7,14 @@ import { currentUser } from '@/lib/auth';
 import { getBalanceForTeam } from '@/lib/billing/credits';
 import { isModuleEnabledForTeam } from '@/lib/modules/db';
 import { getSettingString } from '@/lib/settings';
+import { getFrontendT } from '@/lib/i18n/translate';
 import { formatCredits } from '@/lib/utils';
 import { Logo } from './logo';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
 
 export async function SiteHeader() {
-  const [user, siteName, links] = await Promise.all([
+  const [user, siteName, links, { t }] = await Promise.all([
     currentUser(),
     getSettingString('site_name', 'Freelee'),
     db
@@ -21,6 +22,7 @@ export async function SiteHeader() {
       .from(menuItems)
       .where(and(eq(menuItems.location, 'header'), eq(menuItems.isActive, true)))
       .orderBy(menuItems.position),
+    getFrontendT(),
   ]);
 
   // user.defaultTeamId can be missing on a stale JWT session cookie predating
@@ -88,13 +90,13 @@ export async function SiteHeader() {
                 href="/login"
                 className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 sm:block dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Sign in
+                {t('header.sign_in', 'Sign in')}
               </Link>
               <Link
                 href="/register"
                 className="glow-btn inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
               >
-                Get started
+                {t('header.get_started', 'Get started')}
               </Link>
             </>
           )}

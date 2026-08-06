@@ -91,7 +91,45 @@ re-importable — conversations/chats/messages/usage export for reference but ar
 import (see `docs/15-data-portability.md` for why). If you need a specific team's full transcript
 history for debugging something, that still needs someone with real DB access to pull it directly.
 
-## 5. Sending work back
+## 5. Working on translations
+
+The site's language (Polish alongside English so far) is a small, dedicated system —
+`docs/17-translations.md` has the full design. Two ways to work on it locally:
+
+**A. Review/edit existing translations, no AI needed.** Pull the current database content, edit
+the JSON by hand, send it back:
+
+```bash
+# on the server (or wherever has production DB access):
+npm run i18n:export -- --out=translations.json
+# → send translations.json through a private channel, same rule as step 4 above
+
+# locally, after editing the file:
+npm run i18n:import -- --file=translations.json          # dry run first
+npm run i18n:import -- --file=translations.json --apply  # writes for real
+```
+
+The file is a flat JSON array of `{namespace, key, locale, value}` rows — readable and editable in
+any text editor, no special tooling needed. It only ever contains non-English rows (English lives
+as the literal fallback string at each `t(key, fallback)` call site in the source, never in the
+database — see the schema comment on the `translations` table).
+
+**B. Add a new translated string, or a new locale, from scratch.** If you've wired up a new
+`t('some.key', 'English text')` call site (see `src/lib/i18n/translate.ts` and
+`docs/17-translations.md` for the pattern), rebuild the word bank and (optionally) let AI draft the
+translation:
+
+```bash
+npm run i18n:extract -- --namespace=frontend               # rescans the registered files, rewrites i18n/frontend.en.json
+npm run i18n:translate -- --namespace=frontend --locale=pl # AI-drafts Polish for anything new, upserts into the DB
+```
+
+`i18n:translate` calls the platform's own configured OpenAI provider — it needs a working
+`OPENAI_API_KEY` (or a DB-stored one, same as chat) and writes directly to your local database
+(or the server's, if that's where you're running it). Always spot-check AI output before treating
+it as final — it's a good first draft, not a substitute for a native speaker's review.
+
+## 6. Sending work back
 
 Code changes go through git, normally:
 
@@ -112,7 +150,7 @@ If your local changes need a schema migration: hand-write it as
 with `drizzle-kit generate` and expect it to match this project's conventions exactly — check it
 against a couple of the existing files first.
 
-## 6. What this workflow does *not* cover
+## 7. What this workflow does *not* cover
 
 - **No automated two-way data sync.** This is manual, one-shot snapshots in either direction, not
   a live replication setup. If the local and server datasets need to converge again later, export/

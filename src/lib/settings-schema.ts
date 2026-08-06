@@ -48,6 +48,16 @@ export const SETTINGS_SCHEMA = {
   analytics: [
     { key: 'google_analytics_id', label: 'Google Analytics ID', type: 'string' },
   ],
+  localization: [
+    {
+      key: 'frontend_locale', label: 'Frontend (landing site) language', type: 'string',
+      help: 'Global, applies to every visitor — not a per-user preference. Valid values: en, pl. See docs/17-translations.md.',
+    },
+    {
+      key: 'admin_locale', label: 'Admin panel language', type: 'string',
+      help: 'Global, applies to every admin. Independent of the frontend language above. Valid values: en, pl.',
+    },
+  ],
 } satisfies Record<string, Field[]>;
 
 export type SettingsGroup = keyof typeof SETTINGS_SCHEMA;
