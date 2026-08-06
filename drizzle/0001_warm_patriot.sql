@@ -1,0 +1,1 @@
+ALTER TABLE "personas" ADD COLUMN "grounding_sources" jsonb DEFAULT '[]'::jsonb NOT NULL;

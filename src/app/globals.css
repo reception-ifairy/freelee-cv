@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens. The admin Appearance screen overrides these at runtime by
+   injecting a :root block, so the whole UI re-skins without a rebuild.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-sans: 'InterVariable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+}
+
+@layer base {
+  :root { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+
+  html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-black dark:text-slate-100;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection { @apply bg-brand-500/25; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300/70 dark:bg-slate-700/70; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
+}
+
+@layer components {
+  .container-app { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+
+  /* Admin console identity: a distinct "developer dark" look, scoped to
+     .admin-console (the /admin layout wrapper), separate from the public
+     brand's indigo tokens above. Reusing the --color-brand and --color-slate
+     variable names, rather than inventing a new namespace, means every
+     existing component (Button, Badge, Card, Table, field.tsx, the glow
+     utilities) re-skins automatically with zero JSX changes, because CSS
+     custom properties resolve from the nearest ancestor that declares them. */
+  .admin-console {
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    --color-brand-50: #f0f9ff;
+    --color-brand-100: #e0f2fe;
+    --color-brand-200: #bae6fd;
+    --color-brand-300: #7dd3fc;
+    --color-brand-400: #38bdf8;
+    --color-brand-500: #0ea5e9;
+    --color-brand-600: #0284c7;
+    --color-brand-700: #0369a1;
+    --color-brand-800: #075985;
+    --color-brand-900: #0c4a6e;
+    --color-slate-950: #000000;
+    --color-slate-900: #0a0a0a;
+    --color-slate-800: #141414;
+    --color-slate-700: #1f1f1f;
+  }
+
+  /* Aurora backdrop used behind hero sections and auth screens. */
+  .aurora {
+    background-image:
+      radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklab, var(--color-brand-500) 22%, transparent), transparent 60%),
+      radial-gradient(45rem 25rem at 90% 0%, color-mix(in oklab, var(--color-accent-500) 18%, transparent), transparent 55%),
+      radial-gradient(40rem 25rem at 50% 100%, color-mix(in oklab, var(--color-brand-400) 14%, transparent), transparent 60%);
+  }
+
+  .grid-fade {
+    background-image:
+      linear-gradient(to right, rgb(148 163 184 / .12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(148 163 184 / .12) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  }
+
+  .prose-chat {
+    @apply prose prose-slate max-w-none text-sm dark:prose-invert
+           prose-pre:bg-slate-900 prose-pre:text-slate-100
+           prose-code:before:content-none prose-code:after:content-none;
+  }
+}
+
+@layer utilities {
+  .animate-in-up { animation: in-up .45s cubic-bezier(.16,1,.3,1) both; }
+
+  @keyframes in-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: .25; transform: scale(.8); }
+    50%      { opacity: 1;   transform: scale(1); }
+  }
+
+  /* Developer-dark highlight accents: glowing text and glowing edges on a black field. */
+  .dark .glow-text {
+    text-shadow:
+      0 0 24px color-mix(in oklab, var(--color-brand-400) 55%, transparent),
+      0 0 60px color-mix(in oklab, var(--color-brand-500) 30%, transparent);
+  }
+
+  .dark .glow-ring {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-brand-400) 35%, transparent),
+      0 0 30px -6px color-mix(in oklab, var(--color-brand-500) 55%, transparent);
+  }
+
+  .dark .glow-btn {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-brand-400) 30%, transparent), 0 0 24px -4px color-mix(in oklab, var(--color-brand-500) 65%, transparent);
+  }
+
+  .dark .glow-btn:hover {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-brand-300) 45%, transparent), 0 0 36px -4px color-mix(in oklab, var(--color-brand-400) 80%, transparent);
+  }
+}
