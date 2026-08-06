@@ -3,7 +3,7 @@
 ## Standard deploy checklist
 
 ```bash
-cd /var/www/freelee.cv/releases/2026-08-02T10-02-09-000Z
+cd /var/www/freelee.cv/app
 npm run typecheck                 # tsc --noEmit — catches type drift before it ships
 npm run build                     # next build
 pm2 restart aigency-freelee

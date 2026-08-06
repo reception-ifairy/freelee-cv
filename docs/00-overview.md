@@ -27,35 +27,47 @@ between sections.
 
 ## Deployment topology — read this before editing anything
 
-There are **several near-identical copies of this codebase on the server**. Only one is live.
-Always confirm with `pm2 describe aigency-freelee | grep "exec cwd"` before editing.
+**Simplified 2026-08-06**: this app used to live at
+`/var/www/freelee.cv/releases/2026-08-02T10-02-09-000Z/`, a leftover timestamped-release path from
+when the project briefly used a Capistrano-style `releases/<timestamp>/` convention — abandoned in
+practice (new work always landed in the one existing folder, nothing ever rotated), so the nesting
+was pure ceremony. It now lives directly at `/var/www/freelee.cv/app/` — moved with `mv` (git
+history intact), `ecosystem.config.cjs` updated, pm2 process deleted and re-started against the new
+path (a plain `pm2 restart` does not pick up a changed `cwd`; re-registering is required). The old
+`app/`, `lib/`, `db/`, `components/` dead-legacy tree that previously sat at this same root level
+(see below) was deleted the same day, so the `app/` name was free to reuse for the real thing.
+
+Always confirm with `pm2 describe aigency-freelee | grep "exec cwd"` before editing — other
+near-identical copies of this codebase still exist elsewhere on the server:
 
 | Path | Status |
 |---|---|
-| `/var/www/freelee.cv/releases/2026-08-02T10-02-09-000Z/` | ✅ **canonical, live** — nginx → port 3015 → pm2 `aigency-freelee`. Edit here. |
-| `/var/www/freelee.cv/app`, `lib`, `db`, `components` (repo root, no `src/`) | ❌ dead legacy — different schema, was wired to a since-removed T1000 integration. Never deployed. |
-| `/var/www/demo.ifairy.co.uk/releases/2026-08-02T10-02-09-000Z/` | ⚠️ stale mirror — same skeleton, **out of sync** with production. pm2 `demo-aigency-next`, port 3033. |
+| `/var/www/freelee.cv/app/` | ✅ **canonical, live** — nginx → port 3015 → pm2 `aigency-freelee`. Edit here. |
+| `/var/www/demo.ifairy.co.uk/releases/2026-08-02T10-02-09-000Z/` | ⚠️ stale mirror — same skeleton, **out of sync** with production (frozen before this project's phases 1–9). Left as-is (2026-08-06 decision) — contains real secrets in plaintext (`.deploy-db.json`/`.deploy-env.json`), handle with care if ever touched. pm2 `demo-aigency-next`, port 3033. |
 | `/var/www/dev.freelee.cv`, `sandbox.freelee.cv`, `test.freelee.cv`, `demo.freelee.cv` (vhost) | 🗄 archived 2026-08-03 to `/var/backups/freelee-legacy-archive/` via `scripts/archive-legacy-domain-deployments.sh` — `mv`, not `rm`, fully reversible. |
+| `/var/www/demo.freelee.cv/` (a separate orphaned Next.js install, no nginx/pm2 pointing at it) | 🗑 permanently deleted 2026-08-06 — confirmed dead first. |
 
 Full detail and rationale for each row lives in the project root `README.md` (kept as the
-single up-to-date source of truth on deployment state, since it's outside any one release folder and
-survives redeploys).
+single up-to-date source of truth on deployment state, since it's outside this app's own directory
+and survives redeploys). This codebase is also on GitHub (public):
+https://github.com/reception-ifairy/freelee-cv.
 
 ## How releases work
 
-`ecosystem.config.cjs` (project root) points pm2's `aigency-freelee` process at one release
-directory (`RELEASE_DIR`, currently `releases/2026-08-02T10-02-09-000Z`). To ship a change:
+`ecosystem.config.cjs` (project root, one level above this app — i.e.
+`/var/www/freelee.cv/ecosystem.config.cjs`) points pm2's `aigency-freelee` process at
+`RELEASE_DIR`, now simply `app` (`path.join(__dirname, 'app')`). To ship a change:
 
 ```bash
-cd /var/www/freelee.cv/releases/2026-08-02T10-02-09-000Z
+cd /var/www/freelee.cv/app
 npm run typecheck
 npm run build
 pm2 restart aigency-freelee
 ```
 
-There is currently only one release directory — new work is committed directly into it rather than
-cutting a fresh timestamped folder each time. If a new release folder is ever introduced, update
-`ecosystem.config.cjs`'s `RELEASE_DIR` and this doc's canonical-path table.
+A plain `pm2 restart` is fine for a normal deploy — it only fails to pick up config changes like a
+different `cwd`, which is a rare, deliberate operation (re-register with `pm2 delete aigency-freelee
+&& pm2 start ecosystem.config.cjs` from `/var/www/freelee.cv/` when that's actually needed).
 
 ## Migrations — a real constraint, not a style choice
 
