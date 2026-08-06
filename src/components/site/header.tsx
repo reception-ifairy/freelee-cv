@@ -23,9 +23,15 @@ export async function SiteHeader() {
       .orderBy(menuItems.position),
   ]);
 
-  const balance = user ? await getBalanceForTeam(user.defaultTeamId) : undefined;
-  const roomsEnabled = user ? await isModuleEnabledForTeam(user.defaultTeamId, 'group-chat') : false;
-  const crewsEnabled = user ? await isModuleEnabledForTeam(user.defaultTeamId, 'crews') : false;
+  // user.defaultTeamId can be missing on a stale JWT session cookie predating
+  // when this field was added to the token (JWT-strategy sessions never
+  // re-fetch from the DB after initial sign-in) — guard on the field itself,
+  // not just on `user`, so a session like that degrades gracefully instead of
+  // crashing every page render (drizzle throws UNDEFINED_VALUE on an
+  // undefined query param, not a soft null-safe result).
+  const balance = user?.defaultTeamId ? await getBalanceForTeam(user.defaultTeamId) : undefined;
+  const roomsEnabled = user?.defaultTeamId ? await isModuleEnabledForTeam(user.defaultTeamId, 'group-chat') : false;
+  const crewsEnabled = user?.defaultTeamId ? await isModuleEnabledForTeam(user.defaultTeamId, 'crews') : false;
 
   const visible = links.filter((link) => {
     if (link.visibleTo === 'guest') return !user;

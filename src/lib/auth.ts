@@ -55,10 +55,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 });
 
 /** Throws rather than returning null, so a caller cannot forget the check. */
+/**
+ * Self-heals `session.user.defaultTeamId` when it's missing — happens on a
+ * JWT session cookie issued before this field existed on the token (JWT
+ * strategy never re-fetches from the DB after initial sign-in, so an old
+ * cookie just keeps decoding to `undefined` forever). Every downstream
+ * consumer (getBalanceForTeam, isModuleEnabledForTeam, ...) passes this
+ * straight into a drizzle `eq()`, which throws `UNDEFINED_VALUE` — not a
+ * soft null-safe query — so this was crashing every page for an affected
+ * session (src/components/site/header.tsx renders on all of them). Fixed at
+ * the source here rather than defensively guarding every call site.
+ */
+async function ensureDefaultTeamId<T extends { id: string; defaultTeamId: string }>(user: T): Promise<T> {
+  if (user.defaultTeamId) return user;
+
+  const [row] = await db.select({ defaultTeamId: users.defaultTeamId }).from(users).where(eq(users.id, user.id)).limit(1);
+  if (row?.defaultTeamId) user.defaultTeamId = row.defaultTeamId;
+  return user;
+}
+
 export async function requireUser() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('UNAUTHENTICATED');
-  return session.user;
+  return ensureDefaultTeamId(session.user);
 }
 
 export async function requireAdmin() {
@@ -69,7 +88,8 @@ export async function requireAdmin() {
 
 export async function currentUser() {
   const session = await auth();
-  return session?.user ?? null;
+  if (!session?.user) return null;
+  return ensureDefaultTeamId(session.user);
 }
 
 /* ============================ Team authorization ==========================

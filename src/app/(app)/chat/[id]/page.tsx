@@ -44,7 +44,9 @@ export default async function ChatPage({ params }: { params: Params }) {
     ? await db.select().from(personaVersions).where(eq(personaVersions.id, versionId)).limit(1)
     : [undefined];
 
-  const balance = user ? await getBalanceForTeam(user.defaultTeamId) : undefined;
+  // See src/components/site/header.tsx for why this guards on defaultTeamId
+  // itself, not just on `user` — a stale JWT session cookie can have it undefined.
+  const balance = user?.defaultTeamId ? await getBalanceForTeam(user.defaultTeamId) : undefined;
 
   // Persisted rows are replayed into the shape the AI SDK expects on the client.
   const initialMessages: UIMessage[] = rows
