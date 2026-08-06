@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, ExternalLink, Cpu,
-  RefreshCw, Clock, Store, Languages,
+  RefreshCw, Clock, Store, Languages, Search,
 } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { logoutAction } from '@/server/actions/auth';
@@ -19,6 +19,7 @@ const SECTIONS = [
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
       { href: '/admin/ai-models', label: 'AI models', icon: Cpu },
+      { href: '/admin/knowledge-sources', label: 'Knowledge sources', icon: Search },
       { href: '/admin/categories', label: 'Categories', icon: Tags },
       { href: '/admin/sectors', label: 'Sectors', icon: Layers },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },

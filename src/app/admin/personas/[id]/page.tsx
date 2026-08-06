@@ -4,6 +4,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { getProviderRegistry } from '@/lib/ai/registry';
+import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { PersonaForm } from '@/components/admin/persona-form';
 
 /**
@@ -18,7 +19,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
   const personaId = Number(id);
   if (!Number.isFinite(personaId)) notFound();
 
-  const [[persona], categoryRows, links, providers] = await Promise.all([
+  const [[persona], categoryRows, links, providers, knowledgeSourceRows] = await Promise.all([
     db.select().from(personas).where(eq(personas.id, personaId)).limit(1),
     db.select().from(categories).orderBy(asc(categories.position)),
     db
@@ -26,6 +27,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .from(personaCategories)
       .where(eq(personaCategories.personaId, personaId)),
     getProviderRegistry(),
+    getActiveKnowledgeSources(),
   ]);
 
   if (!persona) notFound();
@@ -52,6 +54,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       categories={categoryRows}
       selectedCategoryIds={links.map((link) => link.categoryId)}
       providers={providers}
+      knowledgeSources={knowledgeSourceRows.map((s) => ({ key: s.key, label: s.label }))}
     />
   );
 }

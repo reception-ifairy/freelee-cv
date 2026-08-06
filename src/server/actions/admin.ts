@@ -11,7 +11,7 @@ import {
   PERSONALITY_TRAITS, type PersonaCapabilities, type PersonaPersonality, type PersonaBlueprint,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { isKnowledgeSourceId } from '@/lib/knowledge/registry';
+import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { isGuardrailCode } from '@/lib/persona/guardrails';
 import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { slugify, readingMinutes } from '@/lib/utils';
@@ -92,6 +92,12 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
 
   const data = parsed.data;
 
+  // Async (a real DB read now, since sources are admin-managed data — see
+  // docs/18-knowledge-sources.md), so resolved once here into a plain Set
+  // rather than inline in the values object below, where a synchronous
+  // .filter() can't await per-item.
+  const validSourceKeys = new Set((await getActiveKnowledgeSources()).map((s) => s.key));
+
   let blueprint: PersonaBlueprint | null = null;
   if (data.blueprintJson) {
     try {
@@ -151,7 +157,7 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     audienceType: data.audienceType ?? null,
     personality,
     knowledgeDomains: (data.knowledgeDomains ?? '').split(',').map((d) => d.trim()).filter(Boolean),
-    groundingSources: formData.getAll('groundingSources').map(String).filter(isKnowledgeSourceId),
+    groundingSources: formData.getAll('groundingSources').map(String).filter((key) => validSourceKeys.has(key)),
     guardrails: formData.getAll('guardrails').map(String).filter(isGuardrailCode),
     audienceSegments: formData.getAll('audienceSegments').map(String).filter(isAudienceSegmentCode),
     capabilities,

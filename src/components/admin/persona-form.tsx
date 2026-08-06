@@ -25,11 +25,6 @@ const MODEL_TIERS = [
   { id: 'advanced', label: 'Advanced', hint: 'Most capable — for demanding tasks.' },
 ] as const;
 
-const GROUNDING_SOURCES: { key: string; label: string }[] = [
-  { key: 'curriculum', label: 'UK Curriculum (curriculum.ifairy.co.uk)' },
-  { key: 'universe', label: 'iFairy Universe canon (universe.ifairy.co.uk)' },
-];
-
 const CAPABILITIES: { key: string; label: string }[] = [
   { key: 'vision', label: 'Accept image uploads' },
   { key: 'images', label: 'Generate images' },
@@ -68,10 +63,12 @@ type Props = {
   categories: Category[];
   selectedCategoryIds: number[];
   providers: ProviderRegistry;
+  /** Active rows from `knowledge_sources` (docs/18-knowledge-sources.md) — admin-managed, no longer a hardcoded list. */
+  knowledgeSources: { key: string; label: string }[];
 };
 
 export function PersonaForm({
-  persona, version, versionHistory = [], categories, selectedCategoryIds, providers,
+  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources,
 }: Props) {
   const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
@@ -520,21 +517,27 @@ export function PersonaForm({
 
             <div>
               <Label>Grounding sources</Label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {GROUNDING_SOURCES.map((source) => (
-                  <label
-                    key={source.key}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-brand-300 dark:border-slate-700"
-                  >
-                    <Checkbox
-                      name="groundingSources"
-                      value={source.key}
-                      defaultChecked={version?.groundingSources.includes(source.key) ?? false}
-                    />
-                    <span className="text-sm">{source.label}</span>
-                  </label>
-                ))}
-              </div>
+              {knowledgeSources.length === 0 ? (
+                <Hint>
+                  None configured yet — add one under Admin → Knowledge sources.
+                </Hint>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {knowledgeSources.map((source) => (
+                    <label
+                      key={source.key}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-brand-300 dark:border-slate-700"
+                    >
+                      <Checkbox
+                        name="groundingSources"
+                        value={source.key}
+                        defaultChecked={version?.groundingSources.includes(source.key) ?? false}
+                      />
+                      <span className="text-sm">{source.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
               <Hint>
                 Fetched before every reply and cited in the system prompt. A source outage never blocks the
                 turn.

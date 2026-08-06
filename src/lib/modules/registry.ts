@@ -135,6 +135,23 @@ export const MODULES: ModuleManifest[] = [
     ],
   },
   {
+    key: 'knowledge-sources',
+    name: 'Knowledge Sources',
+    version: '1.0.0',
+    description:
+      'Admin-manageable external RAG/search APIs personas can cite from — replaces a hardcoded ' +
+      '{curriculum, universe} record (two other ifairy.co.uk projects\' APIs) wired in directly. ' +
+      'Request side (base URL, path, key) is pure data, same pattern as ai_providers; response ' +
+      'parsing is a generic dot-path spec instead of one bespoke function per source, covering ' +
+      'simple REST/JSON search APIs without a deploy. See docs/18-knowledge-sources.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['knowledge.grounding_sources'] },
+    permissions: [],
+    navigation: [{ label: 'Knowledge sources', href: '/admin/knowledge-sources', group: 'admin', order: 16 }],
+  },
+  {
     key: 'translations',
     name: 'Translations',
     version: '1.0.0',

@@ -425,6 +425,50 @@ export const providerCredentials = pgTable(
   (t) => [index('provider_credentials_team_idx').on(t.teamId)],
 );
 
+/**
+ * Replaces what used to be a hardcoded `{ curriculum, universe }` record in
+ * `src/lib/knowledge/registry.ts` — two specific external-project RAG APIs
+ * (curriculum.ifairy.co.uk, universe.ifairy.co.uk) wired in directly, each
+ * with its own bespoke response-parsing function. Removed 2026-08-06 in
+ * favor of this: any REST/JSON search API an admin can point a URL and key
+ * at, added from `/admin/knowledge-sources`, no deploy.
+ *
+ * The request side is genuinely just data (base URL, path, key) — same
+ * pattern as `aiProviders`. The response side can't be, in general
+ * (arbitrary APIs return arbitrarily-shaped JSON) — but a **dot-path
+ * spec** (`resultsPath`/`titlePath`/`textPath`/`citationPath`, e.g.
+ * `"data.results"` / `"chunk.text"`) covers the realistic common case (a
+ * results array, each hit a flat-or-lightly-nested object) without needing
+ * a bespoke parser function per source. An API with a genuinely different
+ * shape (paginated, GraphQL, multi-step auth) still needs real code — this
+ * is explicitly the "simple case, zero deploy" 80%, not a universal
+ * adapter. See docs/18-knowledge-sources.md.
+ */
+export const knowledgeSources = pgTable(
+  'knowledge_sources',
+  {
+    id: serial('id').primaryKey(),
+    key: text('key').notNull(),
+    label: text('label').notNull(),
+    baseUrl: text('base_url').notNull(),
+    path: text('path').notNull().default('/v1/search'),
+    apiKey: text('api_key'),
+    /** Optional extra field sent alongside `query`/`k` in the POST body — kept from the two original sources' shape, not required. */
+    grant: text('grant'),
+    resultsPath: text('results_path').notNull().default('data.results'),
+    titlePath: text('title_path').notNull().default('title'),
+    textPath: text('text_path').notNull().default('text'),
+    citationPath: text('citation_path').notNull().default('sourceUrl'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('knowledge_sources_key_idx').on(t.key)],
+);
+
+export type KnowledgeSourceRow = typeof knowledgeSources.$inferSelect;
+export type NewKnowledgeSourceRow = typeof knowledgeSources.$inferInsert;
+
 /* ============================== Personas ================================= */
 
 export const categories = pgTable(

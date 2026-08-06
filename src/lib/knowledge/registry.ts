@@ -1,127 +1,104 @@
 import 'server-only';
+import { cache } from 'react';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db';
+import { knowledgeSources, type KnowledgeSourceRow } from '@/db/schema';
 import type { KnowledgeChunk, KnowledgeResult } from './types';
 import { emptyResult } from './types';
 
 /**
- * Grounding sources — read-only retrieval APIs from the wider iFairy
- * ecosystem, queried alongside a chat turn so answers can cite real
- * curriculum text or Universe canon instead of the model improvising.
+ * Grounding sources — read-only retrieval APIs queried alongside a chat
+ * turn so answers can cite real external text instead of the model
+ * improvising. DB-backed since 2026-08-06 (replacing a hardcoded
+ * `{ curriculum, universe }` record — see docs/18-knowledge-sources.md for
+ * why and the two things that changed: sources are now data an admin adds
+ * from `/admin/knowledge-sources`, and response parsing is a generic
+ * dot-path spec instead of one bespoke function per source).
  *
- * Same shape as src/lib/ai/registry.ts: one config entry + one fetch
- * function per source. A source that isn't configured, times out, or
- * errors is simply skipped — a knowledge-source outage must never break
- * or meaningfully delay a chat turn.
+ * Same "never blocks or breaks a turn" contract as before: an inactive,
+ * unreachable, timed-out, or malformed-response source just contributes
+ * nothing, never throws.
  */
-export type KnowledgeSourceId = 'curriculum' | 'universe';
 
-type SourceConfig = {
-  id: KnowledgeSourceId;
-  label: string;
-  apiKeyEnv: string;
-  baseUrlEnv: string;
-  grantEnv: string;
-  path: string;
-  /** Normalizes one provider's hit shape into a KnowledgeChunk. */
-  mapHit: (hit: Record<string, unknown>) => KnowledgeChunk | null;
-};
+export const getActiveKnowledgeSources = cache(async (): Promise<KnowledgeSourceRow[]> => {
+  return db.select().from(knowledgeSources).where(eq(knowledgeSources.isActive, true));
+});
 
-const SOURCES: Record<KnowledgeSourceId, SourceConfig> = {
-  curriculum: {
-    id: 'curriculum',
-    label: 'UK Curriculum (curriculum.ifairy.co.uk)',
-    apiKeyEnv: 'CURRICULUM_API_KEY',
-    baseUrlEnv: 'CURRICULUM_API_URL',
-    grantEnv: 'CURRICULUM_GRANT',
-    path: '/v1/rag/search',
-    mapHit(hit) {
-      const text = String(hit.text ?? '');
-      if (!text) return null;
-      return {
-        title: String(hit.title ?? 'Curriculum reference'),
-        text,
-        citation: String(hit.sourceUrl ?? hit.itemId ?? 'curriculum'),
-        sourceKey: 'curriculum',
-      };
-    },
-  },
-  universe: {
-    id: 'universe',
-    label: 'iFairy Universe canon',
-    apiKeyEnv: 'UNIVERSE_API_KEY',
-    baseUrlEnv: 'UNIVERSE_API_URL',
-    grantEnv: 'UNIVERSE_GRANT',
-    path: '/v1/search',
-    mapHit(hit) {
-      const chunk = (hit.chunk ?? {}) as Record<string, unknown>;
-      const text = String(chunk.text ?? '');
-      if (!text) return null;
-      return {
-        title: String(chunk.title ?? chunk.path ?? 'Universe canon'),
-        text,
-        citation: chunk.ref ? String(chunk.ref) : `${chunk.module ?? '?'}:${chunk.path ?? '?'}`,
-        sourceKey: 'universe',
-      };
-    },
-  },
-};
-
-export function isKnowledgeSourceId(value: string): value is KnowledgeSourceId {
-  return value in SOURCES;
+/**
+ * Resolves a dot-path like `"data.results"` or `"chunk.text"` against an
+ * arbitrary JSON value. Deliberately simple — no array indices, no
+ * wildcards, no bracket syntax — this is the "simple REST/JSON API" 80%
+ * case, not a full JSONPath implementation. An API whose hits need more
+ * than "walk these nested object keys" needs real code, same as an AI
+ * provider needing a driver branch in getModel().
+ */
+function resolvePath(value: unknown, path: string): unknown {
+  if (!path) return value;
+  return path.split('.').reduce<unknown>((acc, key) => {
+    if (acc === null || acc === undefined || typeof acc !== 'object') return undefined;
+    return (acc as Record<string, unknown>)[key];
+  }, value);
 }
 
-export function availableKnowledgeSources(): SourceConfig[] {
-  return Object.values(SOURCES).filter((s) => Boolean(process.env[s.apiKeyEnv]));
+function mapHit(source: KnowledgeSourceRow, hit: unknown): KnowledgeChunk | null {
+  if (!hit || typeof hit !== 'object') return null;
+  const text = resolvePath(hit, source.textPath);
+  if (typeof text !== 'string' || !text) return null;
+
+  const title = resolvePath(hit, source.titlePath);
+  const citation = resolvePath(hit, source.citationPath);
+
+  return {
+    title: typeof title === 'string' && title ? title : source.label,
+    text,
+    citation: typeof citation === 'string' && citation ? citation : source.key,
+    sourceKey: source.key,
+  };
 }
 
-async function search(sourceId: KnowledgeSourceId, query: string, k: number): Promise<KnowledgeResult> {
-  const config = SOURCES[sourceId];
-  const apiKey = process.env[config.apiKeyEnv];
-  const baseUrl = process.env[config.baseUrlEnv];
-  const grant = process.env[config.grantEnv] ?? '';
-
-  if (!apiKey || !baseUrl) return emptyResult(sourceId);
+async function search(source: KnowledgeSourceRow, query: string, k: number): Promise<KnowledgeResult> {
+  if (!source.apiKey || !source.baseUrl) return emptyResult(source.key);
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${baseUrl.replace(/\/$/, '')}${config.path}`, {
+    const response = await fetch(`${source.baseUrl.replace(/\/$/, '')}${source.path}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${source.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query, grant, k }),
+      body: JSON.stringify({ query, grant: source.grant ?? '', k }),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    if (!response.ok) return emptyResult(sourceId);
+    if (!response.ok) return emptyResult(source.key);
 
-    const body = (await response.json()) as { ok?: boolean; data?: { results?: Record<string, unknown>[] } };
-    if (!body.ok) return emptyResult(sourceId);
+    const body = (await response.json()) as unknown;
+    const results = resolvePath(body, source.resultsPath);
+    if (!Array.isArray(results)) return emptyResult(source.key);
 
-    const chunks = (body.data?.results ?? [])
-      .map((hit) => config.mapHit(hit))
-      .filter((c): c is KnowledgeChunk => c !== null);
-
-    return { ok: true, chunks, sourceKey: sourceId };
+    const chunks = results.map((hit) => mapHit(source, hit)).filter((c): c is KnowledgeChunk => c !== null);
+    return { ok: true, chunks, sourceKey: source.key };
   } catch {
-    return emptyResult(sourceId);
+    return emptyResult(source.key);
   }
 }
 
 /**
- * Fans out to each requested source in parallel and merges the results.
- * Never throws — an unknown or failing source just contributes nothing.
+ * Fans out to each requested, active source in parallel and merges the
+ * results. Never throws — an unknown, inactive, or failing source just
+ * contributes nothing.
  */
-export async function searchMany(
-  sourceIds: string[],
-  query: string,
-  kPerSource = 3,
-): Promise<KnowledgeChunk[]> {
-  const unique = [...new Set(sourceIds)].filter(isKnowledgeSourceId);
-  if (unique.length === 0) return [];
+export async function searchMany(sourceKeys: string[], query: string, kPerSource = 3): Promise<KnowledgeChunk[]> {
+  const requested = new Set(sourceKeys);
+  if (requested.size === 0) return [];
 
-  const results = await Promise.all(unique.map((id) => search(id, query, kPerSource)));
+  const active = await getActiveKnowledgeSources();
+  const matched = active.filter((s) => requested.has(s.key));
+  if (matched.length === 0) return [];
+
+  const results = await Promise.all(matched.map((source) => search(source, query, kPerSource)));
   return results.filter((r) => r.ok).flatMap((r) => r.chunks);
 }

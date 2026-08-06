@@ -3,6 +3,7 @@ import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories } from '@/db/schema';
 import { getProviderRegistry } from '@/lib/ai/registry';
+import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { PersonaForm } from '@/components/admin/persona-form';
 
 /**
@@ -13,10 +14,18 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'New persona' };
 
 export default async function NewPersonaPage() {
-  const [categoryRows, providers] = await Promise.all([
+  const [categoryRows, providers, knowledgeSourceRows] = await Promise.all([
     db.select().from(categories).orderBy(asc(categories.position)),
     getProviderRegistry(),
+    getActiveKnowledgeSources(),
   ]);
 
-  return <PersonaForm categories={categoryRows} selectedCategoryIds={[]} providers={providers} />;
+  return (
+    <PersonaForm
+      categories={categoryRows}
+      selectedCategoryIds={[]}
+      providers={providers}
+      knowledgeSources={knowledgeSourceRows.map((s) => ({ key: s.key, label: s.label }))}
+    />
+  );
 }
