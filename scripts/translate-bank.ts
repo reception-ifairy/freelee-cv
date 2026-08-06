@@ -17,7 +17,7 @@ import postgres from 'postgres';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import * as schema from '../src/db/schema';
-import { translations } from '../src/db/schema';
+import { translations, locales } from '../src/db/schema';
 
 const LOCALE_NAMES: Record<string, string> = { en: 'English', pl: 'Polish' };
 
@@ -103,7 +103,17 @@ async function main() {
     upserted += 1;
   }
 
-  console.log(`Done — ${upserted} upserted, ${skipped} skipped (of ${keys.length}).`);
+  // Keeps this CLI path consistent with /admin/translations' pending/active
+  // gating (src/lib/i18n/translate.ts) — a locale translated via this script
+  // is a deliberate, complete action, not a partial one, so it goes
+  // straight to 'active' rather than sitting 'pending' with nothing to
+  // unfreeze it.
+  await db
+    .insert(locales)
+    .values({ code: targetLocale, name: targetName, status: 'active' })
+    .onConflictDoUpdate({ target: locales.code, set: { status: 'active' } });
+
+  console.log(`Done — ${upserted} upserted, ${skipped} skipped (of ${keys.length}). Locale "${targetLocale}" is active.`);
   await client.end();
 }
 

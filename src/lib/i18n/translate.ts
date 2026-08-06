@@ -2,18 +2,23 @@ import 'server-only';
 import { cache } from 'react';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { translations } from '@/db/schema';
+import { translations, locales } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
 
 export type Namespace = 'frontend' | 'admin';
 
+/** Any string the `locales` table has an `active` row for — see /admin/translations, docs/17-translations.md. */
+export type Locale = string;
+
 /**
- * Only two today; a plain array (not an enum-backed type) because adding a
- * third locale should never need a migration — see the schema comment on
- * `translations` for why `locale`/`namespace` are just `text` columns.
+ * DB-backed, not a hardcoded array — `/admin/translations`'s whole point is
+ * adding a language without a code change. `en` is always active (seeded by
+ * migration 0016, and this app has no code path that ever un-seeds it).
  */
-export const SUPPORTED_LOCALES = ['en', 'pl'] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
+const getActiveLocaleCodes = cache(async (): Promise<Set<string>> => {
+  const rows = await db.select({ code: locales.code }).from(locales).where(eq(locales.status, 'active'));
+  return new Set(rows.map((r) => r.code));
+});
 
 /**
  * English is never stored in `translations` — it's always the literal
@@ -46,19 +51,26 @@ function makeTranslator(map: Map<string, string>): Translator {
   };
 }
 
+/**
+ * A `pending` (mid-AI-translation, "frozen" in the admin UI) locale is never
+ * resolved here even if a setting somehow points at it — only `active` rows
+ * count, so a half-finished language can never leak onto the live site.
+ */
 async function resolveLocale(namespace: Namespace): Promise<Locale> {
   const settingKey = namespace === 'frontend' ? 'frontend_locale' : 'admin_locale';
   const raw = await getSettingString(settingKey, 'en');
-  return (SUPPORTED_LOCALES as readonly string[]).includes(raw) ? (raw as Locale) : 'en';
+  if (raw === 'en') return 'en';
+  const active = await getActiveLocaleCodes();
+  return active.has(raw) ? raw : 'en';
 }
 
 /**
  * The frontend/landing surface's translator — global, admin-controlled via
- * `/admin/settings?group=localization`, not a per-visitor preference. Call
- * once per page/layout (it's `cache()`-backed like `getSettings()`, so
- * asking for it from several components in one render pass still issues at
- * most one query) and pass `t` down, or call this again — same result,
- * deduplicated automatically.
+ * `/admin/translations`, not a per-visitor preference. Call once per
+ * page/layout (it's `cache()`-backed like `getSettings()`, so asking for it
+ * from several components in one render pass still issues at most one
+ * query) and pass `t` down, or call this again — same result, deduplicated
+ * automatically.
  */
 export async function getFrontendT(): Promise<{ t: Translator; locale: Locale }> {
   const locale = await resolveLocale('frontend');

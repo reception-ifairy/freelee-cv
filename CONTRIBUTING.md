@@ -93,8 +93,11 @@ history for debugging something, that still needs someone with real DB access to
 
 ## 5. Working on translations
 
-The site's language (Polish alongside English so far) is a small, dedicated system —
-`docs/17-translations.md` has the full design. Two ways to work on it locally:
+The site's language (Polish and German alongside English so far) is a small, dedicated system —
+`docs/17-translations.md` has the full design. If you have admin access to a running instance
+(local or the server), `/admin/translations` does everything below through a UI — add a language
+by typing its name, the AI resolves the code and translates automatically; export/import buttons
+are right there too. The CLI paths below are for working on it without a browser, or for scripting.
 
 **A. Review/edit existing translations, no AI needed.** Pull the current database content, edit
 the JSON by hand, send it back:

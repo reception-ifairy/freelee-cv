@@ -140,15 +140,17 @@ export const MODULES: ModuleManifest[] = [
     version: '1.0.0',
     description:
       'Platform-wide (not team-scoped) site language — one admin-controlled setting for the ' +
-      'frontend/landing surface, a separate one for the admin panel. Phase 1 (frontend) covers the ' +
-      'shared header/footer and the home page; the admin panel setting exists but no admin-panel ' +
-      'text is wired up yet (phase 2). See docs/17-translations.md.',
+      'frontend/landing surface, a separate one for the admin panel. /admin/translations lets an ' +
+      'admin add a language by name (AI resolves the code and translates the current word bank, ' +
+      '"frozen" until it completes), plus export/import for reviewing translations outside ' +
+      'production. Phase 1 (frontend) covers the shared header/footer and the home page; the admin ' +
+      'panel setting exists but no admin-panel text is wired up yet (phase 2). See docs/17-translations.md.',
     type: 'core',
     isCore: true,
     requires: {},
-    provides: { capabilities: ['i18n.frontend', 'i18n.admin_settings'] },
+    provides: { capabilities: ['i18n.frontend', 'i18n.admin_settings', 'i18n.add_language'] },
     permissions: [],
-    navigation: [{ label: 'Localization', href: '/admin/settings?group=localization', group: 'admin', order: 25 }],
+    navigation: [{ label: 'Translations', href: '/admin/translations', group: 'admin', order: 25 }],
   },
   groupChat,
   crews,

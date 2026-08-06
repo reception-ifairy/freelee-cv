@@ -36,12 +36,11 @@ add a third locale or a third namespace later.
 ## Global, not per-visitor — the whole point
 
 `frontend_locale` and `admin_locale` are two new entries in the existing `SETTINGS_SCHEMA`
-(`src/lib/settings-schema.ts`, new `localization` group) — meaning the entire existing
-schema-driven settings UI (`/admin/settings?group=localization`, `SettingsForm`,
-`saveSettingsAction`) needed **zero new code** to become the admin's language switcher. This was a
-deliberate architecture win, not a coincidence: reusing the settings system that already existed
-meant the "only I as admin can change it globally" requirement was satisfied by the exact same
-`requireAdmin()` gate every other setting already has, for free.
+(`src/lib/settings-schema.ts`, new `localization` group) — the raw settings-page text fields still
+work (`/admin/settings?group=localization`) and needed **zero new code**, satisfying "only an admin
+can change it globally" via the exact same `requireAdmin()` gate every other setting already has.
+`/admin/translations` (below) is the real day-to-day interface — a proper picker limited to
+locales that are actually translated, not a free-text field an admin could mistype.
 
 No URL locale prefixes (`/en/...`, `/pl/...`), no cookie-based per-visitor picker, no middleware
 locale-detection — every one of those is the standard shape for typical multi-locale i18n, and
@@ -68,6 +67,36 @@ Two scripts, matching the two-step process asked for directly:
 Both scripts build their own raw Drizzle client rather than importing `@/lib/ai/registry` or
 `@/db` directly — both of those import `server-only`, which throws outside a Next.js server
 context, the same constraint every script in this project has hit since Phase 6.
+
+## The admin panel: `/admin/translations`
+
+The same pipeline, but triggered from a real UI instead of a terminal — this is the "intelligent
+AI menu" the panel was asked for. `src/server/actions/admin-translations.ts`:
+
+- **Add a language** (`addLocaleAction`): the admin types a plain language name — "German," not
+  "de" — into one input. The action asks the AI for the ISO 639-1 code (`generateText()` with a
+  one-line system prompt asking for just the code, no chat UI needed for that part — a single
+  targeted call was simpler and more reliable than an open-ended conversational flow), inserts a
+  new `locales` row as `status: 'pending'` immediately (the "freeze" — shows up in the panel as a
+  dashed amber row, not selectable in the language picker), then runs the exact translation
+  pipeline described above in the same request and flips the row to `active` on success (the
+  "unfreeze"). A failure at any step leaves the locale `pending` with an error message rather than
+  crashing — `retryLocaleAction` re-runs just the translation step for an existing pending row.
+- **Language picker**: every `active` locale gets a "Set as frontend"/"Set as admin" button
+  (`setActiveLocaleAction`) that writes straight to the `frontend_locale`/`admin_locale` settings —
+  a `pending` locale is structurally incapable of appearing here (only `active` rows render a
+  button at all), so there's no way to point the live site at a half-translated language even by
+  mistake.
+- **Export/Import**: `/admin/translations/export` (a `GET` route, `requireAdmin()`-gated) is the
+  literal "export button" — downloads the whole `translations` table as JSON, same shape as
+  `scripts/export-translations.ts`. The import form (`importTranslationsAction`) accepts that same
+  shape back — a coworker's reviewed/hand-edited copy — and treats any locale it introduces as a
+  complete, deliberate action: straight to `active`, never `pending`, since an import is someone's
+  finished work, not a half-done AI draft.
+
+`resolveLocale()` (`src/lib/i18n/translate.ts`) only ever treats a setting value as valid if
+`locales` has an `active` row for it — a `pending` locale can never leak onto the live site even
+if something else wrote a stale/wrong setting value by hand.
 
 ## What's translated this phase, and what deliberately isn't
 
@@ -102,19 +131,28 @@ private-channel-not-git rule as the data bundle export in `CONTRIBUTING.md`. Ful
 
 ## Verifying it
 
-Migration `0015_translations.sql` — one new table, nothing existing touched. Ran the real
-pipeline against production, not a test fixture: `i18n:extract` found 32 keys across the three
+Migration `0015_translations.sql` (the `translations` table) and `0016_locales.sql` (the
+`locales` registry, seeded with `en`/`pl` as `active`) — additive, nothing existing touched. Ran
+the real CLI pipeline against production first: `i18n:extract` found 32 keys across the three
 wired-up files with zero fallback conflicts; `i18n:translate` made a real `generateText()` call
 and upserted 32/32 Polish rows (spot-checked several, including all three with `{placeholder}`
-tokens — all preserved correctly, e.g. `"{count} specjalistów AI gotowych do pracy"`). Flipped
-`frontend_locale` to `pl` directly in the database, confirmed the live site actually rendered in
-Polish (`<html lang="pl">`, every section's heading correctly translated, zero server errors),
-then reverted to `en` as the shipped default — an admin flips it for real via
-`/admin/settings?group=localization` whenever ready. `npm run typecheck`/`npm run build` clean;
-`npm run modules:verify` — 9 modules registered, all dependencies resolve.
+tokens — all preserved correctly, e.g. `"{count} specjalistów AI gotowych do pracy"`).
+
+Then verified the **admin-panel path specifically** — the new logic (AI language-code detection,
+the pending→active transition) — by running the exact same steps `addLocaleAction` runs, against
+production, for a real language (German, not a throwaway test value): AI correctly resolved
+"German" → `de`; inserted as `pending`; ran the real translation pipeline (32/32 keys, e.g.
+`footer.company` → `"Unternehmen"`, correct); flipped to `active`. Flipped `frontend_locale` to
+`de` directly in the database and confirmed the live site actually rendered in German
+(`<html lang="de">`, "Anmelden"/"Loslegen"/"Unternehmen" all present, zero server errors), then
+back to `pl` to confirm that still worked too, then reverted to `en` as the shipped default —
+German is left `active` in the `locales` table (a real, useful addition, not test data to clean
+up); an admin picks it for real via `/admin/translations` whenever ready. `npm run typecheck`/
+`npm run build` clean; `npm run modules:verify` — 9 modules registered, all dependencies resolve.
 
 ## What's next
 
 Phase 2 (admin panel) wires `getAdminT()` into `/admin/**` pages the same way this phase wired
 `getFrontendT()` into the frontend — the mechanism already exists and doesn't need to change, only
-the call sites need adding, file by file, same extraction/translation pipeline.
+the call sites need adding, file by file, same extraction/translation pipeline, same
+`/admin/translations` panel to drive it.
