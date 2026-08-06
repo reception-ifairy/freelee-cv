@@ -13,8 +13,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed-ai-models": "tsx scripts/seed-ai-models.ts",
     "modules:verify": "tsx scripts/verify-module-graph.ts",
-    "modules:sync": "tsx scripts/sync-modules.ts"
+    "modules:sync": "tsx scripts/sync-modules.ts",
+    "data:export": "tsx scripts/export-bundle.ts",
+    "data:import": "tsx scripts/import-bundle.ts"
   },
   "dependencies": {
     "next": "^16.2.12",

@@ -117,7 +117,7 @@ missing the AI model catalog and the module registry mirror):
 
 ```bash
 npm run db:seed                          # platform team, admin/demo users, 8 demo personas, CMS, plans/packs
-npx tsx scripts/seed-ai-models.ts        # ai_providers/ai_models catalog
+npm run db:seed-ai-models                # ai_providers/ai_models catalog
 npm run modules:sync                     # modules/module_team registry mirror from src/lib/modules/registry.ts
 ```
 
@@ -394,9 +394,9 @@ npm run db:generate         # drizzle-kit generate — inspect the diff, do NOT 
 npm run db:seed              # idempotent — safe to re-run
 npm run modules:sync        # sync src/lib/modules/registry.ts into the modules table
 npm run modules:verify      # confirm every module's requires.modules resolves
-npx tsx scripts/seed-ai-models.ts       # (re-)seed the AI provider/model catalog
-npx tsx scripts/export-bundle.ts --team=<id> --out=file.json   # data export (docs/15-data-portability.md)
-npx tsx scripts/import-bundle.ts --team=<id> --bundle=file.json [--apply]   # data import, dry-run by default
+npm run db:seed-ai-models   # (re-)seed the AI provider/model catalog
+npm run data:export -- --team=<id> --out=file.json   # data export (docs/15-data-portability.md)
+npm run data:import -- --team=<id> --bundle=file.json [--apply]   # data import, dry-run by default
 ```
 
 See `docs/00-overview.md` for the full architecture reference, and

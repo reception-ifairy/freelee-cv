@@ -22,9 +22,9 @@ npx auth secret          # writes AUTH_SECRET
 # hand-edited schema changes. See DEPLOY.md for why.
 for f in drizzle/000*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f" || break; done
 
-npm run db:seed                    # platform team, admin/demo users, 8 demo personas, CMS
-npx tsx scripts/seed-ai-models.ts  # AI provider/model catalog
-npm run modules:sync               # module registry mirror
+npm run db:seed              # platform team, admin/demo users, 8 demo personas, CMS
+npm run db:seed-ai-models    # AI provider/model catalog
+npm run modules:sync         # module registry mirror
 
 npm run dev
 ```
@@ -37,6 +37,10 @@ Open <http://localhost:3000>.
 | Customer | `demo@freelee.cv` | `password` |
 
 The admin panel is at `/admin`. **Change both passwords before exposing this to the internet.**
+
+Working on this locally as a coworker (not deploying it)? See **`CONTRIBUTING.md`** — clone/setup,
+getting realistic data via the export/import bundle system instead of production DB access, and
+the PR workflow.
 
 For a fully gated, verified install runbook (environment → schema → build → smoke test → deploy →
 production checklist), see **`DEPLOY.md`**.
