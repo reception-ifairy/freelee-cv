@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { Logo } from '@/components/site/logo';
+import { getActiveTheme } from '@/lib/branding/theme';
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const theme = await getActiveTheme();
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12">
       <div className="aurora absolute inset-0 -z-10" />
@@ -10,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="animate-in-up w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Logo />
+            <Logo srcUrl={theme?.logoUrl} />
             <span className="text-xl font-bold tracking-tight">Freelee</span>
           </Link>
         </div>

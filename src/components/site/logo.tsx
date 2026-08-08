@@ -1,4 +1,10 @@
-export function Logo({ className = 'h-9 w-9' }: { className?: string }) {
+/** `srcUrl` is the active theme's `logoUrl` — falls back to the inline mark below whenever unset, never a broken image. */
+export function Logo({ className = 'h-9 w-9', srcUrl }: { className?: string; srcUrl?: string | null }) {
+  if (srcUrl) {
+    // eslint-disable-next-line @next/next/no-img-element -- admin-supplied external URL, same convention as persona avatars/custom-content images
+    return <img src={srcUrl} alt="" className={`${className} rounded-lg object-contain`} />;
+  }
+
   return (
     <svg className={className} viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <defs>

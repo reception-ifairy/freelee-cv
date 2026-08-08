@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import {
   personas, personaVersions, personaCategories, categories, sectors, creditPacks, promptModifiers,
-  posts, pages, menuItems, settings, themes, users,
+  posts, pages, menuItems, settings, users,
   PERSONALITY_TRAITS, type PersonaCapabilities, type PersonaPersonality, type PersonaBlueprint,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
@@ -793,27 +793,6 @@ async function upsertSetting(key: string, value: string, type: SettingKind, grou
     .insert(settings)
     .values({ key, value, type, group })
     .onConflictDoUpdate({ target: settings.key, set: { value, type, group } });
-}
-
-export async function saveThemeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-
-  const tokens: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    if (key.startsWith('token.') && typeof value === 'string') {
-      tokens[key.slice('token.'.length)] = value;
-    }
-  }
-
-  const customCss = String(formData.get('customCss') ?? '');
-
-  await db
-    .insert(themes)
-    .values({ name: 'Default', slug: 'default', isActive: true, tokens, customCss })
-    .onConflictDoUpdate({ target: themes.slug, set: { tokens, customCss } });
-
-  revalidatePath('/', 'layout');
-  return { success: 'Appearance updated.' };
 }
 
 /* ------------------------------- Customers ------------------------------ */

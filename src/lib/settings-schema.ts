@@ -20,15 +20,6 @@ export const SETTINGS_SCHEMA = {
     { key: 'support_email', label: 'Support email', type: 'string' },
     { key: 'allow_registration', label: 'Allow new registrations', type: 'bool' },
   ],
-  homepage: [
-    { key: 'hero_title', label: 'Hero title', type: 'string', help: 'Supports the gradient span text via ||, e.g. "Your AI agency, ||staffed by personas"' },
-    { key: 'hero_subtitle', label: 'Hero subtitle', type: 'text' },
-    { key: 'hero_primary_label', label: 'Hero primary button label', type: 'string' },
-    { key: 'hero_secondary_label', label: 'Hero secondary button label', type: 'string' },
-    { key: 'cta_title', label: 'Bottom CTA title', type: 'string' },
-    { key: 'cta_subtitle', label: 'Bottom CTA subtitle', type: 'text', help: 'Use {credits} where the signup bonus amount should appear' },
-    { key: 'cta_button_label', label: 'Bottom CTA button label', type: 'string' },
-  ],
   ai: [
     { key: 'ai_default_provider', label: 'Default provider', type: 'string', help: 'openai, anthropic, openrouter, ollama' },
     { key: 'openai_api_key', label: 'OpenAI API key', type: 'secret' },

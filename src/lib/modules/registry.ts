@@ -169,6 +169,21 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Translations', href: '/admin/translations', group: 'admin', order: 25 }],
   },
+  {
+    key: 'frontpage-sections',
+    name: 'Frontpage Sections',
+    version: '1.0.0',
+    description:
+      'Ordered, admin-editable homepage sections (page_sections table) replacing a fixed hardcoded ' +
+      'JSX sequence — reorder, hide, and edit hero/how-it-works/CTA/custom sections without a deploy. ' +
+      'See docs/19-frontpage-sections.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['frontpage.sections', 'frontpage.custom_sections'] },
+    permissions: [],
+    navigation: [{ label: 'Frontpage', href: '/admin/frontpage', group: 'admin', order: 17 }],
+  },
   groupChat,
   crews,
 ];

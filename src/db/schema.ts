@@ -1366,9 +1366,55 @@ export const themes = pgTable(
     isActive: boolean('is_active').notNull().default(false),
     tokens: jsonb('tokens').$type<ThemeTokens>().notNull().default(sql`'{}'::jsonb`),
     customCss: text('custom_css'),
+    // Branding, added 2026-08-07 (docs/20-branding.md) — URLs, not uploads,
+    // same convention personas.avatar already uses for "an admin-supplied
+    // image" in this app. logoUrl null means: fall back to the built-in
+    // inline-SVG mark (src/components/site/logo.tsx), never a broken image.
+    logoUrl: text('logo_url'),
+    faviconUrl: text('favicon_url'),
+    // A curated key (e.g. 'inter', 'system', 'georgia'), not an arbitrary
+    // font string — resolved to a real font-family stack in
+    // src/lib/branding/fonts.ts, the same "fixed small set, not a full
+    // integration" trade-off as src/lib/knowledge/registry.ts's dot-paths.
+    headingFont: text('heading_font'),
+    bodyFont: text('body_font'),
   },
   (t) => [uniqueIndex('themes_slug_idx').on(t.slug)],
 );
+
+/**
+ * The home page as an ordered list of togglable/reorderable sections
+ * instead of fixed JSX — `page` is a plain text column (default `'home'`)
+ * so a second page could reuse this later, not architecturally locked to
+ * one. Six of the seven original sections (`hero`, `categories`,
+ * `featured_personas`, `how_it_works`, `pricing`, `cta` — `blog` too, seven
+ * total) are "core": seeded exactly once by the migration, never created or
+ * deleted through the UI (`deleteSectionAction` refuses anything but
+ * `custom_content` — enforced in the action, not just hidden in the UI, see
+ * docs/19-frontpage-sections.md). `custom_content` is the one genuinely
+ * repeatable type — add as many as wanted, no code change. No DB unique
+ * constraint on `(page, type)`: it would have to exclude `custom_content`
+ * anyway, and there's no UI path that could create a second core section,
+ * so application-level enforcement (the seed migration + the delete guard)
+ * is sufficient rather than fighting a partial-unique-index around it.
+ */
+export const pageSections = pgTable(
+  'page_sections',
+  {
+    id: serial('id').primaryKey(),
+    page: text('page').notNull().default('home'),
+    type: text('type').notNull(),
+    position: integer('position').notNull().default(0),
+    isVisible: boolean('is_visible').notNull().default(true),
+    config: jsonb('config').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('page_sections_page_idx').on(t.page, t.position)],
+);
+
+export type PageSectionRow = typeof pageSections.$inferSelect;
+export type NewPageSectionRow = typeof pageSections.$inferInsert;
 
 export const activityLog = pgTable(
   'activity_log',

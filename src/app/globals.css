@@ -9,6 +9,8 @@
 --------------------------------------------------------------------------- */
 @theme {
   --font-sans: 'InterVariable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Overridden per-theme by the root layout's injected :root block (src/lib/branding/fonts.ts) — falls back to body copy's font when no heading font is chosen. */
+  --font-heading: var(--font-sans);
 
   --color-brand-50: #eef2ff;
   --color-brand-100: #e0e7ff;
@@ -36,6 +38,8 @@
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-black dark:text-slate-100;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); }
 
   ::selection { @apply bg-brand-500/25; }
 

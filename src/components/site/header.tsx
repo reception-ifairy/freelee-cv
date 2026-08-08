@@ -8,13 +8,14 @@ import { getBalanceForTeam } from '@/lib/billing/credits';
 import { isModuleEnabledForTeam } from '@/lib/modules/db';
 import { getSettingString } from '@/lib/settings';
 import { getFrontendT } from '@/lib/i18n/translate';
+import { getActiveTheme } from '@/lib/branding/theme';
 import { formatCredits } from '@/lib/utils';
 import { Logo } from './logo';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
 
 export async function SiteHeader() {
-  const [user, siteName, links, { t }] = await Promise.all([
+  const [user, siteName, links, { t }, theme] = await Promise.all([
     currentUser(),
     getSettingString('site_name', 'Freelee'),
     db
@@ -23,6 +24,7 @@ export async function SiteHeader() {
       .where(and(eq(menuItems.location, 'header'), eq(menuItems.isActive, true)))
       .orderBy(menuItems.position),
     getFrontendT(),
+    getActiveTheme(),
   ]);
 
   // user.defaultTeamId can be missing on a stale JWT session cookie predating
@@ -46,7 +48,7 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-black/85">
       <div className="container-app flex h-16 items-center gap-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Logo />
+          <Logo srcUrl={theme?.logoUrl} />
           <span className="text-lg font-bold tracking-tight">{siteName}</span>
         </Link>
 

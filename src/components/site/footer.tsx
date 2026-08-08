@@ -4,10 +4,11 @@ import { db } from '@/db';
 import { menuItems, personas } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
 import { getFrontendT } from '@/lib/i18n/translate';
+import { getActiveTheme } from '@/lib/branding/theme';
 import { Logo } from './logo';
 
 export async function SiteFooter() {
-  const [siteName, tagline, links, featured, { t }] = await Promise.all([
+  const [siteName, tagline, links, featured, { t }, theme] = await Promise.all([
     getSettingString('site_name', 'Freelee'),
     getSettingString('site_description', 'Hire an AI specialist for every task.'),
     db
@@ -22,6 +23,7 @@ export async function SiteFooter() {
       .orderBy(desc(personas.messagesCount))
       .limit(5),
     getFrontendT(),
+    getActiveTheme(),
   ]);
 
   return (
@@ -30,7 +32,7 @@ export async function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link href="/" className="flex items-center gap-2">
-              <Logo />
+              <Logo srcUrl={theme?.logoUrl} />
               <span className="text-lg font-bold tracking-tight">{siteName}</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-slate-500 dark:text-slate-400">{tagline}</p>

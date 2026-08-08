@@ -1,18 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { unstable_cache } from 'next/cache';
-import { eq } from 'drizzle-orm';
-import { db } from '@/db';
-import { themes } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
 import { getFrontendT } from '@/lib/i18n/translate';
+import { fontStack } from '@/lib/branding/fonts';
+import { getActiveTheme } from '@/lib/branding/theme';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [name, description] = await Promise.all([
+  const [name, description, theme] = await Promise.all([
     getSettingString('site_name', 'Freelee').catch(() => 'Freelee'),
     getSettingString('site_description', 'Hire an AI specialist for every task.').catch(
       () => 'Hire an AI specialist for every task.',
     ),
+    getActiveTheme(),
   ]);
 
   return {
@@ -21,6 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
     openGraph: { siteName: name, type: 'website' },
     robots: { index: true, follow: true },
+    icons: theme?.faviconUrl ? { icon: theme.faviconUrl } : undefined,
   };
 }
 
@@ -47,30 +47,19 @@ const themeBootstrap = `
 })();
 `;
 
-/**
- * Cached for an hour: the theme changes rarely, and this runs on every page.
- * A database hiccup falls back to the compiled-in defaults rather than taking
- * the entire site down — and it lets `next build` run without a live database.
- */
-const getActiveTheme = unstable_cache(
-  async () => {
-    try {
-      const [theme] = await db.select().from(themes).where(eq(themes.isActive, true)).limit(1);
-      return theme ?? null;
-    } catch {
-      return null;
-    }
-  },
-  ['active-theme'],
-  { revalidate: 3600, tags: ['theme'] },
-);
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [theme, { locale }] = await Promise.all([getActiveTheme(), getFrontendT()]);
 
+  const headingStack = fontStack(theme?.headingFont);
+  const bodyStack = fontStack(theme?.bodyFont);
+
   const cssVariables = theme
-    ? `:root{${Object.entries(theme.tokens)
-        .map(([key, value]) => `--color-${key}:${value}`)
+    ? `:root{${[
+        ...Object.entries(theme.tokens).map(([key, value]) => `--color-${key}:${value}`),
+        headingStack ? `--font-heading:${headingStack}` : '',
+        bodyStack ? `--font-sans:${bodyStack}` : '',
+      ]
+        .filter(Boolean)
         .join(';')}}`
     : '';
 
@@ -84,6 +73,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+        {/* Always loaded, matching the admin layout's pattern — cheap, cached, and lets an admin switch to either curated font without a deploy. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
         {cssVariables ? <style dangerouslySetInnerHTML={{ __html: cssVariables }} /> : null}
         {theme?.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }} /> : null}
