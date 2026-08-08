@@ -156,8 +156,20 @@ export async function POST(request: Request) {
 
   const system =
     persona && version
-      ? buildSystemPrompt({ ...version, name: persona.name, expertise: persona.expertise }, selectedModifiers, undefined, groundingChunks) +
-        narrativePromptFragment(layoutKey)
+      ? buildSystemPrompt(
+          {
+            ...version,
+            name: persona.name,
+            expertise: persona.expertise,
+            // A per-conversation override beats the persona's authored
+            // default; NULL on the chat means "inherit" (docs/24-chat-controls.md).
+            interactionStyle: chat.interactionStyle ?? version.interactionStyle,
+            approachToUnknown: chat.approachToUnknown ?? version.approachToUnknown,
+          },
+          selectedModifiers,
+          undefined,
+          groundingChunks,
+        ) + narrativePromptFragment(layoutKey)
       : undefined;
 
   // Only the tail of the conversation is resent — more context costs credits.

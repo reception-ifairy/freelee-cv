@@ -110,3 +110,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Image-generation engines** (catalog + admin config only — OpenAI/Stability image models, live "Fetch models" for every AI provider including chat, shared grid-picker UI components) — `21-image-engines.md`
 - **Modular word bank & help tips** (translation module rebuilt around per-module banks + AI translation, scan-based extractor that can't go stale, side-by-side export, `?` help tips) — `22-modular-word-bank.md`
 - **Chat layouts** (13 category/audience-adaptive chat UIs incl. group and narrative variants; narrative layouts restructure the model's output into narration/dialogue/choices) — `23-chat-layouts.md`
+- **Conversation controls** (per-chat tone/writing/output/length + interaction style and how-it-handles-unknowns, without editing the persona) — `24-chat-controls.md`
+- **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

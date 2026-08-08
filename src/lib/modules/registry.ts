@@ -202,11 +202,12 @@ export const MODULES: ModuleManifest[] = [
       'narration/dialogue/action/choices and the reply is parsed and styled back, with the parser ' +
       'failing open to plain prose. Also the first thing that reads the persona capability flags ' +
       '(copy/share/suggestions/voice), which had been stored but unused since Phase 1. ' +
-      'See docs/23-chat-layouts.md.',
+      'Also per-chat conversation controls (tone/writing/output/length, interaction style, how it ' +
+      'handles what it does not know). See docs/23-chat-layouts.md and docs/24-chat-controls.md.',
     type: 'core',
     isCore: true,
     requires: { modules: ['persona-versioning'] },
-    provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating'] },
+    provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating', 'chat.conversation_controls'] },
     permissions: [],
   },
   groupChat,

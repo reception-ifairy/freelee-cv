@@ -118,16 +118,54 @@ export async function shareChatAction(formData: FormData) {
   revalidatePath(`/chat/${chatId}`);
 }
 
-export async function setChatModifiersAction(formData: FormData) {
+const styleSchema = z.enum(['formal', 'casual', 'enthusiastic', 'concise', 'socratic']).nullable();
+const unknownSchema = z.enum(['admit_ignorance', 'educated_guess', 'ask_clarifying']).nullable();
+
+/** '' from an unset <select> means "inherit from the persona" — stored as NULL, not as a value. */
+function optionalEnum<T extends z.ZodTypeAny>(schema: T, raw: FormDataEntryValue | null) {
+  const value = typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+  const parsed = schema.safeParse(value);
+  return parsed.success ? (parsed.data as z.infer<T>) : null;
+}
+
+/**
+ * The conversation controls (docs/24-chat-controls.md) — tone/writing/output/
+ * length modifiers plus per-chat overrides of the persona's interaction style
+ * and how it handles things it doesn't know.
+ *
+ * One action for all of them because they're one form: the user adjusts a few
+ * dials and applies them together, and splitting it would mean several
+ * round-trips to change what reads as a single setting.
+ */
+export async function setChatControlsAction(formData: FormData) {
   const chatId = z.string().min(1).parse(formData.get('chatId'));
   const chat = await assertChatAccess(chatId);
   if (!chat) return;
 
+  // Every unset dropdown submits '' — and `Number('')` is 0, which
+  // `Number.isFinite` happily accepts. The previous version therefore stored
+  // a bogus modifier id 0 for each control the user left alone, so a chat
+  // with one real choice came back reporting four. Filter on the raw string
+  // first, and require a positive id (serial primary keys start at 1).
   const ids = formData
     .getAll('modifierIds')
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value));
+    .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+    .map(Number)
+    .filter((value) => Number.isInteger(value) && value > 0);
 
-  await db.update(chats).set({ modifierIds: ids }).where(eq(chats.id, chatId));
+  await db
+    .update(chats)
+    .set({
+      modifierIds: ids,
+      interactionStyle: optionalEnum(styleSchema, formData.get('interactionStyle')),
+      approachToUnknown: optionalEnum(unknownSchema, formData.get('approachToUnknown')),
+    })
+    .where(eq(chats.id, chatId));
+
   revalidatePath(`/chat/${chatId}`);
+}
+
+/** @deprecated Kept as a thin alias so any existing caller keeps working — use setChatControlsAction. */
+export async function setChatModifiersAction(formData: FormData) {
+  return setChatControlsAction(formData);
 }

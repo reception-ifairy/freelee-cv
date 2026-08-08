@@ -757,6 +757,15 @@ export const chats = pgTable(
     model: text('model'),
     aiProvider: text('ai_provider'),
     modifierIds: jsonb('modifier_ids').$type<number[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Per-conversation overrides of the persona's own cognitive settings
+     * (docs/24-chat-controls.md). NULL means "use whatever the persona was
+     * authored with" — so an untouched chat behaves exactly as before these
+     * columns existed, and a reader can tell "never chosen" apart from
+     * "deliberately set to the same value the persona already had".
+     */
+    interactionStyle: interactionStyle('interaction_style'),
+    approachToUnknown: approachToUnknown('approach_to_unknown'),
 
     messagesCount: integer('messages_count').notNull().default(0),
     creditsSpent: integer('credits_spent').notNull().default(0),

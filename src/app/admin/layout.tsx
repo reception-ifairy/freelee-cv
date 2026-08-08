@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, ExternalLink, Cpu,
-  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate,
+  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy,
 } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { logoutAction } from '@/server/actions/auth';
@@ -51,6 +51,7 @@ const SECTIONS = [
       { href: '/admin/translations', label: 'Translations', icon: Languages },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
       { href: '/admin/theme', label: 'Branding', icon: Palette },
+      { href: '/admin/handbook', label: 'Handbook', icon: LifeBuoy },
       { href: '/admin/docs', label: 'Documentation', icon: BookOpen },
     ],
   },

@@ -4,13 +4,14 @@ import { Share2, Trash2, Zap } from 'lucide-react';
 import { asc, eq } from 'drizzle-orm';
 import type { UIMessage } from 'ai';
 import { db } from '@/db';
-import { messages, personas, personaVersions } from '@/db/schema';
+import { messages, personas, personaVersions, promptModifiers } from '@/db/schema';
 import { assertChatAccess, deleteChatAction, shareChatAction } from '@/server/actions/chat';
 import { currentUser } from '@/lib/auth';
 import { getBalanceForTeam } from '@/lib/billing/credits';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { ChatWindow } from '@/components/chat/chat-window';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
+import { ChatControls } from '@/components/chat/chat-controls';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
 
@@ -56,6 +57,18 @@ export default async function ChatPage({ params }: { params: Params }) {
     version?.audienceSegments,
   );
   const capabilities = version?.capabilities ?? {};
+
+  // Only loaded when the persona actually offers at least one of the
+  // format controls — no point querying the table for a persona that
+  // exposes none of them.
+  const offersModifiers = Boolean(capabilities.tone || capabilities.writing || capabilities.output);
+  const modifierRows = offersModifiers
+    ? await db
+        .select({ id: promptModifiers.id, type: promptModifiers.type, name: promptModifiers.name })
+        .from(promptModifiers)
+        .where(eq(promptModifiers.isActive, true))
+        .orderBy(promptModifiers.position)
+    : [];
 
   // Persisted rows are replayed into the shape the AI SDK expects on the client.
   const initialMessages: UIMessage[] = rows
@@ -125,6 +138,15 @@ export default async function ChatPage({ params }: { params: Params }) {
               </form>
             </div>
           </header>
+
+          <ChatControls
+            chatId={chat.id}
+            modifiers={modifierRows}
+            selectedModifierIds={chat.modifierIds}
+            interactionStyle={chat.interactionStyle}
+            approachToUnknown={chat.approachToUnknown}
+            show={{ tone: capabilities.tone, writing: capabilities.writing, output: capabilities.output }}
+          />
 
           <ChatWindow
             chatId={chat.id}
