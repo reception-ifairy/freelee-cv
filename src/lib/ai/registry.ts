@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { cache } from 'react';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { LanguageModel } from 'ai';
 import { db } from '@/db';
 import { aiProviders, aiModels } from '@/db/schema';
@@ -140,6 +141,13 @@ export function getModel(
 
   if (providerId === 'anthropic') {
     return createAnthropic({ apiKey })(modelId);
+  }
+
+  // Google's API is neither OpenAI-shaped nor Anthropic-shaped — it needs its
+  // own factory, which is exactly the "a new provider is a code change"
+  // trade-off documented at the top of this file.
+  if (providerId === 'google') {
+    return createGoogleGenerativeAI({ apiKey })(modelId);
   }
 
   // OpenAI and every OpenAI-compatible endpoint share one factory.

@@ -1,6 +1,6 @@
 /**
- * Reads a word bank (scripts/extract-translations.ts's output) and asks the
- * platform's own configured OpenAI provider to translate it in one batch,
+ * Reads the word bank (scripts/extract-translations.ts's output) and asks
+ * whichever AI provider the platform is configured to use to translate it,
  * then upserts the result into `translations` (never English — see the
  * schema comment on that table). Builds its own raw Drizzle client rather
  * than importing `@/lib/ai/registry` or `@/db` directly — both import
@@ -20,6 +20,8 @@ import { readFile } from 'node:fs/promises';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import * as schema from '../src/db/schema';
 import { translations, locales } from '../src/db/schema';
@@ -59,13 +61,38 @@ async function main() {
   const client = postgres(connectionString, { max: 1 });
   const db = drizzle(client, { schema });
 
-  const [provider] = await client`select api_key_env from ai_providers where key = 'openai'`;
-  if (!provider) throw new Error("No 'openai' row in ai_providers — run npm run db:seed-ai-models first.");
-  const apiKey = process.env[provider.api_key_env as string];
-  if (!apiKey) throw new Error(`${provider.api_key_env} is not set.`);
+  // Resolves the provider the same way /admin/translations does — from the
+  // `ai_default_provider` setting — instead of assuming OpenAI. Hardcoding it
+  // here meant the CLI and the admin panel could disagree about which AI was
+  // doing the work, which is exactly the confusion that showed up when the
+  // OpenAI account ran out of credit and the panel had already moved to Google.
+  const [setting] = await client`select value from settings where key = 'ai_default_provider'`;
+  const providerKey = (setting?.value as string) || 'openai';
+
+  const [provider] = await client`
+    select api_key_env, default_model from ai_providers where key = ${providerKey}`;
+  if (!provider) throw new Error(`No '${providerKey}' row in ai_providers — run npm run db:seed-ai-models first.`);
+
+  // Settings first, env second — the same precedence getModel() uses.
+  const [keyRow] = await client`select value from settings where key = ${`${providerKey}_api_key`}`;
+  const apiKey = (keyRow?.value as string) || process.env[provider.api_key_env as string];
+  if (!apiKey) throw new Error(`No API key for '${providerKey}' (settings or ${provider.api_key_env}).`);
+
+  const [modelRow] = await client`
+    select m.model_id from ai_models m
+    join ai_providers p on p.id = m.provider_id
+    where p.key = ${providerKey} and m.tier = 'balanced' and m.status = 'stable' limit 1`;
+  const modelId = (modelRow?.model_id as string) || (provider.default_model as string);
 
   const targetName = LOCALE_NAMES[targetLocale] ?? targetLocale;
-  const model = createOpenAI({ apiKey })('gpt-4o-mini');
+  const model =
+    providerKey === 'anthropic'
+      ? createAnthropic({ apiKey })(modelId)
+      : providerKey === 'google'
+        ? createGoogleGenerativeAI({ apiKey })(modelId)
+        : createOpenAI({ apiKey })(modelId);
+
+  console.log(`Using ${providerKey} / ${modelId}\n`);
 
   let upserted = 0;
   let skipped = 0;

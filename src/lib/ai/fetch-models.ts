@@ -94,6 +94,39 @@ async function fetchAnthropicModels(provider: AiProviderRow): Promise<FetchModel
   }
 }
 
+/**
+ * Google is the one provider that doesn't authenticate with a header — the
+ * key goes in the query string — and its ids come back prefixed
+ * (`models/gemini-2.5-flash`), which has to be stripped or every later call
+ * fails on a name the API won't recognise.
+ *
+ * Filtered to models advertising `generateContent`: the raw list also
+ * includes embedding, TTS and other non-chat models, and unlike OpenAI the
+ * capability is stated explicitly rather than guessed from the id.
+ */
+async function fetchGoogleModels(provider: AiProviderRow): Promise<FetchModelsResult> {
+  const apiKey = await resolveApiKey(provider.key, provider.apiKeyEnv);
+  if (!apiKey) return { error: 'No Google API key configured (Settings → AI, or GOOGLE_API_KEY).' };
+
+  try {
+    const body = (await fetchJson(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=200`,
+      {},
+    )) as { models?: { name: string; displayName?: string; supportedGenerationMethods?: string[] }[] };
+
+    const models = (body.models ?? [])
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => {
+        const id = m.name.replace(/^models\//, '');
+        return { id, label: m.displayName ?? id, modality: 'text' as const };
+      });
+
+    return { models };
+  } catch {
+    return { error: 'Could not reach Google — check the API key and try again.' };
+  }
+}
+
 async function fetchOpenRouterModels(provider: AiProviderRow): Promise<FetchModelsResult> {
   const apiKey = await resolveApiKey(provider.key, provider.apiKeyEnv);
   const baseUrl = await resolveBaseUrl(provider.key, provider.baseUrlEnv, provider.fallbackBaseUrl);
@@ -152,6 +185,8 @@ export async function fetchProviderModels(provider: AiProviderRow): Promise<Fetc
       return fetchOpenAiModels(provider);
     case 'anthropic':
       return fetchAnthropicModels(provider);
+    case 'google':
+      return fetchGoogleModels(provider);
     case 'openrouter':
       return fetchOpenRouterModels(provider);
     case 'ollama':

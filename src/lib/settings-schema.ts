@@ -26,6 +26,8 @@ export const SETTINGS_SCHEMA = {
     { key: 'openai_default_model', label: 'OpenAI default model', type: 'string' },
     { key: 'anthropic_api_key', label: 'Anthropic API key', type: 'secret' },
     { key: 'anthropic_default_model', label: 'Anthropic default model', type: 'string' },
+    { key: 'google_api_key', label: 'Google (Gemini) API key', type: 'secret' },
+    { key: 'google_default_model', label: 'Google default model', type: 'string' },
     { key: 'openrouter_api_key', label: 'OpenRouter API key', type: 'secret' },
     { key: 'openrouter_default_model', label: 'OpenRouter default model', type: 'string' },
     { key: 'ollama_base_url', label: 'Ollama base URL', type: 'string', help: 'e.g. http://localhost:11434/v1' },

@@ -55,11 +55,12 @@ export const MODULES: ModuleManifest[] = [
       '1.1.0: live "Fetch models" per provider (no more hand-typed catalogs), a shared grid-picker ' +
       'UI (CardRadioGroup/GridSelect) replacing one-per-line <select> lists, and the first ' +
       'image-generation engines (OpenAI images, Stability AI) — catalog/admin config only, no ' +
-      'generation execution yet. See docs/10-ai-model-registry.md and docs/21-image-engines.md.',
+      'generation execution yet. Google (Gemini) added as a full chat provider 2026-08-08. ' +
+      'See docs/10-ai-model-registry.md, docs/21-image-engines.md and docs/25-google-provider.md.',
     type: 'core',
     isCore: true,
     requires: {},
-    provides: { capabilities: ['ai.model_catalog', 'ai.tier_resolution', 'ai.live_model_fetch', 'ai.image_engines'] },
+    provides: { capabilities: ['ai.model_catalog', 'ai.tier_resolution', 'ai.live_model_fetch', 'ai.image_engines', 'ai.google_provider'] },
     permissions: [],
     navigation: [{ label: 'AI models', href: '/admin/ai-models', group: 'admin', order: 15 }],
   },
