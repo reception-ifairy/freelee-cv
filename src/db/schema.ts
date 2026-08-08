@@ -681,6 +681,17 @@ export const personaVersions = pgTable(
     approachToUnknown: approachToUnknown('approach_to_unknown'),
     promptTechnique: promptTechnique('prompt_technique').notNull().default('direct'),
     thinkingMode: boolean('thinking_mode').notNull().default(false),
+    /**
+     * Which chat UI this persona is presented through (docs/23-chat-layouts.md).
+     * Plain text, not an enum — same reasoning as `modelTier`: the layout set
+     * is expected to grow, and that shouldn't cost a migration.
+     *
+     * Null means "use `suggestLayoutForPersona()`'s computed default", so
+     * every existing persona keeps working with a sensible layout and the
+     * migration needs no backfill. Setting it explicitly overrides the
+     * suggestion — the admin form shows which one is being suggested.
+     */
+    chatLayout: text('chat_layout'),
 
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     /**

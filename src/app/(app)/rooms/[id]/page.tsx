@@ -13,7 +13,9 @@ import { RoomLive } from '@/modules/group-chat/components/room-live';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea, Select, Hint } from '@/components/ui/field';
-import { initialsOf, relativeTime } from '@/lib/utils';
+import { initialsOf, relativeTime, cn } from '@/lib/utils';
+import { resolveChatLayout, layoutsForSurface } from '@/lib/chat/layouts';
+import { setRoomLayoutAction } from '@/modules/group-chat/actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Room' };
@@ -53,6 +55,13 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
   );
   const addedUserIds = new Set(participants.filter((p) => p.participantType === 'user').map((p) => p.participantId));
 
+  // A room's layout lives in `conversations.settings` — a jsonb bag already
+  // documented for exactly this kind of per-room override, so group layouts
+  // needed no schema change (see drizzle/0021_chat_layouts.sql).
+  const layout = resolveChatLayout(
+    typeof conversation.settings.chatLayout === 'string' ? conversation.settings.chatLayout : 'roundtable',
+  );
+
   const personaOptions = availablePersonas.filter((p) => !addedPersonaIds.has(String(p.id)));
   const userOptions = teamUsers.filter((u) => !addedUserIds.has(u.id));
 
@@ -69,7 +78,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
           </p>
 
           <Card className="mt-4 flex h-[60vh] flex-col overflow-hidden">
-            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+            <div className={cn('flex-1 overflow-y-auto', layout.density === 'spacious' ? 'space-y-6 p-6' : layout.density === 'compact' ? 'space-y-2.5 p-4' : 'space-y-4 p-5')}>
               {messages.length === 0 ? (
                 <p className="py-16 text-center text-sm text-slate-400">
                   No messages yet. Say hello, or @mention a persona to bring it into the conversation.
@@ -102,7 +111,12 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
                         {message.status === 'failed' ? (
                           <p className="mt-1 text-sm text-rose-500">{message.error ?? 'This message failed.'}</p>
                         ) : (
-                          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
+                          <p
+                            className={cn(
+                              'mt-1 whitespace-pre-wrap text-slate-700 dark:text-slate-200',
+                              layout.density === 'compact' ? 'text-[13px]' : layout.density === 'spacious' ? 'text-[15px] leading-relaxed' : 'text-sm',
+                            )}
+                          >
                             {message.content}
                           </p>
                         )}
@@ -119,10 +133,10 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
                 name="content"
                 rows={2}
                 required
-                placeholder={`Message the room… @mention a persona (${participants
+                placeholder={`${layout.placeholder.replace('{name}', 'the room')} (${participants
                   .filter((p) => p.participantType === 'persona')
                   .map((p) => `@${p.mentionHandle}`)
-                  .join(', ') || 'none yet'}) to bring it in.`}
+                  .join(', ') || 'no personas yet'})`}
               />
               <div className="mt-2 flex items-center justify-between">
                 <Hint>Mentioned personas reply once each, in parallel — not token-streamed.</Hint>
@@ -138,6 +152,28 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <aside className="space-y-4">
+          <Card className="p-4">
+            <h2 className="text-sm font-semibold">Room layout</h2>
+            <Hint>How this room&apos;s transcript is presented.</Hint>
+            <form action={setRoomLayoutAction} className="mt-3 space-y-2">
+              <input type="hidden" name="conversationId" value={conversationId} />
+              <Select name="chatLayout" defaultValue={layout.key} className="h-9 text-xs">
+                {layoutsForSurface('group').map((l) => (
+                  <option key={l.key} value={l.key}>
+                    {l.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-slate-400">{layout.description}</p>
+              <button
+                type="submit"
+                className="h-8 w-full rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                Apply
+              </button>
+            </form>
+          </Card>
+
           <Card className="p-4">
             <h2 className="mb-3 text-sm font-semibold">Participants</h2>
             <div className="space-y-2">

@@ -17,6 +17,7 @@ import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
 import { isChatProvider } from '@/lib/ai/registry';
+import { isChatLayoutKey } from '@/lib/chat/layouts';
 import type { ActionState } from './auth';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);
@@ -40,6 +41,10 @@ const personaSchema = z.object({
   // this phase — a persona can never actually be assigned one, see docs/21-image-engines.md.
   aiProvider: z.string().trim().min(1).refine(isChatProvider, 'Not a valid chat provider.'),
   model: z.string().trim().max(120).optional(),
+  // '' means "follow the suggestion computed from category/audience" — stored as
+  // NULL so the suggestion stays live as the taxonomy changes, rather than being
+  // frozen at whatever it happened to be on the day the persona was saved.
+  chatLayout: z.string().trim().optional(),
   modelTier: z.enum(['fast', 'balanced', 'advanced']).optional(),
   temperature: z.coerce.number().min(0).max(2),
   frequencyPenalty: z.coerce.number().min(-2).max(2).default(0),
@@ -147,6 +152,7 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     welcomeMessage: data.welcomeMessage ?? null,
     suggestions: formData.getAll('suggestions').map((v) => String(v).trim()).filter(Boolean),
     aiProvider: data.aiProvider,
+    chatLayout: data.chatLayout && isChatLayoutKey(data.chatLayout) ? data.chatLayout : null,
     // Server-enforced mutual exclusivity — a tier and an explicit model id
     // can't both be trusted, so the tier (when present) always wins and the
     // free-text model is discarded, regardless of what the form submitted.

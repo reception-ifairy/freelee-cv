@@ -7,6 +7,8 @@ import { currentUser } from '@/lib/auth';
 import { assertChatAccess } from '@/server/actions/chat';
 import { getModel, resolveProviderId, resolveTierModel, providerIsConfigured, getProviderRegistry } from '@/lib/ai/registry';
 import { searchMany } from '@/lib/knowledge/registry';
+import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
+import { narrativePromptFragment } from '@/lib/chat/layouts';
 import { buildSystemPrompt } from '@/lib/persona/prompt';
 import {
   costForTokens, spendCredits, getBalanceForTeam, MINIMUM_CHARGE, InsufficientCreditsError,
@@ -143,9 +145,19 @@ export async function POST(request: Request) {
     ? await searchMany(version.groundingSources, userText)
     : [];
 
+  // The narrative layouts (story / screenplay / gamebook) change the *output*,
+  // not just the frame — the model has to be told to emit narration, named
+  // dialogue and action beats for src/lib/chat/narrative.ts to have anything
+  // to parse. Prompting without rendering, or rendering without prompting,
+  // would each be useless on their own. See docs/23-chat-layouts.md.
+  const layoutKey = persona
+    ? await resolveLayoutForPersona(persona.id, version?.chatLayout, version?.audienceType, version?.audienceSegments)
+    : 'default';
+
   const system =
     persona && version
-      ? buildSystemPrompt({ ...version, name: persona.name, expertise: persona.expertise }, selectedModifiers, undefined, groundingChunks)
+      ? buildSystemPrompt({ ...version, name: persona.name, expertise: persona.expertise }, selectedModifiers, undefined, groundingChunks) +
+        narrativePromptFragment(layoutKey)
       : undefined;
 
   // Only the tail of the conversation is resent — more context costs credits.

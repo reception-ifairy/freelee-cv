@@ -10,6 +10,7 @@ import { currentUser } from '@/lib/auth';
 import { getBalanceForTeam } from '@/lib/billing/credits';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { ChatWindow } from '@/components/chat/chat-window';
+import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
 
@@ -47,6 +48,14 @@ export default async function ChatPage({ params }: { params: Params }) {
   // See src/components/site/header.tsx for why this guards on defaultTeamId
   // itself, not just on `user` — a stale JWT session cookie can have it undefined.
   const balance = user?.defaultTeamId ? await getBalanceForTeam(user.defaultTeamId) : undefined;
+
+  const layoutKey = await resolveLayoutForPersona(
+    chat.personaId,
+    version?.chatLayout,
+    version?.audienceType,
+    version?.audienceSegments,
+  );
+  const capabilities = version?.capabilities ?? {};
 
   // Persisted rows are replayed into the shape the AI SDK expects on the client.
   const initialMessages: UIMessage[] = rows
@@ -91,16 +100,18 @@ export default async function ChatPage({ params }: { params: Params }) {
                 </span>
               ) : null}
 
-              <form action={shareChatAction}>
-                <input type="hidden" name="chatId" value={chat.id} />
-                <button
-                  type="submit"
-                  className="grid size-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                  title="Share conversation"
-                >
-                  <Share2 className="size-4" />
-                </button>
-              </form>
+              {capabilities.share !== false ? (
+                <form action={shareChatAction}>
+                  <input type="hidden" name="chatId" value={chat.id} />
+                  <button
+                    type="submit"
+                    className="grid size-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                    title="Share conversation"
+                  >
+                    <Share2 className="size-4" />
+                  </button>
+                </form>
+              ) : null}
 
               <form action={deleteChatAction}>
                 <input type="hidden" name="chatId" value={chat.id} />
@@ -120,6 +131,8 @@ export default async function ChatPage({ params }: { params: Params }) {
             initialMessages={initialMessages}
             suggestions={version?.suggestions ?? []}
             personaName={persona?.name}
+            layoutKey={layoutKey}
+            capabilities={capabilities}
           />
         </div>
       </div>

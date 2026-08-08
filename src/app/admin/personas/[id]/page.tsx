@@ -6,6 +6,7 @@ import { categories, personaCategories, personas, personaVersions } from '@/db/s
 import { getProviderRegistry } from '@/lib/ai/registry';
 import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { PersonaForm } from '@/components/admin/persona-form';
+import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -46,8 +47,18 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .orderBy(desc(personaVersions.publishedAt)),
   ]);
 
+  // Shown in the layout picker as "Suggested — currently: X", so the
+  // auto-default is visible rather than implicit.
+  const suggestedLayout = await resolveLayoutForPersona(
+    personaId,
+    null,
+    version?.audienceType,
+    version?.audienceSegments,
+  );
+
   return (
     <PersonaForm
+      suggestedLayout={suggestedLayout}
       persona={persona}
       version={version}
       versionHistory={versionHistory.filter((v) => v.status === 'published')}

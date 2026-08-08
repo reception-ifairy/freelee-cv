@@ -14,6 +14,7 @@ import { assertModuleEnabled } from '@/lib/modules/db';
 import { slugify } from '@/lib/utils';
 import { parseMentions, runMentionedTurns, reserveNextPosition, DEFAULT_MAX_PERSONAS_PER_ROOM } from './mentions';
 import { notifyConversation } from './realtime';
+import { layoutsForSurface } from '@/lib/chat/layouts';
 
 const MODULE_KEY = 'group-chat';
 
@@ -215,6 +216,39 @@ export async function postMessageAction(formData: FormData) {
     // token-by-token the way direct 1:1 chat does.
     await runMentionedTurns(conversationId, conversation.teamId, mentioned, user.id);
   }
+
+  revalidatePath(`/rooms/${conversationId}`);
+}
+
+const roomLayoutSchema = z.object({
+  conversationId: z.string().min(1),
+  chatLayout: z.string().trim(),
+});
+
+/**
+ * Sets a room's chat layout. Stored in `conversations.settings` (jsonb)
+ * rather than a dedicated column — that bag already exists for per-room
+ * overrides like `maxPersonasPerRoom`, so this needed no migration.
+ *
+ * Only group-surface layouts are accepted: a room rendered with a solo
+ * layout would drop the speaker labels that make a multi-participant
+ * transcript readable at all.
+ */
+export async function setRoomLayoutAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const { conversationId, chatLayout } = roomLayoutSchema.parse(Object.fromEntries(formData));
+  await assertParticipant(conversationId, user.id);
+
+  const allowed = new Set(layoutsForSurface('group').map((l) => l.key));
+  if (!allowed.has(chatLayout as never)) return;
+
+  const [conversation] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conversation) return;
+
+  await db
+    .update(conversations)
+    .set({ settings: { ...conversation.settings, chatLayout } })
+    .where(eq(conversations.id, conversationId));
 
   revalidatePath(`/rooms/${conversationId}`);
 }

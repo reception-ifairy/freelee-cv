@@ -11,6 +11,8 @@ import { Input, Textarea, Select, Label, Hint, Checkbox, FormMessage } from '@/c
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardRadioGroup } from '@/components/ui/card-radio-group';
+import { CHAT_LAYOUTS, layoutsForSurface } from '@/lib/chat/layouts';
+import type { ChatLayoutKey } from '@/lib/chat/layouts';
 import { GridSelect } from '@/components/ui/grid-select';
 import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
 import type { ProviderRegistry } from '@/lib/ai/registry';
@@ -68,10 +70,12 @@ type Props = {
   providers: ProviderRegistry;
   /** Active rows from `knowledge_sources` (docs/18-knowledge-sources.md) — admin-managed, no longer a hardcoded list. */
   knowledgeSources: { key: string; label: string }[];
+  /** What `suggestLayoutForPersona()` would pick — shown so the auto-default is visible, not hidden magic. */
+  suggestedLayout?: ChatLayoutKey;
 };
 
 export function PersonaForm({
-  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources,
+  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources, suggestedLayout,
 }: Props) {
   const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
@@ -86,6 +90,7 @@ export function PersonaForm({
     () => Boolean(persona && ((version?.model && !version?.modelTier) || version?.aiProvider !== 'openai')),
   );
   const [modelId, setModelId] = useState(version?.model ?? '');
+  const [chatLayout, setChatLayout] = useState(version?.chatLayout ?? '');
   const [useCustomModel, setUseCustomModel] = useState(() => {
     if (!version?.model) return false;
     const providerModels = providers[version.aiProvider as keyof typeof providers]?.models ?? [];
@@ -593,6 +598,37 @@ export function PersonaForm({
           </div>
 
           <div className={cn('space-y-6', tab !== 'capabilities' && 'hidden')}>
+            <div>
+              <Label>Chat layout</Label>
+              <Hint>
+                How this persona&apos;s chat window looks and behaves. Leave on{' '}
+                <strong>Suggested</strong> to follow the persona&apos;s category and audience — the
+                narrative layouts also change the reply format itself. See docs/23-chat-layouts.md.
+              </Hint>
+              <div className="mt-3">
+                <CardRadioGroup
+                  name="chatLayout"
+                  columns={3}
+                  value={chatLayout}
+                  onChange={setChatLayout}
+                  items={[
+                    {
+                      id: '',
+                      label: 'Suggested',
+                      hint: suggestedLayout
+                        ? `Currently: ${CHAT_LAYOUTS[suggestedLayout].label}`
+                        : 'Picked from category and audience',
+                    },
+                    ...layoutsForSurface('solo').map((l) => ({
+                      id: l.key,
+                      label: l.label,
+                      hint: l.description,
+                    })),
+                  ]}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               {CAPABILITIES.map((capability) => (
                 <label

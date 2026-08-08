@@ -192,6 +192,23 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Frontpage', href: '/admin/frontpage', group: 'admin', order: 17 }],
   },
+  {
+    key: 'chat-layouts',
+    name: 'Chat Layouts',
+    version: '1.0.0',
+    description:
+      'Thirteen category/audience-adaptive chat UIs driven by one engine — seven solo, three group ' +
+      '(rooms), three narrative. Narrative layouts change the output itself: the model is prompted for ' +
+      'narration/dialogue/action/choices and the reply is parsed and styled back, with the parser ' +
+      'failing open to plain prose. Also the first thing that reads the persona capability flags ' +
+      '(copy/share/suggestions/voice), which had been stored but unused since Phase 1. ' +
+      'See docs/23-chat-layouts.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning'] },
+    provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating'] },
+    permissions: [],
+  },
   groupChat,
   crews,
 ];
