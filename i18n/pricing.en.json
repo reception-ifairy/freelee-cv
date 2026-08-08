@@ -1,0 +1,21 @@
+{
+  "pricing.empty_packs": "No credit packs configured yet.",
+  "pricing.error_gateway": "We could not start the payment. Please try again.",
+  "pricing.error_generic": "Something went wrong with that request.",
+  "pricing.faq_cost_a": "It depends on the model and the length of the conversation. A short exchange on a fast model costs a handful of credits; longer context and larger models cost more. Every deduction is itemised in your billing history.",
+  "pricing.faq_cost_q": "How much does a message cost?",
+  "pricing.faq_expiry_a": "No. Credits stay on your account until you spend them.",
+  "pricing.faq_expiry_q": "Do credits expire?",
+  "pricing.faq_models_a": "Each persona is configured with a specific model — OpenAI, Anthropic or any OpenAI-compatible provider. The model in use is shown on every persona page.",
+  "pricing.faq_models_q": "Which AI models do you use?",
+  "pricing.faq_refund_a": "Unused credits can be refunded within 14 days of purchase. Contact support with your order reference.",
+  "pricing.faq_refund_q": "Can I get a refund?",
+  "pricing.faq_title": "Questions",
+  "pricing.no_gateway": "No payment gateway is configured. Add Stripe or PayPal keys to enable checkout.",
+  "pricing.passes_subtitle": "Time-boxed access passes — unmetered chat for an hour, a day, or a week. No ongoing commitment.",
+  "pricing.passes_title": "Just need it for a bit?",
+  "pricing.plans_subtitle": "Recurring credits on a schedule that suits you — weekly, monthly or yearly.",
+  "pricing.plans_title": "Prefer a subscription?",
+  "pricing.subtitle": "Credits are deducted per message based on real token usage. No subscription, no expiry, no surprise invoices.",
+  "pricing.title": "Pay only for what you use"
+}

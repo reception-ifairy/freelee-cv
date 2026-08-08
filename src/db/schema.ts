@@ -1677,6 +1677,31 @@ export const locales = pgTable('locales', {
 
 export type LocaleRow = typeof locales.$inferSelect;
 
+/**
+ * The video half of the "?" help tips (docs/22-help-tips.md). The *text* of
+ * each tip lives in code as `t('help.…')` call sites (src/lib/help/topics.ts)
+ * so the translation pipeline can see and translate it; only the video URL —
+ * which is admin-supplied data, not UI copy — is stored here.
+ *
+ * Every topic works with no row at all: `videoUrl` null (or the row missing
+ * entirely) renders the tip as text only, which is the state of all of them
+ * today. The instructional-video feature itself is deliberately not built
+ * yet — this is the schema and the render slot it will land in, nothing more.
+ */
+export const helpTopics = pgTable(
+  'help_topics',
+  {
+    id: serial('id').primaryKey(),
+    /** Matches a key in HELP_TOPIC_KEYS (src/lib/help/topics.ts), e.g. 'pricing.credits'. */
+    key: text('key').notNull(),
+    videoUrl: text('video_url'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('help_topics_key_idx').on(t.key)],
+);
+
+export type HelpTopicRow = typeof helpTopics.$inferSelect;
+
 /* ========================== Data portability (Phase 8) ====================
  * Core, always-on capability (src/lib/portability/**, docs/15-data-portability.md)
  * — not a src/modules/<key> feature module, same reasoning as the AI model

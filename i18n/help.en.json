@@ -1,0 +1,18 @@
+{
+  "help.blog_reading_body": "An estimate based on the length of the article, at roughly 200 words per minute.",
+  "help.blog_reading_title": "Reading time",
+  "help.chat_suggestions_body": "These are starting points, not commands. Tap one to drop it into the message box, then edit it before sending if you want something different.",
+  "help.chat_suggestions_title": "Suggested replies",
+  "help.home_sections_body": "Every block on the home page can be reordered, hidden, or edited. Drag the arrows to change the order, or use the eye icon to hide a block without deleting it.",
+  "help.home_sections_title": "Home page sections",
+  "help.personas_audience_body": "B2B personas write for businesses and professionals, B2C for individual consumers, and B2G for government and public-sector work. It changes the tone and the examples they reach for.",
+  "help.personas_audience_title": "Audience types",
+  "help.personas_browse_body": "Filter by category to narrow the list, or by audience if you need someone who speaks to businesses, consumers, or the public sector specifically.",
+  "help.personas_browse_title": "Finding the right persona",
+  "help.pricing_credits_body": "Credits are deducted per message based on how much text is actually processed. Longer conversations and more capable models cost more. Nothing expires and there is no subscription.",
+  "help.pricing_credits_title": "How credits work",
+  "help.translations_bank_body": "Every piece of English text in the interface, grouped into modules. Add a language and the AI translates each module in turn, so a failure in one module never damages the rest.",
+  "help.translations_bank_title": "The word bank",
+  "help.translations_export_body": "The export puts English on the left and the target language on the right, one row per string, so a translator can work through it without touching the app.",
+  "help.translations_export_title": "Exporting for a translator"
+}

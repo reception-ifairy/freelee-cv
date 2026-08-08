@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { CalendarDays, Clock, Filter, Newspaper } from 'lucide-react';
 import { db } from '@/db';
-import { posts, users } from '@/db/schema';
+import { posts, users, categories } from '@/db/schema';
+import { getFrontendT } from '@/lib/i18n/translate';
+import { helpTopics } from '@/lib/help/topics';
+import { HelpTip } from '@/components/ui/help-tip';
 import { formatDate, truncate } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -12,7 +16,24 @@ export const metadata: Metadata = {
 
 export const revalidate = 300;
 
-export default async function BlogIndexPage() {
+type SearchParams = Promise<{ category?: string }>;
+
+export default async function BlogIndexPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const { t } = await getFrontendT();
+  const help = helpTopics(t);
+
+  // Only categories that actually have a published post — an empty filter
+  // option is worse than no option.
+  const categoryRows = await db
+    .select({ slug: categories.slug, name: categories.name, count: sql<number>`count(${posts.id})::int` })
+    .from(categories)
+    .innerJoin(posts, and(eq(posts.categoryId, categories.id), eq(posts.isPublished, true)))
+    .groupBy(categories.slug, categories.name, categories.position)
+    .orderBy(asc(categories.position));
+
+  const active = categoryRows.find((c) => c.slug === params.category);
+
   const rows = await db
     .select({
       id: posts.id,
@@ -22,20 +43,62 @@ export default async function BlogIndexPage() {
       publishedAt: posts.publishedAt,
       readingMinutes: posts.readingMinutes,
       authorName: users.name,
+      categoryName: categories.name,
     })
     .from(posts)
     .leftJoin(users, eq(users.id, posts.authorId))
-    .where(eq(posts.isPublished, true))
+    .leftJoin(categories, eq(categories.id, posts.categoryId))
+    .where(active ? and(eq(posts.isPublished, true), eq(categories.slug, active.slug)) : eq(posts.isPublished, true))
     .orderBy(desc(posts.publishedAt));
 
   return (
     <>
       <section className="border-b border-slate-200 dark:border-slate-800">
         <div className="container-app py-14">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Blog</h1>
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+              <Newspaper className="size-5" />
+            </span>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('blog.title', 'Blog')}</h1>
+          </div>
           <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-300">
-            Notes on building with AI personas, prompt design and what we are shipping.
+            {t('blog.subtitle', 'Notes on building with AI personas, prompt design and what we are shipping.')}
           </p>
+
+          {categoryRows.length > 0 ? (
+            <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
+              <div>
+                <label htmlFor="category" className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {t('blog.filter_category', 'Category')}
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  defaultValue={params.category ?? ''}
+                  className="h-10 rounded-xl border border-slate-200 bg-white px-3 pr-8 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="">{t('blog.filter_all_categories', 'All categories')}</option>
+                  {categoryRows.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name} ({c.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                <Filter className="size-4" />
+                {t('blog.filter_apply', 'Filter')}
+              </button>
+              {active ? (
+                <Link href="/blog" className="h-10 leading-10 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">
+                  {t('blog.filter_clear', 'Clear')}
+                </Link>
+              ) : null}
+            </form>
+          ) : null}
         </div>
       </section>
 
@@ -49,9 +112,21 @@ export default async function BlogIndexPage() {
               >
                 <div className="aurora h-44 w-full" />
                 <div className="flex flex-1 flex-col p-5">
-                  <p className="text-xs text-slate-400">
-                    {formatDate(post.publishedAt)} · {post.readingMinutes} min read
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarDays className="size-3.5" />
+                      {formatDate(post.publishedAt)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3.5" />
+                      {t('blog.read_time', '{minutes} min read', { minutes: post.readingMinutes })}
+                    </span>
                   </p>
+                  {post.categoryName ? (
+                    <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">
+                      {post.categoryName}
+                    </p>
+                  ) : null}
                   <h2 className="mt-2 font-semibold leading-snug">
                     <Link href={`/blog/${post.slug}`} className="after:absolute after:inset-0">
                       {post.title}
@@ -70,10 +145,19 @@ export default async function BlogIndexPage() {
             ))
           ) : (
             <p className="col-span-full rounded-xl border border-dashed border-slate-300 p-12 text-center text-slate-500 dark:border-slate-700">
-              No posts published yet.
+              {active
+                ? t('blog.empty_filtered', 'No posts in this category yet.')
+                : t('blog.empty', 'No posts published yet.')}
             </p>
           )}
         </div>
+
+        {rows.length > 0 ? (
+          <p className="mt-8 inline-flex items-center gap-1.5 text-xs text-slate-400">
+            {t('blog.read_time_note', 'Reading times are estimates.')}
+            <HelpTip title={help['blog.reading'].title} body={help['blog.reading'].body} />
+          </p>
+        ) : null}
       </section>
     </>
   );

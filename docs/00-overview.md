@@ -103,8 +103,9 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Crews** (bot-to-bot orchestration — sequential/parallel/supervisor modes, budget + turn caps, phase 7 of the marketplace-concept integration) — `14-crews.md`
 - **Data portability** (export/import bundles, idempotent via externalIdMap, self-service + scriptable, phase 8 of the marketplace-concept integration) — `15-data-portability.md`
 - **Marketplace** (external vendors, install-as-clone, credit-markup revenue share, phase 9 — optional, last — of the marketplace-concept integration) — `16-marketplace.md`
-- **Translations** (admin-controlled global site language — English + Polish + German, DB-backed, `/admin/translations` panel with AI-driven "add a language" + export/import, phase 1 of a separate translation module) — `17-translations.md`
+- **Translations** (admin-controlled global site language — English source + Polish, DB-backed, `/admin/translations` panel with AI-driven "add a language" + export/import) — `17-translations.md`
 - **Knowledge sources** (admin-manageable external RAG/search APIs personas can cite from, generic dot-path response mapping, replaces the hardcoded curriculum/universe integration) — `18-knowledge-sources.md`
 - **Frontpage sections** (ordered, admin-editable homepage sections — reorder/hide/edit without a deploy, replaces a fixed hardcoded JSX sequence) — `19-frontpage-sections.md`
 - **Branding** (`/admin/theme` rebuilt into a full theme CRUD list — logo, favicon, curated fonts, full color palette, multiple saved themes with one active) — `20-branding.md`
 - **Image-generation engines** (catalog + admin config only — OpenAI/Stability image models, live "Fetch models" for every AI provider including chat, shared grid-picker UI components) — `21-image-engines.md`
+- **Modular word bank & help tips** (translation module rebuilt around per-module banks + AI translation, scan-based extractor that can't go stale, side-by-side export, `?` help tips) — `22-modular-word-bank.md`

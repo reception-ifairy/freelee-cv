@@ -1,78 +1,117 @@
 /**
- * Builds the "word bank" — every `t(key, fallback)` call site's English
- * source string, collected into one JSON file. This is the deliberate
- * design: English is never stored in the `translations` table (see the
- * schema comment on that table) — the bank file *is* the English source of
- * truth, and `scripts/translate-bank.ts` reads it to produce the non-English
- * rows that actually get inserted.
+ * Builds the modular "word bank" — every `t(key, fallback)` call site's
+ * English source string, grouped into one JSON file per namespace
+ * (`i18n/home.en.json`, `i18n/blog.en.json`, …). English is never stored in
+ * the `translations` table (see the schema comment on that table): these bank
+ * files *are* the English source of truth, and the translation pipeline reads
+ * them module by module to produce the non-English rows.
  *
- *   npx tsx scripts/extract-translations.ts [--namespace=frontend] [--out=i18n/frontend.en.json]
+ *   npm run i18n:extract
  *
- * Scoped to an explicit file list, not a codebase-wide scan — only the
- * files actually wired up to `getFrontendT()`/`getAdminT()` have real
- * `t()` calls to extract; a blind scan would need to distinguish this
- * project's `t()` from any unrelated same-named identifier. Add a file here
- * the same change you wire it up to translation. See docs/17-translations.md.
+ * **Scans the whole `src/` tree**, not a hand-maintained file list. The
+ * previous version registered files explicitly and silently went stale the
+ * moment the home page was refactored into `src/components/site/sections/*`
+ * — the registered path kept existing, so nothing errored, it just stopped
+ * finding 20-odd keys. A directory walk can't rot that way.
+ *
+ * The old objection to a blind scan (an unrelated `t()` identifier getting
+ * picked up) is handled structurally instead: a call only counts if its key
+ * is `<known-namespace>.<name>`. Nothing else in this codebase calls a
+ * one-letter function with a dotted, namespace-prefixed string literal.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { ALL_NAMESPACES, bankPath, isNamespace, namespaceOfKey } from '../src/lib/i18n/namespaces';
+import type { Namespace } from '../src/lib/i18n/namespaces';
 
-const NAMESPACE_FILES: Record<string, string[]> = {
-  frontend: [
-    'src/components/site/header.tsx',
-    'src/components/site/footer.tsx',
-    'src/app/(marketing)/page.tsx',
-  ],
-  admin: [],
-};
+const SCAN_ROOT = 'src';
+const SCAN_EXTENSIONS = new Set(['.ts', '.tsx']);
 
-// Matches t('some.key', 'English fallback' ...) — single-quoted key/fallback;
+// Matches t('some.key', 'English fallback' …) — single-quoted key/fallback;
 // the fallback may contain escaped quotes (\') but not raw ones.
 const T_CALL_RE = /\bt\(\s*'([^']+)'\s*,\s*'((?:[^'\\]|\\.)*)'/g;
 
-function arg(name: string): string | undefined {
-  const prefix = `--${name}=`;
-  return process.argv.find((a) => a.startsWith(prefix))?.slice(prefix.length);
+/**
+ * Comments are stripped before matching. Without this, a doc comment that
+ * *describes* the pattern — e.g. "lives here as literal `t('help.…',
+ * 'English')`" in src/lib/help/topics.ts — is scanned as if it were a real
+ * call site and lands a junk key in the bank, which then gets sent to the
+ * translator. Caught exactly that way on the first full extraction.
+ *
+ * Deliberately naive (no string-literal awareness): a `//` or `/* *\/`
+ * sequence inside a string would be over-stripped, but the only cost is
+ * missing a key, and no `t()` fallback in this codebase contains one.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+async function* walk(dir: string): AsyncGenerator<string> {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      yield* walk(full);
+    } else if (SCAN_EXTENSIONS.has(path.extname(entry.name))) {
+      yield full;
+    }
+  }
 }
 
 async function main() {
-  const namespace = arg('namespace') ?? 'frontend';
-  const files = NAMESPACE_FILES[namespace];
-  if (!files) {
-    console.error(`Unknown namespace "${namespace}". Known: ${Object.keys(NAMESPACE_FILES).join(', ')}`);
-    process.exit(1);
-  }
-  if (files.length === 0) {
-    console.log(`No files registered for namespace "${namespace}" yet — nothing to extract.`);
-    return;
-  }
+  const banks = new Map<Namespace, Map<string, string>>();
+  for (const ns of ALL_NAMESPACES) banks.set(ns, new Map());
 
-  const bank = new Map<string, string>();
+  let fileCount = 0;
   let callCount = 0;
+  let skipped = 0;
+  const conflicts: string[] = [];
 
-  for (const file of files) {
-    const content = await readFile(file, 'utf8');
+  for await (const file of walk(SCAN_ROOT)) {
+    const content = stripComments(await readFile(file, 'utf8'));
+    let matchedHere = false;
+
     for (const match of content.matchAll(T_CALL_RE)) {
       const [, key, rawFallback] = match;
+
+      // The structural guard: only namespace-prefixed keys count, so an
+      // unrelated `t(...)` in third-party-shaped code can never leak in.
+      if (!isNamespace(key.split('.')[0])) {
+        skipped += 1;
+        continue;
+      }
+
       const fallback = rawFallback.replace(/\\'/g, "'");
+      const bank = banks.get(namespaceOfKey(key))!;
       callCount += 1;
+      matchedHere = true;
 
       const existing = bank.get(key);
       if (existing !== undefined && existing !== fallback) {
-        console.warn(`⚠ Conflicting fallback for key "${key}" — keeping first seen.\n  kept:     ${existing}\n  ignored:  ${fallback} (${file})`);
+        conflicts.push(`  "${key}"\n    kept:    ${existing}\n    ignored: ${fallback}  (${file})`);
         continue;
       }
       bank.set(key, fallback);
     }
+
+    if (matchedHere) fileCount += 1;
   }
 
-  const sorted = Object.fromEntries([...bank.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  const outPath = arg('out') ?? `i18n/${namespace}.en.json`;
-  await mkdir(path.dirname(outPath), { recursive: true });
-  await writeFile(outPath, `${JSON.stringify(sorted, null, 2)}\n`);
+  await mkdir('i18n', { recursive: true });
+  let total = 0;
 
-  console.log(`Scanned ${files.length} file(s), found ${callCount} t() call(s), ${bank.size} unique key(s).`);
-  console.log(`Wrote ${outPath}`);
+  for (const ns of ALL_NAMESPACES) {
+    const bank = banks.get(ns)!;
+    const sorted = Object.fromEntries([...bank.entries()].sort(([a], [b]) => a.localeCompare(b)));
+    await writeFile(bankPath(ns), `${JSON.stringify(sorted, null, 2)}\n`);
+    total += bank.size;
+    console.log(`  ${bankPath(ns).padEnd(28)} ${String(bank.size).padStart(4)} key(s)`);
+  }
+
+  console.log(`\nScanned ${SCAN_ROOT}/ — ${callCount} t() call(s) across ${fileCount} file(s), ${total} unique key(s).`);
+  if (skipped > 0) console.log(`Skipped ${skipped} t() call(s) with a non-namespaced key.`);
+  if (conflicts.length > 0) {
+    console.warn(`\n⚠ ${conflicts.length} conflicting fallback(s) — first seen kept:\n${conflicts.join('\n')}`);
+  }
 }
 
 main().catch((error) => {

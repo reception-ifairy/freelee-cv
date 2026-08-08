@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { ArrowLeft, CalendarDays, Clock } from 'lucide-react';
 import { db } from '@/db';
 import { posts, users } from '@/db/schema';
 import { Markdown } from '@/components/site/markdown';
+import { getFrontendT } from '@/lib/i18n/translate';
 import { formatDate, truncate } from '@/lib/utils';
 
 type Params = Promise<{ slug: string }>;
@@ -48,6 +50,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
   const { slug } = await params;
   const post = await loadPost(slug);
   if (!post) notFound();
+  const { t } = await getFrontendT();
 
   // Incremented in SQL so concurrent readers cannot clobber each other's count.
   // Fire-and-forget: a failed counter must never break the page.
@@ -70,18 +73,23 @@ export default async function BlogPostPage({ params }: { params: Params }) {
     <>
       <article className="container-app py-12">
         <div className="mx-auto max-w-3xl">
-          <Link href="/blog" className="text-sm text-brand-600 hover:underline">
-            ← Back to blog
+          <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
+            <ArrowLeft className="size-4" />
+            {t('blog.back', 'Back to blog')}
           </Link>
 
           <h1 className="mt-6 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{post.title}</h1>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
             {post.authorName ? <span>{post.authorName}</span> : null}
-            <span>·</span>
-            <time dateTime={post.publishedAt?.toISOString()}>{formatDate(post.publishedAt, 'long')}</time>
-            <span>·</span>
-            <span>{post.readingMinutes} min read</span>
+            <time dateTime={post.publishedAt?.toISOString()} className="inline-flex items-center gap-1.5">
+              <CalendarDays className="size-4" />
+              {formatDate(post.publishedAt, 'long')}
+            </time>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="size-4" />
+              {t('blog.read_time', '{minutes} min read', { minutes: post.readingMinutes })}
+            </span>
           </div>
         </div>
 
@@ -93,7 +101,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
       {related.length > 0 ? (
         <section className="container-app pb-20">
           <div className="mx-auto max-w-3xl">
-            <h2 className="mb-6 text-xl font-bold tracking-tight">Keep reading</h2>
+            <h2 className="mb-6 text-xl font-bold tracking-tight">{t('blog.keep_reading', 'Keep reading')}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               {related.map((item) => (
                 <Link

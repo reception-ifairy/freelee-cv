@@ -158,18 +158,22 @@ export const MODULES: ModuleManifest[] = [
   {
     key: 'translations',
     name: 'Translations',
-    version: '1.0.0',
+    version: '2.0.0',
     description:
       'Platform-wide (not team-scoped) site language — one admin-controlled setting for the ' +
       'frontend/landing surface, a separate one for the admin panel. /admin/translations lets an ' +
       'admin add a language by name (AI resolves the code and translates the current word bank, ' +
       '"frozen" until it completes), plus export/import for reviewing translations outside ' +
       'production. Phase 1 (frontend) covers the shared header/footer and the home page; the admin ' +
-      'panel setting exists but no admin-panel text is wired up yet (phase 2). See docs/17-translations.md.',
+      'panel setting exists but no admin-panel text is wired up yet (phase 2). Since 2.0.0 the word ' +
+      'bank is modular (one file + one AI request per module, failures contained, a locale only ' +
+      'unfreezes when every module lands), the extractor scans the tree instead of a stale file list, ' +
+      'and export is side-by-side English/target in JSON, CSV or SQL. See docs/17-translations.md and ' +
+      'docs/22-modular-word-bank.md.',
     type: 'core',
     isCore: true,
     requires: {},
-    provides: { capabilities: ['i18n.frontend', 'i18n.admin_settings', 'i18n.add_language'] },
+    provides: { capabilities: ['i18n.frontend', 'i18n.admin_settings', 'i18n.add_language', 'i18n.modular_bank', 'i18n.side_by_side_export', 'ui.help_tips'] },
     permissions: [],
     navigation: [{ label: 'Translations', href: '/admin/translations', group: 'admin', order: 25 }],
   },

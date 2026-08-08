@@ -1,10 +1,11 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { Download } from 'lucide-react';
 import { addLocaleAction, retryLocaleAction, importTranslationsAction } from '@/server/actions/admin-translations';
 import type { ActionState } from '@/server/actions/auth';
-import { Input, Label, Hint, FormMessage } from '@/components/ui/field';
+import { Input, Label, Hint, Select, FormMessage } from '@/components/ui/field';
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -64,6 +65,56 @@ function RetrySubmitButton() {
     >
       {pending ? 'Retrying…' : 'Retry'}
     </button>
+  );
+}
+
+/**
+ * Two dropdowns and a link — which language, and which format the person
+ * receiving it can actually open. CSV is the one a non-technical translator
+ * wants (it opens in Excel/Sheets with English and the target side by side);
+ * SQL is for applying a finished translation straight to another environment.
+ */
+export function ExportPanel({ locales }: { locales: { code: string; name: string }[] }) {
+  const [locale, setLocale] = useState(locales[0]?.code ?? '');
+  const [format, setFormat] = useState('csv');
+
+  if (locales.length === 0) {
+    return (
+      <p className="text-sm text-slate-400">
+        Nothing to export yet — English is the source, not a translation. Add a language first.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label htmlFor="export-locale">Language</Label>
+        <Select id="export-locale" value={locale} onChange={(e) => setLocale(e.target.value)}>
+          {locales.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.name} ({l.code})
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="export-format">Format</Label>
+        <Select id="export-format" value={format} onChange={(e) => setFormat(e.target.value)}>
+          <option value="csv">CSV — for a translator (Excel / Sheets)</option>
+          <option value="json">JSON — re-importable here</option>
+          <option value="sql">SQL — apply to another environment</option>
+        </Select>
+      </div>
+      <a
+        href={`/admin/translations/export?locale=${encodeURIComponent(locale)}&format=${format}`}
+        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+      >
+        <Download className="size-4" />
+        Export
+      </a>
+      <Hint>Every string is included — untranslated ones come through with an empty right-hand column.</Hint>
+    </div>
   );
 }
 

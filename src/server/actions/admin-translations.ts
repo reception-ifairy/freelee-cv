@@ -13,15 +13,9 @@ import { locales, translations, settings } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
 import { getProviderRegistry, getModel, resolveProviderId } from '@/lib/ai/registry';
 import { getSettingString } from '@/lib/settings';
+import { ALL_NAMESPACES, NAMESPACE_LABELS, bankPath, isNamespace } from '@/lib/i18n/namespaces';
+import type { Namespace } from '@/lib/i18n/namespaces';
 import type { ActionState } from './auth';
-
-/**
- * The panel only adds frontend-namespace locales this phase — the admin
- * panel itself has no wired-up t() call sites yet (docs/17-translations.md),
- * so there's nothing for an admin-namespace translation to actually change.
- */
-const NAMESPACE = 'frontend';
-const BANK_PATH = 'i18n/frontend.en.json';
 
 async function getChatModel() {
   const registry = await getProviderRegistry();
@@ -35,63 +29,118 @@ function stripCodeFence(text: string): string {
   return text.trim().replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
 }
 
-/**
- * Reads the current word bank, asks the AI to translate it, upserts every
- * row it gets back, and flips the locale to `active` on success — the
- * "unfreeze" the admin panel promises once a translation completes. Shared
- * by both the "add a new language" flow and the "retry a pending one" flow.
- * Never throws outward — a failure leaves the locale `pending` (still
- * frozen) with a message the admin can act on, rather than crashing the
- * request.
- */
-async function runTranslationPipeline(code: string, name: string): Promise<ActionState> {
-  try {
-    const bank: Record<string, string> = JSON.parse(await readFile(BANK_PATH, 'utf8'));
-    const keys = Object.keys(bank);
-    if (keys.length === 0) {
-      return { error: `The word bank (${BANK_PATH}) is empty — run npm run i18n:extract first.` };
-    }
+function systemPromptFor(languageName: string, moduleLabel: string): string {
+  return (
+    `You are a professional UI/UX localizer for a modern SaaS product. You are translating the ` +
+    `"${moduleLabel}" section of its interface from English into ${languageName}.\n\n` +
+    `Rules:\n` +
+    `- Produce natural, idiomatic phrasing a native speaker would actually write in a product UI — ` +
+    `not a literal word-for-word translation.\n` +
+    `- Keep every {placeholder} token (e.g. {count}, {credits}, {year}, {siteName}, {minutes}, ` +
+    `{date}) exactly as-is, spelled identically. Reposition one only if the target language's ` +
+    `grammar demands it.\n` +
+    `- Preserve the tone: confident, concise, modern. Keep UI labels short — a button label that ` +
+    `doubles in length breaks the layout.\n` +
+    `- Return ONLY a JSON object with the exact same keys and translated string values. No markdown ` +
+    `code fences, no commentary, no extra keys, no missing keys.`
+  );
+}
 
-    const model = await getChatModel();
+/** One module's outcome, so the caller can report per-module rather than one opaque total. */
+type ModuleResult = { namespace: Namespace; total: number; translated: number; error?: string };
+
+async function translateModule(
+  code: string,
+  languageName: string,
+  namespace: Namespace,
+  model: Awaited<ReturnType<typeof getChatModel>>,
+): Promise<ModuleResult> {
+  let bank: Record<string, string>;
+  try {
+    bank = JSON.parse(await readFile(bankPath(namespace), 'utf8'));
+  } catch {
+    return { namespace, total: 0, translated: 0 }; // module file absent — nothing to do, not an error
+  }
+
+  const keys = Object.keys(bank);
+  if (keys.length === 0) return { namespace, total: 0, translated: 0 };
+
+  try {
     const { text } = await generateText({
       model,
-      system:
-        `You are a professional UI/UX localizer for a modern SaaS product. Translate the JSON ` +
-        `object's values from English into ${name} — natural, idiomatic phrasing a native speaker ` +
-        `would actually write in a product UI, not a literal word-for-word translation. Keep any ` +
-        `{placeholder} tokens (e.g. {count}, {credits}, {year}, {siteName}) exactly as-is, unchanged, ` +
-        `repositioned only if the target language's grammar requires it. Preserve the tone: ` +
-        `confident, concise, modern. Return ONLY a JSON object with the exact same keys and ` +
-        `translated string values — no markdown code fences, no commentary, no extra keys, no ` +
-        `missing keys.`,
+      system: systemPromptFor(languageName, NAMESPACE_LABELS[namespace]),
       prompt: JSON.stringify(bank, null, 2),
     });
-
     const translated: Record<string, string> = JSON.parse(stripCodeFence(text));
 
-    let upserted = 0;
+    let count = 0;
     for (const key of keys) {
       const value = translated[key];
-      if (!value) continue;
+      if (typeof value !== 'string' || !value.trim()) continue;
       await db
         .insert(translations)
-        .values({ namespace: NAMESPACE, key, locale: code, value })
+        .values({ namespace, key, locale: code, value })
         .onConflictDoUpdate({
           target: [translations.namespace, translations.key, translations.locale],
           set: { value, updatedAt: new Date() },
         });
-      upserted += 1;
+      count += 1;
     }
 
-    if (upserted === 0) throw new Error('The AI returned no usable translations.');
-
-    await db.update(locales).set({ status: 'active' }).where(eq(locales.code, code));
-    return { success: `"${name}" (${code}) translated — ${upserted}/${keys.length} strings — and activated.` };
+    return { namespace, total: keys.length, translated: count };
   } catch (error) {
-    console.error(`[translations] pipeline failed for ${code}`, error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return { error: `Translation failed for "${name}" — still pending, retry when ready. (${message})` };
+    console.error(`[translations] module "${namespace}" failed for ${code}`, error);
+    return { namespace, total: keys.length, translated: 0, error: message };
   }
+}
+
+/**
+ * Translates the word bank **one module at a time** — the reason the bank is
+ * split at all. A single request carrying every string in the product drifts,
+ * truncates, and silently drops keys as it grows; a per-module request stays
+ * small enough to come back complete, and a module that does fail is isolated
+ * (the other nine still land, and the admin retries just that one).
+ *
+ * The locale only flips to `active` ("unfrozen") if **every** module produced
+ * at least something — a language that's half-translated stays frozen rather
+ * than leaking English gaps onto the live site.
+ */
+async function runTranslationPipeline(code: string, name: string): Promise<ActionState> {
+  const model = await getChatModel();
+  const results: ModuleResult[] = [];
+
+  for (const namespace of ALL_NAMESPACES) {
+    results.push(await translateModule(code, name, namespace, model));
+  }
+
+  const withContent = results.filter((r) => r.total > 0);
+  if (withContent.length === 0) {
+    return { error: 'The word bank is empty — run `npm run i18n:extract` first.' };
+  }
+
+  const translated = withContent.reduce((sum, r) => sum + r.translated, 0);
+  const total = withContent.reduce((sum, r) => sum + r.total, 0);
+  const failed = withContent.filter((r) => r.error || r.translated === 0);
+
+  if (translated === 0) {
+    return { error: `Translation failed for "${name}" — no module returned usable output. Still frozen; retry when ready.` };
+  }
+
+  if (failed.length > 0) {
+    const names = failed.map((r) => NAMESPACE_LABELS[r.namespace]).join(', ');
+    return {
+      error:
+        `"${name}" (${code}) is partly translated — ${translated}/${total} strings across ` +
+        `${withContent.length - failed.length}/${withContent.length} modules. Failed: ${names}. ` +
+        `Left frozen so half-translated text can't reach the live site — retry to finish it.`,
+    };
+  }
+
+  await db.update(locales).set({ status: 'active' }).where(eq(locales.code, code));
+  return {
+    success: `"${name}" (${code}) translated — ${translated}/${total} strings across ${withContent.length} modules — and activated.`,
+  };
 }
 
 const addLocaleSchema = z.object({ languageName: z.string().trim().min(2).max(60) });
@@ -169,23 +218,80 @@ export async function setActiveLocaleAction(formData: FormData): Promise<void> {
   revalidatePath('/', 'layout');
 }
 
-/** Accepts scripts/export-translations.ts's own output, or a coworker's hand-edited copy of one. */
+type ImportRow = { namespace: string; key: string; locale: string; value: string };
+
+/**
+ * Normalises the two shapes this accepts into DB rows:
+ *
+ *  1. The **side-by-side export** this app produces —
+ *     `{ locale, rows: [{ module, key, en, target }] }`. Untranslated rows
+ *     (empty `target`) are dropped rather than written as empty strings: an
+ *     empty translation would shadow the English fallback with nothing.
+ *  2. A **flat array** of `{namespace, key, locale, value}` — the older
+ *     export shape, and the easiest thing to generate by hand or by script.
+ *
+ * Accepting our own export back is the round-trip a coworker workflow
+ * depends on, so it is deliberately the first case handled.
+ */
+function normaliseImport(parsed: unknown): { rows: ImportRow[]; error?: string } {
+  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { rows?: unknown }).rows)) {
+    const { locale, rows } = parsed as { locale?: unknown; rows: unknown[] };
+    if (typeof locale !== 'string' || !locale) {
+      return { rows: [], error: 'Side-by-side file is missing its top-level "locale".' };
+    }
+    const out: ImportRow[] = [];
+    for (const raw of rows) {
+      const r = raw as { module?: unknown; key?: unknown; target?: unknown };
+      if (typeof r?.module !== 'string' || typeof r?.key !== 'string') {
+        return { rows: [], error: 'Side-by-side file has a row missing "module" or "key".' };
+      }
+      if (typeof r.target !== 'string' || !r.target.trim()) continue; // untranslated — skip, don't blank it out
+      out.push({ namespace: r.module, key: r.key, locale, value: r.target });
+    }
+    if (out.length === 0) return { rows: [], error: 'Nothing to import — every row has an empty translation.' };
+    return { rows: out };
+  }
+
+  if (Array.isArray(parsed)) {
+    const bad = parsed.some(
+      (r) => !r?.namespace || !r?.key || !r?.locale || typeof r?.value !== 'string',
+    );
+    if (bad) return { rows: [], error: 'Malformed file — expected an array of {namespace, key, locale, value} objects.' };
+    return { rows: parsed as ImportRow[] };
+  }
+
+  return {
+    rows: [],
+    error: 'Unrecognised file — expected this app\'s side-by-side export, or an array of {namespace, key, locale, value} objects.',
+  };
+}
+
+/** Accepts this app's own side-by-side export (JSON), or a flat {namespace,key,locale,value} array. */
 export async function importTranslationsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to import.' };
 
-  let rows: { namespace: string; key: string; locale: string; value: string }[];
+  let parsed: unknown;
   try {
-    rows = JSON.parse(await file.text());
+    parsed = JSON.parse(await file.text());
   } catch {
     return { error: 'Not valid JSON.' };
   }
-  if (!Array.isArray(rows) || rows.some((r) => !r?.namespace || !r?.key || !r?.locale || typeof r?.value !== 'string')) {
-    return { error: 'Malformed file — expected an array of {namespace, key, locale, value} objects.' };
-  }
+
+  const { rows, error: shapeError } = normaliseImport(parsed);
+  if (shapeError) return { error: shapeError };
   if (rows.some((r) => r.locale === 'en')) {
     return { error: 'File contains locale="en" rows — English is never stored in translations (see docs/17-translations.md).' };
+  }
+
+  const unknown = [...new Set(rows.map((r) => r.namespace).filter((ns) => !isNamespace(ns)))];
+  if (unknown.length > 0) {
+    return {
+      error:
+        `Unknown module(s): ${unknown.join(', ')}. Valid modules are ${ALL_NAMESPACES.join(', ')} — ` +
+        'a file exported before the word bank was split into modules needs re-exporting.',
+    };
   }
 
   for (const row of rows) {
@@ -199,14 +305,33 @@ export async function importTranslationsAction(_prev: ActionState, formData: For
   }
 
   // An import is a complete, deliberate action (a coworker's finished,
-  // reviewed translation) — any locale it touches that isn't already known
-  // goes straight to `active`, not `pending`.
+  // reviewed translation), so every locale it touches ends up `active` —
+  // whether it's brand new *or* was left `pending` by a failed AI run.
+  // Only creating unknown locales (and leaving an existing `pending` one
+  // frozen) stranded exactly that case: a full, valid translation imported
+  // by hand couldn't unfreeze the language it was for.
   const touchedLocales = [...new Set(rows.map((r) => r.locale))];
+  const unfrozen: string[] = [];
+
   for (const code of touchedLocales) {
-    const [existing] = await db.select({ code: locales.code }).from(locales).where(eq(locales.code, code)).limit(1);
-    if (!existing) await db.insert(locales).values({ code, name: code.toUpperCase(), status: 'active' });
+    const [existing] = await db
+      .select({ code: locales.code, status: locales.status })
+      .from(locales)
+      .where(eq(locales.code, code))
+      .limit(1);
+
+    if (!existing) {
+      await db.insert(locales).values({ code, name: code.toUpperCase(), status: 'active' });
+      unfrozen.push(code);
+    } else if (existing.status === 'pending') {
+      await db.update(locales).set({ status: 'active' }).where(eq(locales.code, code));
+      unfrozen.push(code);
+    }
   }
 
   revalidatePath('/admin/translations');
-  return { success: `Imported ${rows.length} row(s) across ${touchedLocales.length} locale(s).` };
+  revalidatePath('/', 'layout');
+
+  const suffix = unfrozen.length > 0 ? ` ${unfrozen.join(', ')} now active.` : '';
+  return { success: `Imported ${rows.length} row(s) across ${touchedLocales.length} locale(s).${suffix}` };
 }

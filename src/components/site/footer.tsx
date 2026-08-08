@@ -39,17 +39,17 @@ export async function SiteFooter() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">{t('footer.product', 'Product')}</h3>
+            <h3 className="text-sm font-semibold">{t('nav.product', 'Product')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
-              <li><Link href="/personas" className="hover:text-brand-600">{t('footer.personas', 'Personas')}</Link></li>
-              <li><Link href="/chat" className="hover:text-brand-600">{t('footer.chat', 'Chat')}</Link></li>
-              <li><Link href="/pricing" className="hover:text-brand-600">{t('footer.pricing', 'Pricing')}</Link></li>
-              <li><Link href="/blog" className="hover:text-brand-600">{t('footer.blog', 'Blog')}</Link></li>
+              <li><Link href="/personas" className="hover:text-brand-600">{t('nav.personas', 'Personas')}</Link></li>
+              <li><Link href="/chat" className="hover:text-brand-600">{t('nav.chat', 'Chat')}</Link></li>
+              <li><Link href="/pricing" className="hover:text-brand-600">{t('nav.pricing', 'Pricing')}</Link></li>
+              <li><Link href="/blog" className="hover:text-brand-600">{t('nav.blog', 'Blog')}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">{t('footer.popular_personas', 'Popular personas')}</h3>
+            <h3 className="text-sm font-semibold">{t('nav.popular_personas', 'Popular personas')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
               {featured.map((persona) => (
                 <li key={persona.slug}>
@@ -62,7 +62,7 @@ export async function SiteFooter() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold">{t('footer.company', 'Company')}</h3>
+            <h3 className="text-sm font-semibold">{t('nav.company', 'Company')}</h3>
             <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
               {links.map((link) => (
                 <li key={link.id}>
@@ -74,7 +74,7 @@ export async function SiteFooter() {
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          <p>{t('footer.copyright', '© {year} {siteName}. All rights reserved.', { year: new Date().getFullYear(), siteName })}</p>
+          <p>{t('nav.copyright', '© {year} {siteName}. All rights reserved.', { year: new Date().getFullYear(), siteName })}</p>
         </div>
       </div>
     </footer>

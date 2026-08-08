@@ -1,0 +1,14 @@
+{
+  "blog.back": "Back to blog",
+  "blog.empty": "No posts published yet.",
+  "blog.empty_filtered": "No posts in this category yet.",
+  "blog.filter_all_categories": "All categories",
+  "blog.filter_apply": "Filter",
+  "blog.filter_category": "Category",
+  "blog.filter_clear": "Clear",
+  "blog.keep_reading": "Keep reading",
+  "blog.read_time": "{minutes} min read",
+  "blog.read_time_note": "Reading times are estimates.",
+  "blog.subtitle": "Notes on building with AI personas, prompt design and what we are shipping.",
+  "blog.title": "Blog"
+}

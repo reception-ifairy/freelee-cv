@@ -1,0 +1,20 @@
+{
+  "home.blog_all": "All posts →",
+  "home.blog_title": "From the blog",
+  "home.categories_all": "All categories",
+  "home.categories_title": "Browse by category",
+  "home.featured_subtitle": "Hand-picked specialists to get you started.",
+  "home.featured_title": "Featured personas",
+  "home.hero_badge": "{count} AI specialists ready to work",
+  "home.how_subtitle": "No prompt engineering, no configuration files. Pick someone and start talking.",
+  "home.how_title": "Three steps, no setup",
+  "home.min_read": "{minutes} min read",
+  "home.no_personas": "No personas yet — run",
+  "home.no_personas_2": "or add one in the admin panel.",
+  "home.pricing_subtitle": "Buy once, spend whenever. Credits never expire.",
+  "home.pricing_title": "Simple credit packs",
+  "home.stat_categories": "Categories",
+  "home.stat_messages": "Messages",
+  "home.stat_personas": "Personas",
+  "home.view_all": "View all →"
+}

@@ -1,20 +1,41 @@
-import { db } from '@/db';
-import { translations } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
+import { buildExportRows, toJson, toCsv, toSql, isExportFormat } from '@/lib/i18n/export';
 
-/** The "export button" — same shape as scripts/export-translations.ts, as an admin-only download. */
-export async function GET() {
+const CONTENT_TYPES = {
+  json: 'application/json',
+  csv: 'text/csv; charset=utf-8',
+  sql: 'application/sql; charset=utf-8',
+} as const;
+
+/**
+ * The export button. `?locale=pl&format=csv` — English on the left, the
+ * target language on the right, in whichever of the three formats suits the
+ * person receiving it (see src/lib/i18n/export.ts for the contract).
+ */
+export async function GET(request: Request) {
   await requireAdmin();
 
-  const rows = await db
-    .select({ namespace: translations.namespace, key: translations.key, locale: translations.locale, value: translations.value })
-    .from(translations)
-    .orderBy(translations.namespace, translations.locale, translations.key);
+  const url = new URL(request.url);
+  const locale = (url.searchParams.get('locale') ?? '').trim().toLowerCase();
+  const formatRaw = url.searchParams.get('format') ?? 'json';
 
-  return new Response(JSON.stringify(rows, null, 2), {
+  if (!/^[a-z]{2,10}$/.test(locale) || locale === 'en') {
+    return new Response('Pass ?locale=<code> for a non-English locale — English is the source, not a translation.', {
+      status: 400,
+    });
+  }
+  if (!isExportFormat(formatRaw)) {
+    return new Response('Unknown format — use json, csv or sql.', { status: 400 });
+  }
+
+  const rows = await buildExportRows(locale);
+  const body =
+    formatRaw === 'json' ? toJson(rows, locale) : formatRaw === 'csv' ? toCsv(rows, locale) : toSql(rows, locale);
+
+  return new Response(body, {
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="translations-export-${Date.now()}.json"`,
+      'Content-Type': CONTENT_TYPES[formatRaw],
+      'Content-Disposition': `attachment; filename="translations-${locale}-${Date.now()}.${formatRaw}"`,
     },
   });
 }

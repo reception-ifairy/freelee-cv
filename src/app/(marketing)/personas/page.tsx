@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Filter, Search, Tags, Users } from 'lucide-react';
 import { and, asc, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { PersonaCard } from '@/components/site/persona-card';
 import { AUDIENCE_TYPES } from '@/lib/persona/prompt';
+import { getFrontendT } from '@/lib/i18n/translate';
+import { helpTopics } from '@/lib/help/topics';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export const metadata: Metadata = {
   title: 'Browse AI personas',
@@ -20,6 +23,8 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? 1) || 1);
   const term = params.q?.trim();
+  const { t } = await getFrontendT();
+  const help = helpTopics(t);
 
   const filters = [eq(personas.isActive, true)];
 
@@ -88,57 +93,80 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
       <section className="relative overflow-hidden border-b border-slate-200 dark:border-slate-800">
         <div className="aurora absolute inset-0 -z-10 opacity-70" />
         <div className="container-app py-14">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Persona gallery</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('personas.title', 'Persona gallery')}</h1>
+            <HelpTip title={help['personas.browse'].title} body={help['personas.browse'].body} />
+          </div>
           <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-300">
-            {total} specialist{total === 1 ? '' : 's'} across {categoryRows.length} categories. Filter by topic
-            or topic to find the right one.
+            {t('personas.subtitle', '{count} specialists across {categories} categories. Filter by topic or audience to find the right one.', {
+              count: total,
+              categories: categoryRows.length,
+            })}
           </p>
 
-          <form method="GET" className="mt-8 flex flex-wrap gap-3">
+          <form method="GET" className="mt-8 flex flex-wrap items-end gap-3">
             <div className="relative min-w-64 flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <label htmlFor="q" className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                {t('personas.filter_search', 'Search')}
+              </label>
+              <Search className="pointer-events-none absolute bottom-3 left-3.5 size-4 text-slate-400" />
               <input
+                id="q"
                 type="search"
                 name="q"
                 defaultValue={params.q ?? ''}
-                placeholder="Search by name, topic or expertise…"
+                placeholder={t('personas.search_placeholder', 'Search by name, topic or expertise…')}
                 className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm dark:border-slate-700 dark:bg-slate-900"
               />
             </div>
 
-            <select
-              name="category"
-              defaultValue={params.category ?? ''}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
-              aria-label="Category"
-            >
-              <option value="">All categories</option>
-              {categoryRows.map((category) => (
-                <option key={category.slug} value={category.slug}>
-                  {category.name} ({category.count})
-                </option>
-              ))}
-            </select>
+            <div>
+              <label htmlFor="category" className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Tags className="size-3.5" />
+                {t('personas.filter_category', 'Category')}
+              </label>
+              <select
+                id="category"
+                name="category"
+                defaultValue={params.category ?? ''}
+                className="h-10 rounded-xl border border-slate-200 bg-white px-3 pr-8 text-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="">{t('personas.filter_all_categories', 'All categories')}</option>
+                {categoryRows.map((category) => (
+                  <option key={category.slug} value={category.slug}>
+                    {category.name} ({category.count})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              name="audience"
-              defaultValue={params.audience ?? ''}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
-              aria-label="Audience"
-            >
-              <option value="">All audiences</option>
-              {Object.entries(AUDIENCE_TYPES).map(([id, meta]) => (
-                <option key={id} value={id}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label htmlFor="audience" className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Users className="size-3.5" />
+                {t('personas.filter_audience', 'Audience')}
+                <HelpTip title={help['personas.audience'].title} body={help['personas.audience'].body} />
+              </label>
+              <select
+                id="audience"
+                name="audience"
+                defaultValue={params.audience ?? ''}
+                className="h-10 rounded-xl border border-slate-200 bg-white px-3 pr-8 text-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="">{t('personas.filter_all_audiences', 'All audiences')}</option>
+                {Object.entries(AUDIENCE_TYPES).map(([id, meta]) => (
+                  <option key={id} value={id}>
+                    {meta.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <button
               type="submit"
-              className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
             >
-              Filter
+              <Filter className="size-4" />
+              {t('personas.filter_apply', 'Filter')}
             </button>
 
             {params.q || params.category || params.audience ? (
@@ -146,7 +174,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
                 href="/personas"
                 className="inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Clear
+                {t('personas.filter_clear', 'Clear')}
               </Link>
             ) : null}
           </form>
@@ -157,8 +185,8 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
         {rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 p-16 text-center dark:border-slate-700">
             <Search className="mx-auto size-10 text-slate-300" />
-            <h2 className="mt-4 text-lg font-semibold">No personas match those filters</h2>
-            <p className="mt-2 text-sm text-slate-500">Try a broader search or clear the filters.</p>
+            <h2 className="mt-4 text-lg font-semibold">{t('personas.empty_title', 'No personas match those filters')}</h2>
+            <p className="mt-2 text-sm text-slate-500">{t('personas.empty_body', 'Try a broader search or clear the filters.')}</p>
           </div>
         ) : (
           <>

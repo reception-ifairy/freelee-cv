@@ -1,0 +1,12 @@
+{
+  "nav.blog": "Blog",
+  "nav.chat": "Chat",
+  "nav.company": "Company",
+  "nav.copyright": "© {year} {siteName}. All rights reserved.",
+  "nav.get_started": "Get started",
+  "nav.personas": "Personas",
+  "nav.popular_personas": "Popular personas",
+  "nav.pricing": "Pricing",
+  "nav.product": "Product",
+  "nav.sign_in": "Sign in"
+}

@@ -1,0 +1,14 @@
+{
+  "personas.empty_body": "Try a broader search or clear the filters.",
+  "personas.empty_title": "No personas match those filters",
+  "personas.filter_all_audiences": "All audiences",
+  "personas.filter_all_categories": "All categories",
+  "personas.filter_apply": "Filter",
+  "personas.filter_audience": "Audience",
+  "personas.filter_category": "Category",
+  "personas.filter_clear": "Clear",
+  "personas.filter_search": "Search",
+  "personas.search_placeholder": "Search by name, topic or expertise…",
+  "personas.subtitle": "{count} specialists across {categories} categories. Filter by topic or audience to find the right one.",
+  "personas.title": "Persona gallery"
+}

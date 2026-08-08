@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
+import { ArrowRight } from 'lucide-react';
 import { db } from '@/db';
 import { categories, personaCategories } from '@/db/schema';
 import { sql } from 'drizzle-orm';
+import { getFrontendT } from '@/lib/i18n/translate';
 
 export async function CategoriesSection() {
+  const { t } = await getFrontendT();
   const categoryRows = await db
     .select({
       id: categories.id,
@@ -24,6 +27,9 @@ export async function CategoriesSection() {
 
   return (
     <section className="container-app pb-6">
+      <p className="mb-4 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+        {t('home.categories_title', 'Browse by category')}
+      </p>
       <div className="flex flex-wrap justify-center gap-2">
         {categoryRows.map((category) => (
           <Link
@@ -36,6 +42,13 @@ export async function CategoriesSection() {
             <span className="text-xs text-slate-400">{category.count}</span>
           </Link>
         ))}
+        <Link
+          href="/personas"
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
+        >
+          {t('home.categories_all', 'All categories')}
+          <ArrowRight className="size-3.5" />
+        </Link>
       </div>
     </section>
   );
