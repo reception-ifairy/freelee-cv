@@ -6,6 +6,7 @@ import { saveSettingsAction } from '@/server/actions/admin';
 import type { ActionState } from '@/server/actions/auth';
 import { Card } from '@/components/ui/card';
 import { Input, Label, Hint, FormMessage } from '@/components/ui/field';
+import { CardRadioGroup } from '@/components/ui/card-radio-group';
 import { SETTINGS_SCHEMA } from '@/lib/settings-schema';
 import type { ProviderRegistry } from '@/lib/ai/registry';
 
@@ -81,23 +82,12 @@ export function AiSettingsForm({ values, providers }: Props) {
         <div>
           <Label>Default model tier</Label>
           <input type="hidden" name={fieldName('openai_default_model')} value={openaiTiers[tier]} />
-          <div className="grid gap-3 sm:grid-cols-3">
-            {MODEL_TIERS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setTier(item.id)}
-                className={`rounded-xl border p-3 text-left transition ${
-                  tier === item.id
-                    ? 'glow-ring border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                    : 'border-slate-200 hover:border-slate-300 dark:border-white/10 dark:hover:border-white/20'
-                }`}
-              >
-                <p className="font-semibold">{item.label}</p>
-                <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{openaiTiers[item.id]}</p>
-              </button>
-            ))}
-          </div>
+          <CardRadioGroup
+            name="_openai_default_tier"
+            value={tier}
+            onChange={(id) => setTier(id as keyof typeof openaiTiers)}
+            items={MODEL_TIERS.map((item) => ({ id: item.id, label: item.label, meta: openaiTiers[item.id] }))}
+          />
           <Hint>Used whenever a persona has no tier or model of its own set.</Hint>
         </div>
       </Card>

@@ -4,8 +4,9 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateThemeAction } from '@/server/actions/admin-branding';
 import type { ActionState } from '@/server/actions/auth';
-import { Input, Label, Hint, Select, FormMessage } from '@/components/ui/field';
-import { FONT_KEYS, FONT_LABELS } from '@/lib/branding/fonts';
+import { Input, Label, Hint, FormMessage } from '@/components/ui/field';
+import { CardRadioGroup } from '@/components/ui/card-radio-group';
+import { FONT_KEYS, FONT_LABELS, fontStack } from '@/lib/branding/fonts';
 import type { Theme } from '@/db/schema';
 
 /** Keys match the CSS custom properties emitted by the root layout (src/app/layout.tsx). */
@@ -69,6 +70,8 @@ export function ThemeForm({ theme }: { theme: Theme }) {
   const [state, formAction] = useActionState<ActionState, FormData>(updateThemeAction, null);
   const [tokens, setTokens] = useState<Record<string, string>>({ ...DEFAULT_TOKENS, ...theme.tokens });
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [headingFont, setHeadingFont] = useState(theme.headingFont ?? '');
+  const [bodyFont, setBodyFont] = useState(theme.bodyFont ?? '');
 
   const setToken = (key: string, value: string) => setTokens((prev) => ({ ...prev, [key]: value }));
   const advancedKeys = Object.keys(DEFAULT_TOKENS).filter((k) => !(PRIMARY_KEYS as readonly string[]).includes(k));
@@ -113,23 +116,31 @@ export function ThemeForm({ theme }: { theme: Theme }) {
           <Label htmlFor={`faviconUrl-${theme.id}`}>Favicon URL</Label>
           <Input id={`faviconUrl-${theme.id}`} name="faviconUrl" defaultValue={theme.faviconUrl ?? ''} placeholder="https://…/favicon.ico" />
         </div>
-        <div>
-          <Label htmlFor={`headingFont-${theme.id}`}>Heading font</Label>
-          <Select id={`headingFont-${theme.id}`} name="headingFont" defaultValue={theme.headingFont ?? ''}>
-            <option value="">Same as body</option>
-            {FONT_KEYS.map((k) => (
-              <option key={k} value={k}>{FONT_LABELS[k]}</option>
-            ))}
-          </Select>
+        <div className="sm:col-span-2">
+          <Label>Heading font</Label>
+          <CardRadioGroup
+            name="headingFont"
+            columns={3}
+            value={headingFont}
+            onChange={setHeadingFont}
+            items={[
+              { id: '', label: 'Same as body' },
+              ...FONT_KEYS.map((k) => ({ id: k, label: FONT_LABELS[k], style: { fontFamily: fontStack(k) ?? undefined } })),
+            ]}
+          />
         </div>
-        <div>
-          <Label htmlFor={`bodyFont-${theme.id}`}>Body font</Label>
-          <Select id={`bodyFont-${theme.id}`} name="bodyFont" defaultValue={theme.bodyFont ?? ''}>
-            <option value="">Default (Inter)</option>
-            {FONT_KEYS.map((k) => (
-              <option key={k} value={k}>{FONT_LABELS[k]}</option>
-            ))}
-          </Select>
+        <div className="sm:col-span-2">
+          <Label>Body font</Label>
+          <CardRadioGroup
+            name="bodyFont"
+            columns={3}
+            value={bodyFont}
+            onChange={setBodyFont}
+            items={[
+              { id: '', label: 'Default (Inter)' },
+              ...FONT_KEYS.map((k) => ({ id: k, label: FONT_LABELS[k], style: { fontFamily: fontStack(k) ?? undefined } })),
+            ]}
+          />
         </div>
       </div>
 

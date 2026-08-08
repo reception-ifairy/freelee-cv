@@ -10,6 +10,9 @@ import { PERSONALITY_TRAITS } from '@/db/schema';
 import { Input, Textarea, Select, Label, Hint, Checkbox, FormMessage } from '@/components/ui/field';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CardRadioGroup } from '@/components/ui/card-radio-group';
+import { GridSelect } from '@/components/ui/grid-select';
+import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
 import type { ProviderRegistry } from '@/lib/ai/registry';
 import { AUDIENCE_TYPES, APPROACH_TO_UNKNOWN, INTERACTION_STYLES, PROMPT_TECHNIQUES } from '@/lib/persona/prompt';
 import { GUARDRAILS } from '@/lib/persona/guardrails';
@@ -82,6 +85,12 @@ export function PersonaForm({
   const [showAdvancedModel, setShowAdvancedModel] = useState(
     () => Boolean(persona && ((version?.model && !version?.modelTier) || version?.aiProvider !== 'openai')),
   );
+  const [modelId, setModelId] = useState(version?.model ?? '');
+  const [useCustomModel, setUseCustomModel] = useState(() => {
+    if (!version?.model) return false;
+    const providerModels = providers[version.aiProvider as keyof typeof providers]?.models ?? [];
+    return !providerModels.some((m) => m.id === version.model);
+  });
   const [temperature, setTemperature] = useState(version?.temperature ?? 0.8);
   const [history, setHistory] = useState(version?.historyMessages ?? 8);
   const [traits, setTraits] = useState<Record<string, number>>(() => {
@@ -247,32 +256,7 @@ export function PersonaForm({
               <div>
                 <input type="hidden" name="aiProvider" value="openai" />
                 <Label>Model tier</Label>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {MODEL_TIERS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setModelTier(item.id)}
-                      className={cn(
-                        'rounded-xl border p-4 text-left transition',
-                        modelTier === item.id
-                          ? 'glow-ring border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                          : 'border-slate-200 hover:border-slate-300 dark:border-white/10 dark:hover:border-white/20',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="modelTier"
-                        value={item.id}
-                        checked={modelTier === item.id}
-                        onChange={() => setModelTier(item.id)}
-                        className="sr-only"
-                      />
-                      <p className="font-semibold">{item.label}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.hint}</p>
-                    </button>
-                  ))}
-                </div>
+                <CardRadioGroup name="modelTier" items={MODEL_TIERS} value={modelTier} onChange={setModelTier} />
                 <Hint>
                   Runs on OpenAI. The exact model behind each tier is resolved live, so it keeps working even if
                   OpenAI renames or retires a model — nothing to update per persona.{' '}
@@ -292,36 +276,76 @@ export function PersonaForm({
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="aiProvider">Provider</Label>
-                    <Select
+                    <GridSelect
                       id="aiProvider"
                       name="aiProvider"
                       value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                    >
-                      {Object.values(providers).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(id) => {
+                        setProvider(id);
+                        setModelId('');
+                      }}
+                      columns={4}
+                      options={Object.values(providers)
+                        .filter((item) => CHAT_PROVIDER_IDS.includes(item.id))
+                        .map((item) => ({ id: item.id, label: item.label }))}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="model">Model</Label>
-                    <Input
-                      id="model"
-                      name="model"
-                      list={`models-${providerKey}`}
-                      defaultValue={version?.model ?? ''}
-                      placeholder={providers[providerKey].defaultModel}
-                    />
-                    <datalist id={`models-${providerKey}`}>
-                      {providers[providerKey].models.map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </datalist>
-                    <Hint>Leave blank to use the provider default.</Hint>
+                    {!useCustomModel ? (
+                      <>
+                        <GridSelect
+                          id="model"
+                          value={modelId}
+                          onChange={setModelId}
+                          columns={2}
+                          placeholder={`Provider default (${providers[providerKey].defaultModel})`}
+                          options={providers[providerKey].models
+                            .filter((model) => model.modality === 'text')
+                            .map((model) => ({
+                              id: model.id,
+                              label: model.label,
+                              meta: `${model.id} · ${model.creditsPer1k} cr/1k`,
+                            }))}
+                        />
+                        <Hint>
+                          Leave unset to use the provider default.{' '}
+                          <button
+                            type="button"
+                            className="font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+                            onClick={() => setUseCustomModel(true)}
+                          >
+                            Type a model id instead
+                          </button>
+                        </Hint>
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          id="model"
+                          value={modelId}
+                          onChange={(e) => setModelId(e.target.value)}
+                          placeholder={providers[providerKey].defaultModel}
+                        />
+                        <Hint>
+                          A model id not yet in the catalog — see{' '}
+                          <Link href="/admin/ai-models" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+                            AI models
+                          </Link>{' '}
+                          to fetch and add it properly.{' '}
+                          {providers[providerKey].models.length > 0 ? (
+                            <button
+                              type="button"
+                              className="font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+                              onClick={() => setUseCustomModel(false)}
+                            >
+                              Pick from the catalog instead
+                            </button>
+                          ) : null}
+                        </Hint>
+                      </>
+                    )}
+                    <input type="hidden" name="model" value={modelId} />
                   </div>
                 </div>
                 <button

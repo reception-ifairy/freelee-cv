@@ -1,12 +1,13 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import {
   updateHeroConfigAction, updateCtaConfigAction, updateHowItWorksConfigAction, updateCustomContentConfigAction,
 } from '@/server/actions/admin-frontpage';
 import type { ActionState } from '@/server/actions/auth';
-import { Input, Textarea, Select, Label, FormMessage } from '@/components/ui/field';
+import { Input, Textarea, Label, FormMessage } from '@/components/ui/field';
+import { CardRadioGroup } from '@/components/ui/card-radio-group';
 import { STEP_ICON_KEYS } from '@/components/site/sections/types';
 import type { HeroConfig, CtaConfig, HowItWorksConfig, CustomContentConfig } from '@/components/site/sections/types';
 
@@ -82,26 +83,31 @@ export function CtaForm({ id, config }: { id: number; config: CtaConfig }) {
   );
 }
 
+const ICON_OPTIONS = STEP_ICON_KEYS.map((k) => ({ id: k, label: k }));
+
 export function HowItWorksForm({ id, config }: { id: number; config: HowItWorksConfig }) {
   const [state, formAction] = useActionState<ActionState, FormData>(updateHowItWorksConfigAction, null);
   const steps = config.steps.length === 3 ? config.steps : [
     ...config.steps,
-    ...Array.from({ length: Math.max(0, 3 - config.steps.length) }, () => ({ icon: 'users', title: '', body: '' })),
+    ...Array.from({ length: Math.max(0, 3 - config.steps.length) }, () => ({ icon: 'users' as const, title: '', body: '' })),
   ].slice(0, 3);
+  const [icons, setIcons] = useState<string[]>(steps.map((s) => s.icon));
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="id" value={id} />
       <FormMessage state={state} />
       {steps.map((step, i) => (
-        <div key={i} className="grid gap-2 rounded-lg border border-slate-100 p-3 sm:grid-cols-[100px_1fr_1fr] dark:border-slate-800">
+        <div key={i} className="grid gap-3 rounded-lg border border-slate-100 p-3 sm:grid-cols-[auto_1fr_1fr] dark:border-slate-800">
           <div>
-            <Label htmlFor={`icon-${id}-${i}`}>Icon</Label>
-            <Select id={`icon-${id}-${i}`} name="icon" defaultValue={step.icon}>
-              {STEP_ICON_KEYS.map((k) => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </Select>
+            <Label>Icon</Label>
+            <CardRadioGroup
+              name="icon"
+              columns={3}
+              items={ICON_OPTIONS}
+              value={icons[i]}
+              onChange={(value) => setIcons((prev) => prev.map((v, idx) => (idx === i ? value : v)))}
+            />
           </div>
           <div>
             <Label htmlFor={`title-${id}-${i}`}>Title</Label>

@@ -16,6 +16,7 @@ import { isGuardrailCode } from '@/lib/persona/guardrails';
 import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
+import { isChatProvider } from '@/lib/ai/registry';
 import type { ActionState } from './auth';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);
@@ -35,7 +36,9 @@ const personaSchema = z.object({
   accentColor: z.string().trim().max(16).default('#6366f1'),
   systemPrompt: z.string().trim().min(20, 'The system prompt needs to be meaningful.'),
   welcomeMessage: z.string().trim().max(2000).optional(),
-  aiProvider: z.string().trim().min(1),
+  // Image-generation providers (e.g. 'stability') are catalog/admin-config only
+  // this phase — a persona can never actually be assigned one, see docs/21-image-engines.md.
+  aiProvider: z.string().trim().min(1).refine(isChatProvider, 'Not a valid chat provider.'),
   model: z.string().trim().max(120).optional(),
   modelTier: z.enum(['fast', 'balanced', 'advanced']).optional(),
   temperature: z.coerce.number().min(0).max(2),

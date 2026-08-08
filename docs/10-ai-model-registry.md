@@ -35,15 +35,17 @@ ordinary server-component-fetches-then-passes-to-client-component, not a new pat
    was actually there before (today's static config had one number per model) and Phase 5's own
    already-stated decision not to adopt fine-grained token-tier pricing yet — introducing it here
    ahead of Phase 5 needing it would be speculative.
-3. **No live sync against provider APIs** (no `models:sync --provider=openai` hitting a real
-   `/v1/models` endpoint). `scripts/seed-ai-models.ts` is a one-time (idempotent, re-runnable)
-   seed from `src/lib/ai/seed-data.ts`, and `/admin/ai-models` is where new models are added going
-   forward — by a human, reading release notes, same as before this phase (nothing regresses; there
-   was never automatic model discovery). A real polling sync job is real added scope (network
-   calls, retry/error handling, provider-specific list-models endpoints) with no consumer yet —
-   deferred, not built ahead of need, consistent with the same judgment call made for the ESLint
-   boundary rule (`08-module-architecture.md`) and the modules sync script being manual
-   (`09-team-authorization.md`).
+3. ~~No live sync against provider APIs~~ **Superseded 2026-08-08** — `/admin/ai-models` now has a
+   "Fetch models" button per provider (`src/lib/ai/fetch-models.ts`, `fetchProviderModelsAction`/
+   `importFetchedModelsAction` in `admin-ai-models.ts`). Each provider's real endpoint is called
+   live — OpenAI/Anthropic/OpenRouter/Ollama's `/v1/models` (or native equivalent), Stability's
+   `/v1/engines/list` — with the same key-resolution order `getModel()` uses (settings table, then
+   `process.env[apiKeyEnv]`), a 5s timeout, and a never-throws contract (same posture as
+   `src/lib/knowledge/registry.ts`'s `search()`). Results render as a checkbox grid the admin picks
+   from; imported rows land as `status: 'preview'` (a meaningful use of the existing enum — freshly
+   fetched, not yet priced/vetted) for the admin to tier/price via the existing inline edit row.
+   This directly replaces hand-typing model ids — provider catalogs change often enough that
+   nobody should be maintaining that list by hand, including Claude.
 4. **`ai_model_team` and `provider_credentials` are parked** — tables exist (so Phase 5 doesn't need
    another migration), but nothing reads or writes them yet. BYOK and per-team model
    allowlist/markup are Phase 5's job.
@@ -61,10 +63,26 @@ over.
 New admin page (`src/server/actions/admin-ai-models.ts` — named without a `admin/` subdirectory
 because `src/server/actions/admin.ts` already exists as a **file**, and turning it into a directory
 is a bigger refactor than this phase warrants; same file-vs-directory workaround already used for
-`src/lib/permissions.ts` vs. `auth.ts`). Per provider: default model + active flag, and an inline-
-editable list of its models (tier, status, credits/1k, sort). An "Add a model" form appends a new
-`ai_models` row for any provider — this is the concrete "new model = INSERT, zero deploy" moment:
-add a row here, it's live on the next chat request, no redeploy.
+`src/lib/permissions.ts` vs. `auth.ts`). Per provider: default model + active flag, "Fetch models"
+(see above), and an inline-editable list of its models (tier, status, credits/1k, sort) — split into
+"Chat models"/"Image models" sections since 2026-08-08 (docs/21-image-engines.md). An "Add a model"
+form appends a new `ai_models` row for any provider — this is the concrete "new model = INSERT, zero
+deploy" moment: add a row here, it's live on the next chat request, no redeploy.
+
+## Picker UI (2026-08-08)
+
+Provider/tier/model `<select>`s (one choice per line) were replaced with two shared components in
+`src/components/ui/`: `CardRadioGroup` (always-visible grid of cards, for small fixed sets — tiers,
+icons, fonts) and `GridSelect` (a dropdown whose open panel is a grid, for longer/dynamic sets —
+providers, models). `GridSelect` is a plain controlled component (no new dependency; this codebase
+has no Radix/Headless UI) — closed state is a button, open state is an outside-click/Escape-closing
+panel. Both live in `src/components/ui/` for reuse (also used by the frontpage section editor's icon
+picker and the branding font pickers). `persona-form.tsx`'s advanced-mode provider/model pickers
+only ever list `CHAT_PROVIDER_IDS`/`modality: 'text'` entries — an image engine can never be
+assigned to a persona's chat model. `CHAT_PROVIDER_IDS`/`isChatProvider`/`ProviderId` live in the
+new `src/lib/ai/provider-ids.ts` (no `@/db` import) specifically so client components can import
+them without pulling this file's `'server-only'`-guarded database client into the browser bundle —
+`registry.ts` re-exports everything from there for every existing server-side consumer.
 
 ## Verifying it
 

@@ -47,6 +47,9 @@ export const moduleStatus = pgEnum('module_status', ['installed', 'disabled', 'b
 
 // AI model registry (src/lib/ai/registry.ts).
 export const aiModelStatus = pgEnum('ai_model_status', ['preview', 'stable', 'deprecated', 'retired']);
+// Image-generation engines (docs/21-image-engines.md) — 'text' is every existing row's default,
+// zero behavior change for chat; 'image' models never appear in a persona's model picker.
+export const aiModelModality = pgEnum('ai_model_modality', ['text', 'image']);
 // Persona versioning (docs/11-persona-versioning.md).
 export const personaVersionStatus = pgEnum('persona_version_status', ['draft', 'published', 'deprecated']);
 // BYOK (Phase 5) — declared now so provider_credentials doesn't need a later migration.
@@ -380,6 +383,7 @@ export const aiModels = pgTable(
     tier: text('tier'),
     creditsPer1k: integer('credits_per_1k').notNull(),
     status: aiModelStatus('status').notNull().default('stable'),
+    modality: aiModelModality('modality').notNull().default('text'),
     sort: integer('sort').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

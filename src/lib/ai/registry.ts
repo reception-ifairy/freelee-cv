@@ -6,6 +6,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import type { LanguageModel } from 'ai';
 import { db } from '@/db';
 import { aiProviders, aiModels } from '@/db/schema';
+import { isChatProvider, isProviderId, isModelTier } from './provider-ids';
+import type { ProviderId, ModelTier } from './provider-ids';
 
 /**
  * DB-backed since 2026-08-06 (Phase 3) — was a static `PROVIDERS` const
@@ -16,21 +18,26 @@ import { aiProviders, aiModels } from '@/db/schema';
  * getModel() below regardless of what's in the database — same distinction
  * the mined concept doc draws between its `LlmDriver` contract (code) and
  * `ai_models` catalog (data).
+ *
+ * `'stability'` (added 2026-08-08, docs/21-image-engines.md) is image-only —
+ * catalog/admin config only this phase, no execution path, so `getModel()`
+ * explicitly refuses it rather than silently building a broken chat handle.
+ *
+ * `ProviderId`/`CHAT_PROVIDER_IDS`/`isChatProvider`/`isProviderId`/`ModelTier`/
+ * `isModelTier` live in `./provider-ids.ts` (no `@/db` import) and are
+ * re-exported here — client components that only need those constants
+ * (e.g. persona-form.tsx's provider picker) import from there directly so
+ * this file's `'server-only'`/`@/db` chain never lands in a browser bundle.
  */
-export type ProviderId = 'openai' | 'anthropic' | 'openrouter' | 'ollama';
-
-/**
- * A tier is the primary, non-technical way personas pick a model in the admin
- * UI — it survives model deprecations/renames because the concrete id is
- * resolved live from the registry on every request, never stored on the persona.
- */
-export type ModelTier = 'fast' | 'balanced' | 'advanced';
+export type { ProviderId, ModelTier } from './provider-ids';
+export { CHAT_PROVIDER_IDS, isChatProvider, isProviderId, isModelTier } from './provider-ids';
 
 export type ModelInfo = {
   id: string;
   label: string;
   /** Credits charged per 1,000 tokens. */
   creditsPer1k: number;
+  modality: 'text' | 'image';
 };
 
 export type ProviderConfig = {
@@ -47,16 +54,6 @@ export type ProviderConfig = {
 };
 
 export type ProviderRegistry = Record<ProviderId, ProviderConfig>;
-
-const PROVIDER_IDS: ProviderId[] = ['openai', 'anthropic', 'openrouter', 'ollama'];
-
-export function isProviderId(value: string): value is ProviderId {
-  return (PROVIDER_IDS as string[]).includes(value);
-}
-
-export function isModelTier(value: string | null | undefined): value is ModelTier {
-  return value === 'fast' || value === 'balanced' || value === 'advanced';
-}
 
 export function resolveProviderId(value: string | null | undefined): ProviderId {
   if (value && isProviderId(value)) return value;
@@ -100,7 +97,7 @@ export const getProviderRegistry = cache(async (): Promise<ProviderRegistry> => 
       baseUrlEnv: row.baseUrlEnv ?? undefined,
       fallbackBaseUrl: row.fallbackBaseUrl ?? undefined,
       tiers: Object.keys(tiers).length > 0 ? tiers : undefined,
-      models: models.map((m) => ({ id: m.modelId, label: m.label, creditsPer1k: m.creditsPer1k })),
+      models: models.map((m) => ({ id: m.modelId, label: m.label, creditsPer1k: m.creditsPer1k, modality: m.modality })),
     };
   }
 
@@ -130,6 +127,12 @@ export function getModel(
   modelId: string,
   keys: ResolvedKeys = {},
 ): LanguageModel {
+  if (!isChatProvider(providerId)) {
+    throw new Error(
+      `"${providerId}" is an image-generation provider — it has no chat-completion driver (catalog/admin config only this phase, see docs/21-image-engines.md).`,
+    );
+  }
+
   const config = registry[providerId];
   const apiKey = keys.apiKey ?? process.env[config.apiKeyEnv];
   const baseURL =
