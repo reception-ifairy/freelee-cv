@@ -33,6 +33,10 @@ export const SETTINGS_SCHEMA = {
     { key: 'ollama_base_url', label: 'Ollama base URL', type: 'string', help: 'e.g. http://localhost:11434/v1' },
     { key: 'guest_free_messages', label: 'Free messages before signup', type: 'int' },
     { key: 'signup_bonus_credits', label: 'Signup bonus credits', type: 'int' },
+    {
+      key: 'badword_list', label: 'Blocked words', type: 'text',
+      help: 'Comma or newline separated. Replaces the built-in list entirely. Only applies to personas with "Filter offensive input" ticked.',
+    },
   ],
   billing: [
     { key: 'bank_transfer_details', label: 'Bank transfer instructions', type: 'text' },

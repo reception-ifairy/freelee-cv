@@ -55,11 +55,36 @@ These are always available because they change how *safe* and *useful* an answer
 it's dressed. Someone using a medical persona should be able to say "never guess" regardless of
 how the persona was authored.
 
-## Not yet working
+## Image upload and generation
 
-Two switches exist and currently do nothing: **Accept image uploads** and **Generate images**.
-Both need machinery that isn't built yet. They're left visible rather than hidden so the intent is
-recorded — but ticking them changes nothing today.
+**Accept image uploads** lets people attach pictures to a message — up to four, 5 MB each. The
+persona can then actually see them ("what's wrong with this diagram?"). Only tick it if the model
+behind the persona supports images; most current ones do.
 
-**Filter offensive input** likewise has no effect in code. Use guardrails on the
-[Prompt tab](/admin/handbook/persona-prompt) instead; those genuinely shape behaviour.
+**Generate images** adds a *Create an image* box above the message area. Images are billed **per
+picture**, not per message, and that price is set per model under **AI models**. A generated image
+is saved and stays in the conversation.
+
+Both are enforced on the server, not just hidden — a persona without the flag will refuse even a
+hand-crafted request.
+
+## Filter offensive input
+
+Blocks messages containing terms on a list before they reach the AI, so a blocked message costs
+nothing. Edit the list under **Settings → AI → Blocked words**; your list replaces the built-in one
+entirely.
+
+It is a **word list, not a moderation service.** It catches casual abuse and will not stop someone
+determined. Don't rely on it as your only safeguard for a persona aimed at children — use it
+*alongside* the guardrails on the Prompt tab.
+
+## Allow embedding on other sites
+
+Lets you drop the persona into any website:
+
+```html
+<iframe src="https://your-site/embed/your-persona-slug" width="420" height="560"></iframe>
+```
+
+The embedded version has no site navigation — just the persona and the conversation. Only personas
+with this ticked can be embedded; every other page on your site stays un-embeddable.

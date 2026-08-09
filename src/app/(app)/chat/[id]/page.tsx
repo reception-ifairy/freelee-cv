@@ -12,6 +12,7 @@ import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { ChatWindow } from '@/components/chat/chat-window';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { ChatControls } from '@/components/chat/chat-controls';
+import { ImageGenerator } from '@/components/chat/image-generator';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
 
@@ -71,12 +72,18 @@ export default async function ChatPage({ params }: { params: Params }) {
     : [];
 
   // Persisted rows are replayed into the shape the AI SDK expects on the client.
+  // Attachments are replayed as file parts so an uploaded or generated image
+  // survives a page reload instead of leaving a message that references a
+  // picture nobody can see.
   const initialMessages: UIMessage[] = rows
     .filter((row) => row.role !== 'system' && row.status === 'complete')
     .map((row) => ({
       id: row.id,
       role: row.role === 'assistant' ? 'assistant' : 'user',
-      parts: [{ type: 'text', text: row.content }],
+      parts: [
+        ...row.attachments.map((file) => ({ type: 'file' as const, mediaType: file.mediaType, url: file.url })),
+        { type: 'text' as const, text: row.content },
+      ],
     }));
 
   return (
@@ -138,6 +145,12 @@ export default async function ChatPage({ params }: { params: Params }) {
               </form>
             </div>
           </header>
+
+          {capabilities.images ? (
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <ImageGenerator chatId={chat.id} />
+            </div>
+          ) : null}
 
           <ChatControls
             chatId={chat.id}

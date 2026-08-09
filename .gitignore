@@ -7,3 +7,6 @@ build
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# User uploads and generated images (see src/lib/media/store.ts)
+storage/

@@ -79,6 +79,9 @@ export const orderKind = pgEnum('order_kind', ['credit_pack', 'subscription', 'p
  * Shapes stored inside jsonb columns. Declaring them with $type<> means the
  * compiler checks every read and write — jsonb is not an escape hatch here.
  * ------------------------------------------------------------------------- */
+/** One image on a message — `url` is a site-relative path like `/uploads/ab12.png`. */
+export type MessageAttachment = { url: string; mediaType: string; kind: 'upload' | 'generated' };
+
 export type PersonaCapabilities = {
   vision?: boolean; images?: boolean; voiceIn?: boolean; voiceOut?: boolean;
   share?: boolean; copy?: boolean; embed?: boolean; suggestions?: boolean;
@@ -384,6 +387,11 @@ export const aiModels = pgTable(
     creditsPer1k: integer('credits_per_1k').notNull(),
     status: aiModelStatus('status').notNull().default('stable'),
     modality: aiModelModality('modality').notNull().default('text'),
+    /**
+     * Images are billed per picture, not per 1,000 tokens — the token-based
+     * column is meaningless for them. Ignored entirely for text models.
+     */
+    creditsPerImage: integer('credits_per_image').notNull().default(40),
     sort: integer('sort').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -791,6 +799,13 @@ export const messages = pgTable(
     chatId: text('chat_id').notNull().references(() => chats.id, { onDelete: 'cascade' }),
     role: messageRole('role').notNull(),
     content: text('content').notNull().default(''),
+    /**
+     * Images attached to a user message (docs/26-vision-and-images.md), and
+     * images produced by a generation request. Stores a *path* under
+     * /uploads, never the base64 payload — a data URL in this column would
+     * bloat every history query that only wanted the text.
+     */
+    attachments: jsonb('attachments').$type<MessageAttachment[]>().notNull().default(sql`'[]'::jsonb`),
 
     model: text('model'),
     aiProvider: text('ai_provider'),

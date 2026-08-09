@@ -7,7 +7,7 @@ import { parseSuggestions } from '@/lib/persona/prompt';
 import { resolveChatLayout } from '@/lib/chat/layouts';
 import { parseNarrative, choicesOf } from '@/lib/chat/narrative';
 import { MessageBubble } from './message-bubble';
-import { Composer } from './composer';
+import { Composer, type PendingImage } from './composer';
 import { SuggestionChips } from './suggestion-chips';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,8 @@ export type ChatCapabilities = {
   suggestions?: boolean;
   voiceIn?: boolean;
   voiceOut?: boolean;
+  vision?: boolean;
+  images?: boolean;
 };
 
 export type ChatWindowProps = {
@@ -29,6 +31,16 @@ export type ChatWindowProps = {
   capabilities?: ChatCapabilities;
   locale?: string;
 };
+
+/** Image parts of a message — uploads on the way in, generated images on the way back. */
+function imagesOf(message: UIMessage): { url: string; mediaType: string }[] {
+  return message.parts
+    .filter(
+      (part): part is { type: 'file'; mediaType: string; url: string } =>
+        part.type === 'file' && typeof (part as { url?: unknown }).url === 'string',
+    )
+    .map((part) => ({ url: part.url, mediaType: part.mediaType }));
+}
 
 /** Extracts the plain text of a UI message across all of its parts. */
 function textOf(message: UIMessage): string {
@@ -48,6 +60,7 @@ export function ChatWindow({
   locale = 'en-GB',
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('');
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const layout = resolveChatLayout(layoutKey);
@@ -88,11 +101,20 @@ export function ChatWindow({
 
   function submit() {
     const text = draft.trim();
-    if (!text || busy) return;
+    // An image on its own is a legitimate message — "what is this?" is often
+    // the whole question — so only block when there's nothing at all.
+    if ((!text && pendingImages.length === 0) || busy) return;
+
+    const files = pendingImages.map((image) => ({
+      type: 'file' as const,
+      mediaType: image.mediaType,
+      url: image.url,
+    }));
 
     setDraft('');
+    setPendingImages([]);
     if (inputRef.current) inputRef.current.style.height = 'auto';
-    void sendMessage({ text });
+    void sendMessage({ text, files });
   }
 
   const hasUserMessage = messages.some((message) => message.role === 'user');
@@ -113,6 +135,7 @@ export function ChatWindow({
             key={message.id}
             role={message.role === 'user' ? 'user' : 'assistant'}
             text={message.role === 'user' ? textOf(message) : parseSuggestions(textOf(message)).text}
+            images={imagesOf(message)}
             layout={layout}
             canCopy={capabilities.copy}
             canSpeak={capabilities.voiceOut && message.role !== 'user'}
@@ -154,6 +177,9 @@ export function ChatWindow({
             layout={layout}
             personaName={personaName}
             canVoiceIn={capabilities.voiceIn}
+            canAttachImages={capabilities.vision}
+            images={pendingImages}
+            onImagesChange={setPendingImages}
             locale={locale}
             inputRef={inputRef}
           />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Send, Square } from 'lucide-react';
+import { ImagePlus, Mic, Send, Square, X } from 'lucide-react';
 import type { ChatLayoutConfig } from '@/lib/chat/layouts';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,10 @@ type SpeechRecognitionLike = {
   onerror: (() => void) | null;
 };
 
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 4;
+
 function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as {
@@ -25,6 +29,8 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
+
+export type PendingImage = { url: string; mediaType: string; name: string };
 
 export function Composer({
   value,
@@ -35,6 +41,9 @@ export function Composer({
   layout,
   personaName,
   canVoiceIn,
+  canAttachImages,
+  images,
+  onImagesChange,
   locale = 'en-GB',
   inputRef,
 }: {
@@ -46,6 +55,9 @@ export function Composer({
   layout: ChatLayoutConfig;
   personaName?: string;
   canVoiceIn?: boolean;
+  canAttachImages?: boolean;
+  images: PendingImage[];
+  onImagesChange: (images: PendingImage[]) => void;
   locale?: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -86,14 +98,58 @@ export function Composer({
 
   const placeholder = layout.placeholder.replace('{name}', personaName ?? 'the assistant');
 
+  // Read as data URLs on the client. The server decodes and writes them to
+  // disk — but the *model* needs the bytes inline anyway, because a provider
+  // cannot fetch a URL on this host. See docs/26-vision-and-images.md.
+  async function addFiles(list: FileList | null) {
+    if (!list) return;
+    const room = MAX_IMAGES - images.length;
+    const picked = Array.from(list).slice(0, Math.max(0, room));
+
+    const read = await Promise.all(
+      picked
+        .filter((file) => ALLOWED_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES)
+        .map(
+          (file) =>
+            new Promise<PendingImage | null>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve({ url: String(reader.result), mediaType: file.type, name: file.name });
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(file);
+            }),
+        ),
+    );
+
+    onImagesChange([...images, ...read.filter((i): i is PendingImage => i !== null)]);
+  }
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
-      className="flex items-end gap-2"
+      className="flex flex-wrap items-end gap-2"
     >
+      {images.length > 0 ? (
+        <div className="mb-2 flex w-full flex-wrap gap-2">
+          {images.map((image, i) => (
+            <span key={`${image.name}-${i}`} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a local data: URL preview, never a remote asset */}
+              <img src={image.url} alt={image.name} className="size-16 rounded-lg border border-slate-200 object-cover dark:border-slate-700" />
+              <button
+                type="button"
+                onClick={() => onImagesChange(images.filter((_, index) => index !== i))}
+                aria-label={`Remove ${image.name}`}
+                className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-slate-800 text-white"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       <textarea
         ref={inputRef}
         value={value}
@@ -116,6 +172,25 @@ export function Composer({
           layout.density === 'spacious' ? 'text-[15px]' : 'text-sm',
         )}
       />
+
+      {canAttachImages ? (
+        <label
+          className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl border border-slate-200 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+          title="Attach an image"
+        >
+          <ImagePlus className="size-4" />
+          <input
+            type="file"
+            accept={ALLOWED_TYPES.join(',')}
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              void addFiles(event.target.files);
+              event.target.value = '';
+            }}
+          />
+        </label>
+      ) : null}
 
       {voiceAvailable ? (
         <button

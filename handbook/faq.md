@@ -74,15 +74,20 @@ language stays frozen until it's complete, so visitors never see a half-translat
 Export as CSV — English on the left, the target language on the right — and import the file back
 when it returns.
 
-## Things that don't work yet
+## Image and embedding questions
 
-**Image uploads and image generation.** Both switches exist on the Capabilities tab; neither does
-anything. The underlying machinery isn't built.
+**Can people send my persona a picture?**
+Yes — tick *Accept image uploads* on the Capabilities tab. Up to four images per message.
 
-**Embedding on other sites.** The switch exists, there's no embed route behind it.
+**Can it create pictures?**
+Yes — tick *Generate images*. A *Create an image* box appears above the message area. These are
+billed per picture, priced per model under **AI models**.
 
-**Offensive-input filtering.** Also has no code behind it. Use guardrails on the Prompt tab, which
-genuinely shape behaviour.
+**Can I put a persona on my own website?**
+Yes — tick *Allow embedding on other sites*, then use an iframe pointing at
+`/embed/your-persona-slug`. Only personas with that ticked can be embedded.
 
-These are listed rather than hidden so you don't spend an afternoon working out why ticking one
-changed nothing.
+**Does the offensive-language filter actually work?**
+It blocks a list of terms before they reach the AI, and it catches casual abuse. It is a word list,
+not a moderation service, and it won't stop someone determined. Treat it as one layer alongside
+guardrails, not a guarantee.

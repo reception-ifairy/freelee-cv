@@ -23,6 +23,7 @@ const DENSITY: Record<ChatLayoutConfig['density'], string> = {
 export function MessageBubble({
   role,
   text,
+  images = [],
   layout,
   speaker,
   canCopy,
@@ -32,6 +33,7 @@ export function MessageBubble({
 }: {
   role: 'user' | 'assistant';
   text: string;
+  images?: { url: string; mediaType: string }[];
   layout: ChatLayoutConfig;
   speaker?: string;
   canCopy?: boolean;
@@ -60,12 +62,33 @@ export function MessageBubble({
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   }
 
+  const gallery =
+    images.length > 0 ? (
+      <div className={cn('flex flex-wrap gap-2', text.trim() ? 'mb-2' : '')}>
+        {images.map((image) => (
+          // eslint-disable-next-line @next/next/no-img-element -- data: URL mid-send, then a local /uploads path; next/image handles neither well here
+          <img
+            key={image.url}
+            src={image.url}
+            alt=""
+            className="max-h-64 rounded-lg border border-slate-200/60 object-contain dark:border-slate-700"
+          />
+        ))}
+      </div>
+    ) : null;
+
   const body = isUser ? (
-    <p className="whitespace-pre-wrap">{text}</p>
+    <>
+      {gallery}
+      {text.trim() ? <p className="whitespace-pre-wrap">{text}</p> : null}
+    </>
   ) : layout.narrative ? (
     <NarrativeMessage text={text} style={layout.narrative} onChoice={onChoice} />
   ) : (
-    <Markdown className={layout.density === 'compact' ? 'prose-sm' : 'prose-sm sm:prose-base'}>{text}</Markdown>
+    <>
+      {gallery}
+      <Markdown className={layout.density === 'compact' ? 'prose-sm' : 'prose-sm sm:prose-base'}>{text}</Markdown>
+    </>
   );
 
   const actions =

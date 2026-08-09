@@ -204,11 +204,13 @@ export const MODULES: ModuleManifest[] = [
       'failing open to plain prose. Also the first thing that reads the persona capability flags ' +
       '(copy/share/suggestions/voice), which had been stored but unused since Phase 1. ' +
       'Also per-chat conversation controls (tone/writing/output/length, interaction style, how it ' +
-      'handles what it does not know). See docs/23-chat-layouts.md and docs/24-chat-controls.md.',
+      'handles what it does not know), image upload, real image generation, an embeddable widget ' +
+      'and word-list input filtering — every persona capability flag now does something. See ' +
+      'docs/23-chat-layouts.md, docs/24-chat-controls.md and docs/26-vision-and-images.md.',
     type: 'core',
     isCore: true,
     requires: { modules: ['persona-versioning'] },
-    provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating', 'chat.conversation_controls'] },
+    provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating', 'chat.conversation_controls', 'chat.vision', 'chat.image_generation', 'chat.embed', 'chat.input_filter'] },
     permissions: [],
   },
   groupChat,

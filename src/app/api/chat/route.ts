@@ -15,6 +15,11 @@ import {
 } from '@/lib/billing/credits';
 import { hasActiveEntitlement } from '@/lib/billing/entitlements';
 import { getSettingInt, getSettingString } from '@/lib/settings';
+import { checkInput } from '@/lib/moderation/filter';
+import { storeDataUrl } from '@/lib/media/store';
+
+/** A hard cap so one message can't post a hundred images at the model (or at the disk). */
+const MAX_IMAGES_PER_MESSAGE = 4;
 import { truncate } from '@/lib/utils';
 
 // Long generations need a Node runtime and a generous ceiling.
@@ -119,7 +124,33 @@ export async function POST(request: Request) {
     .join('\n')
     .trim();
 
-  if (!userText) return fail('Your message is empty.');
+  const hasImageParts = latest.parts.some((part) => part.type === 'file');
+  if (!userText && !hasImageParts) return fail('Your message is empty.');
+
+  // Runs before the message is persisted or sent anywhere, so a blocked
+  // message costs nothing and never reaches the provider. Word-list only —
+  // see src/lib/moderation/filter.ts on what that does and doesn't catch.
+  if (version?.capabilities.badwordFilter) {
+    const check = await checkInput(userText);
+    if (check.blocked) {
+      return fail('That message contains language this assistant will not respond to. Please rephrase it.', 422);
+    }
+  }
+
+  // Image uploads, only for personas that opted in. A client can put file
+  // parts in the body regardless, so they're dropped here rather than trusted
+  // — the capability flag is enforced server-side, not just hidden in the UI.
+  const canSeeImages = Boolean(version?.capabilities.vision);
+  const incomingImages = canSeeImages
+    ? latest.parts.filter(
+        (part): part is { type: 'file'; mediaType: string; url: string } =>
+          part.type === 'file' && typeof (part as { url?: unknown }).url === 'string',
+      )
+    : [];
+
+  const stored = (
+    await Promise.all(incomingImages.slice(0, MAX_IMAGES_PER_MESSAGE).map((p) => storeDataUrl(p.url, 'upload')))
+  ).filter((a): a is NonNullable<typeof a> => a !== null);
 
   const nextPosition = (await db.$count(messages, eq(messages.chatId, chatId))) + 1;
 
@@ -127,6 +158,7 @@ export async function POST(request: Request) {
     chatId,
     role: 'user',
     content: userText,
+    attachments: stored,
     position: nextPosition,
     status: 'complete',
   });
@@ -173,7 +205,12 @@ export async function POST(request: Request) {
       : undefined;
 
   // Only the tail of the conversation is resent — more context costs credits.
-  const history = uiMessages.slice(-(version?.historyMessages ?? 8));
+  // The same enforcement applied to the *history*: a persona without vision
+  // must never receive an image, even one attached before the flag was
+  // turned off. Stripping here keeps convertToModelMessages honest.
+  const history = uiMessages.slice(-(version?.historyMessages ?? 8)).map((message) =>
+    canSeeImages ? message : { ...message, parts: message.parts.filter((part) => part.type !== 'file') },
+  );
   const startedAt = Date.now();
 
   const result = streamText({

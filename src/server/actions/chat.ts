@@ -32,6 +32,9 @@ export async function guestToken(): Promise<string> {
 
 export async function startChatAction(formData: FormData) {
   const slug = z.string().min(1).parse(formData.get('persona'));
+  // Set by the embed page so the new chat opens inside the iframe rather than
+  // navigating the host site's top-level window to /chat/<id>.
+  const embed = formData.get('embed') === '1';
 
   const [persona] = await db
     .select()
@@ -82,7 +85,7 @@ export async function startChatAction(formData: FormData) {
     .set({ chatsCount: persona.chatsCount + 1 })
     .where(eq(personas.id, persona.id));
 
-  redirect(`/chat/${chat.id}`);
+  redirect(embed ? `/embed/${persona.slug}?c=${chat.id}` : `/chat/${chat.id}`);
 }
 
 /** Shared ownership check used by every chat mutation and by the API route. */
