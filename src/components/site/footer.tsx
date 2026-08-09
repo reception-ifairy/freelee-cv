@@ -5,16 +5,18 @@ import { menuItems, personas } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { getActiveTheme } from '@/lib/branding/theme';
+import { currentUser } from '@/lib/auth';
+import { buildMenuTree } from '@/lib/navigation/tree';
 import { Logo } from './logo';
 
 export async function SiteFooter() {
-  const [siteName, tagline, links, featured, { t }, theme] = await Promise.all([
+  const [siteName, tagline, links, featured, { t }, theme, user] = await Promise.all([
     getSettingString('site_name', 'Freelee'),
     getSettingString('site_description', 'Hire an AI specialist for every task.'),
     db
       .select()
       .from(menuItems)
-      .where(and(eq(menuItems.location, 'footer'), eq(menuItems.isActive, true)))
+      .where(eq(menuItems.location, 'footer'))
       .orderBy(menuItems.position),
     db
       .select({ name: personas.name, slug: personas.slug })
@@ -24,7 +26,15 @@ export async function SiteFooter() {
       .limit(5),
     getFrontendT(),
     getActiveTheme(),
+    currentUser(),
   ]);
+
+  // A footer item with children becomes its own column; items without children
+  // stay together under "Company", which is what the footer did before nesting
+  // existed. So adding a parent is opt-in — nothing rearranges on its own.
+  const nav = buildMenuTree(links, { signedIn: Boolean(user), isAdmin: user?.isAdmin === true });
+  const columns = nav.filter((item) => item.children.length > 0);
+  const flat = nav.filter((item) => item.children.length === 0);
 
   return (
     <footer className="mt-24 border-t border-slate-200 bg-white dark:border-white/10 dark:bg-black">
@@ -61,16 +71,45 @@ export async function SiteFooter() {
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold">{t('nav.company', 'Company')}</h3>
-            <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
-              {links.map((link) => (
-                <li key={link.id}>
-                  <Link href={link.href} className="hover:text-brand-600">{link.label}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {columns.map((column) => (
+            <div key={column.id}>
+              <h3 className="text-sm font-semibold">{column.label}</h3>
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
+                {column.children.map((child) => (
+                  <li key={child.id}>
+                    <Link
+                      href={child.href}
+                      target={child.openInNewTab ? '_blank' : undefined}
+                      rel={child.openInNewTab ? 'noopener noreferrer' : undefined}
+                      className="hover:text-brand-600"
+                    >
+                      {child.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {flat.length > 0 ? (
+            <div>
+              <h3 className="text-sm font-semibold">{t('nav.company', 'Company')}</h3>
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-500 dark:text-slate-400">
+                {flat.map((link) => (
+                  <li key={link.id}>
+                    <Link
+                      href={link.href}
+                      target={link.openInNewTab ? '_blank' : undefined}
+                      rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+                      className="hover:text-brand-600"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">

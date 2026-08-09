@@ -730,14 +730,41 @@ export async function saveMenuItemAction(_prev: ActionState, formData: FormData)
       href: z.string().trim().min(1).max(500),
       visibleTo: z.enum(['all', 'guest', 'auth', 'admin']).default('all'),
       position: z.coerce.number().int().default(0),
+      // '' is what an unselected dropdown submits; Number('') is 0, which would
+      // be a bogus foreign key — so filter the raw string before coercing.
+      parentId: z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().positive().nullable()),
+      icon: z.string().trim().max(40).optional(),
+      description: z.string().trim().max(160).optional(),
     })
     .safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input.' };
 
-  const { id, ...rest } = parsed.data;
+  const { id, parentId, icon, description, ...rest } = parsed.data;
+
+  // Navigation nests one level, like blocks: a dropdown of dropdowns is a
+  // usability problem, not a feature. Enforced here rather than only in the
+  // form, since the form is just a suggestion to anyone crafting a request.
+  let resolvedParent: number | null = parentId ?? null;
+  if (resolvedParent !== null) {
+    if (resolvedParent === id) return { error: 'An item cannot be its own parent.' };
+
+    const [parent] = await db.select().from(menuItems).where(eq(menuItems.id, resolvedParent)).limit(1);
+    if (!parent) return { error: 'That parent item no longer exists.' };
+    if (parent.parentId !== null) return { error: 'Menus only nest one level deep.' };
+    if (parent.location !== rest.location) return { error: 'A parent must be in the same menu location.' };
+
+    if (id) {
+      const [child] = await db.select({ id: menuItems.id }).from(menuItems).where(eq(menuItems.parentId, id)).limit(1);
+      if (child) return { error: 'This item already has items under it, so it cannot be moved under another.' };
+    }
+  }
+
   const values = {
     ...rest,
+    parentId: resolvedParent,
+    icon: icon || null,
+    description: description || null,
     openInNewTab: checkbox(formData, 'openInNewTab'),
     isActive: checkbox(formData, 'isActive'),
   };
