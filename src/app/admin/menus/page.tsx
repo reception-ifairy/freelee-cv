@@ -1,20 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Trash2 } from 'lucide-react';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { menuItems } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { MenusList, type MenuItemRow } from './menus-list';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
 import { Input, Label, Select, Checkbox } from '@/components/ui/field';
-import { deleteMenuItemAction, saveMenuItemAction } from '@/server/actions/admin';
+import { saveMenuItemAction } from '@/server/actions/admin';
 import { BLOCK_ICON_KEYS } from '@/lib/blocks/catalog';
 import { HelpTip } from '@/components/ui/help-tip';
 import { BlockIcon } from '@/components/ui/block-icon';
-import { CornerDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -51,6 +48,19 @@ export default async function AdminMenusPage({
     ...rows.filter((row) => row.parentId === parent.id).map((row) => ({ row, depth: 1 })),
   ]);
   const orphans = rows.filter((row) => row.parentId !== null && !topLevel.some((p) => p.id === row.parentId));
+
+  const view = await getAdminView('menus');
+  const items: MenuItemRow[] = [...ordered, ...orphans.map((row) => ({ row, depth: 1 as const }))].map(({ row, depth }) => ({
+    id: row.id,
+    label: row.label,
+    href: row.href,
+    visibleTo: row.visibleTo,
+    isActive: row.isActive,
+    icon: row.icon,
+    description: row.description,
+    depth: depth as 0 | 1,
+    parentLabel: topLevel.find((p) => p.id === row.parentId)?.label ?? null,
+  }));
 
   return (
     <div>
@@ -140,54 +150,9 @@ export default async function AdminMenusPage({
           </label>
         </InlineForm>
 
-        <Card className="overflow-hidden lg:col-span-2">
-          <Table>
-            <THead>
-              <tr>
-                <TH>Label</TH>
-                <TH>Link</TH>
-                <TH>Visibility</TH>
-                <TH />
-              </tr>
-            </THead>
-            <TBody>
-              {ordered.length === 0 ? (
-                <EmptyRow colSpan={4}>No items in this location.</EmptyRow>
-              ) : (
-                [...ordered, ...orphans.map((row) => ({ row, depth: 1 }))].map(({ row: item, depth }) => (
-                  <TR key={item.id}>
-                    <TD className="font-medium">
-                      <span className={cn('flex items-center gap-1.5', depth === 1 && 'pl-5')}>
-                        {depth === 1 ? <CornerDownRight className="size-3.5 shrink-0 text-slate-300 dark:text-slate-600" /> : null}
-                        {item.icon ? <BlockIcon name={item.icon} className="size-3.5 text-slate-400" /> : null}
-                        {item.label}
-                        {!item.isActive ? <Badge className="ml-1">off</Badge> : null}
-                      </span>
-                      {item.description ? <span className="mt-0.5 block pl-5 text-xs text-slate-400">{item.description}</span> : null}
-                    </TD>
-                    <TD>
-                      <code className="text-xs text-slate-400">{item.href}</code>
-                    </TD>
-                    <TD>
-                      <Badge>{item.visibleTo}</Badge>
-                    </TD>
-                    <TD className="text-right">
-                      <form action={deleteMenuItemAction}>
-                        <input type="hidden" name="id" value={item.id} />
-                        <button
-                          type="submit"
-                          className="grid size-8 place-items-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </form>
-                    </TD>
-                  </TR>
-                ))
-              )}
-            </TBody>
-          </Table>
-        </Card>
+        <div className="lg:col-span-2">
+          <MenusList rows={items} view={view} />
+        </div>
       </div>
     </div>
   );

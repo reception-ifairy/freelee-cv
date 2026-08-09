@@ -3,10 +3,8 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { orders, users } from '@/db/schema';
 import { PageHeader, Stat } from '@/components/admin/page-header';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
-import { markOrderPaidAction, refundOrderAction } from '@/server/actions/billing';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { SalesList, type OrderRow } from './sales-list';
 import { formatMoney } from '@/lib/utils';
 
 /**
@@ -29,6 +27,7 @@ export default async function AdminSalesPage() {
         status: orders.status,
         creditsGranted: orders.creditsGranted,
         userName: users.name,
+        userId: orders.userId,
       })
       .from(orders)
       .leftJoin(users, eq(users.id, orders.userId))
@@ -43,6 +42,23 @@ export default async function AdminSalesPage() {
       .from(orders),
   ]);
 
+  // Sales default to the table: these rows exist to be compared with each
+  // other, and a card per order is far more scrolling for the same numbers.
+  // The grid is still one click away.
+  const view = await getAdminView('sales', 'list');
+
+  const items: OrderRow[] = rows.map((order) => ({
+    id: order.id,
+    reference: order.reference,
+    userName: order.userName,
+    userId: order.userId ?? null,
+    packName: order.packName,
+    amount: formatMoney(order.amountCents, order.currency),
+    gateway: order.gateway,
+    status: order.status,
+    creditsGranted: Boolean(order.creditsGranted),
+  }));
+
   return (
     <div>
       <PageHeader title="Sales" description="Orders, revenue and manual fulfilment." />
@@ -53,70 +69,8 @@ export default async function AdminSalesPage() {
         <Stat label="Awaiting payment" value={(totals?.pending ?? 0).toLocaleString('en-US')} />
       </div>
 
-      <Card className="overflow-hidden">
-        <Table>
-          <THead>
-            <tr>
-              <TH>Reference</TH>
-              <TH>Customer</TH>
-              <TH>Pack</TH>
-              <TH>Amount</TH>
-              <TH>Gateway</TH>
-              <TH>Status</TH>
-              <TH />
-            </tr>
-          </THead>
-          <TBody>
-            {rows.length === 0 ? (
-              <EmptyRow colSpan={7}>No orders yet.</EmptyRow>
-            ) : (
-              rows.map((order) => (
-                <TR key={order.id}>
-                  <TD className="font-mono text-xs">{order.reference}</TD>
-                  <TD>{order.userName ?? '—'}</TD>
-                  <TD>{order.packName}</TD>
-                  <TD className="font-semibold">{formatMoney(order.amountCents, order.currency)}</TD>
-                  <TD>
-                    <Badge>{order.gateway}</Badge>
-                  </TD>
-                  <TD>
-                    <div className="flex gap-1">
-                      <Badge
-                        tone={
-                          order.status === 'paid' ? 'green' : order.status === 'pending' ? 'amber' : 'rose'
-                        }
-                      >
-                        {order.status}
-                      </Badge>
-                      {order.creditsGranted ? <Badge>credited</Badge> : null}
-                    </div>
-                  </TD>
-                  <TD className="text-right">
-                    {order.status === 'pending' ? (
-                      <form action={markOrderPaidAction}>
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <button
-                          type="submit"
-                          className="h-8 rounded-lg border border-slate-200 px-3 text-xs font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                        >
-                          Mark paid
-                        </button>
-                      </form>
-                    ) : order.status === 'paid' ? (
-                      <form action={refundOrderAction}>
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <button type="submit" className="h-8 rounded-lg px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-                          Refund
-                        </button>
-                      </form>
-                    ) : null}
-                  </TD>
-                </TR>
-              ))
-            )}
-          </TBody>
-        </Table>
-      </Card>
+      <SalesList rows={items} view={view} />
+
     </div>
   );
 }

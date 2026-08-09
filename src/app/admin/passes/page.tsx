@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
-import { Trash2 } from 'lucide-react';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { passProducts } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { PassesList, type PassRow } from './passes-list';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
 import { Input, Textarea, Select, Label, Checkbox } from '@/components/ui/field';
 import { savePassProductAction, deletePassProductAction } from '@/server/actions/admin-billing';
 import { formatMoney } from '@/lib/utils';
@@ -16,7 +14,18 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Access passes' };
 
 export default async function AdminPassesPage() {
+  const view = await getAdminView('passes');
   const rows = await db.select().from(passProducts).orderBy(asc(passProducts.sort), asc(passProducts.priceCents));
+
+  const items: PassRow[] = rows.map((pass) => ({
+    id: pass.id,
+    name: pass.name,
+    key: pass.key,
+    duration: `${pass.durationValue} ${pass.durationUnit}${pass.durationValue > 1 ? 's' : ''}`,
+    price: formatMoney(pass.priceCents, pass.currency),
+    isActive: pass.isActive,
+    isPublic: pass.isPublic,
+  }));
 
   return (
     <div>
@@ -72,52 +81,9 @@ export default async function AdminPassesPage() {
           </label>
         </InlineForm>
 
-        <Card className="overflow-hidden lg:col-span-2">
-          <Table>
-            <THead>
-              <tr>
-                <TH>Pass</TH>
-                <TH>Duration</TH>
-                <TH>Price</TH>
-                <TH>Status</TH>
-                <TH />
-              </tr>
-            </THead>
-            <TBody>
-              {rows.length === 0 ? (
-                <EmptyRow colSpan={5}>No passes yet.</EmptyRow>
-              ) : (
-                rows.map((pass) => (
-                  <TR key={pass.id}>
-                    <TD>
-                      <p className="font-medium">{pass.name}</p>
-                      <p className="text-xs text-slate-400">{pass.key}</p>
-                    </TD>
-                    <TD className="text-xs">
-                      {pass.durationValue} {pass.durationUnit}
-                      {pass.durationValue > 1 ? 's' : ''}
-                    </TD>
-                    <TD className="font-mono text-xs">{formatMoney(pass.priceCents, pass.currency)}</TD>
-                    <TD>
-                      <div className="flex gap-1">
-                        <Badge tone={pass.isActive ? 'green' : 'slate'}>{pass.isActive ? 'active' : 'off'}</Badge>
-                        {pass.isPublic ? <Badge tone="brand">public</Badge> : null}
-                      </div>
-                    </TD>
-                    <TD className="text-right">
-                      <form action={deletePassProductAction}>
-                        <input type="hidden" name="id" value={pass.id} />
-                        <button type="submit" className="grid size-8 place-items-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-                          <Trash2 className="size-4" />
-                        </button>
-                      </form>
-                    </TD>
-                  </TR>
-                ))
-              )}
-            </TBody>
-          </Table>
-        </Card>
+        <div className="lg:col-span-2">
+          <PassesList rows={items} view={view} />
+        </div>
       </div>
     </div>
   );

@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, sectors } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/field';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
-import { deleteSectorAction } from '@/server/actions/admin';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { SectorsList } from './sectors-list';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -26,6 +24,7 @@ export default async function AdminSectorsPage({
   const { categoryId } = await searchParams;
   const filterId = categoryId ? Number(categoryId) : undefined;
 
+  const view = await getAdminView('sectors');
   const [categoryRows, rows] = await Promise.all([
     db.select().from(categories).orderBy(asc(categories.position)),
     db
@@ -79,57 +78,8 @@ export default async function AdminSectorsPage({
         </button>
       </form>
 
-      <Card className="overflow-hidden">
-        <Table>
-          <THead>
-            <tr>
-              <TH>Sector</TH>
-              <TH>Category</TH>
-              <TH className="text-right">B2C</TH>
-              <TH className="text-right">B2B</TH>
-              <TH className="text-right">B2G</TH>
-              <TH>Status</TH>
-              <TH />
-            </tr>
-          </THead>
-          <TBody>
-            {rows.length === 0 ? (
-              <EmptyRow colSpan={7}>No sectors yet.</EmptyRow>
-            ) : (
-              rows.map((sector) => (
-                <TR key={sector.id}>
-                  <TD>
-                    <Link href={`/admin/sectors/${sector.id}`} className="hover:underline">
-                      <span className="font-medium">{sector.name}</span>
-                      {sector.code ? <span className="ml-2 font-mono text-xs text-slate-400">{sector.code}</span> : null}
-                    </Link>
-                  </TD>
-                  <TD className="text-slate-500 dark:text-slate-400">{sector.categoryName}</TD>
-                  <TD className="text-right font-mono text-xs">{sector.b2cSuitability}</TD>
-                  <TD className="text-right font-mono text-xs">{sector.b2bSuitability}</TD>
-                  <TD className="text-right font-mono text-xs">{sector.b2gSuitability}</TD>
-                  <TD>
-                    <Badge tone={sector.isActive ? 'green' : 'slate'}>
-                      {sector.isActive ? 'Active' : 'Hidden'}
-                    </Badge>
-                  </TD>
-                  <TD className="text-right">
-                    <form action={deleteSectorAction}>
-                      <input type="hidden" name="id" value={sector.id} />
-                      <button
-                        type="submit"
-                        className="grid size-8 place-items-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </form>
-                  </TD>
-                </TR>
-              ))
-            )}
-          </TBody>
-        </Table>
-      </Card>
+      <SectorsList rows={rows} view={view} />
+
     </div>
   );
 }

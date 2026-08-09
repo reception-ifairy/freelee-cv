@@ -1,14 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { chats, creditWallets, users } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
-import { toggleUserActiveAction } from '@/server/actions/admin';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { CustomersList, type CustomerRow } from './customers-list';
 import { formatDate, initialsOf } from '@/lib/utils';
 
 /**
@@ -38,67 +35,28 @@ export default async function AdminCustomersPage() {
     .orderBy(desc(users.createdAt))
     .limit(100);
 
+  // Customers default to the table for the same reason as sales: this list is
+  // scanned and compared, not browsed.
+  const view = await getAdminView('customers', 'list');
+
+  const items: CustomerRow[] = rows.map((user) => ({
+    id: user.id,
+    name: user.name ?? 'Unnamed',
+    email: user.email ?? '',
+    initials: initialsOf(user.name),
+    credits: user.credits.toLocaleString('en-GB'),
+    chatCount: user.chatCount,
+    isActive: user.isActive,
+    isAdmin: user.isAdmin,
+    joined: formatDate(user.createdAt),
+  }));
+
   return (
     <div>
       <PageHeader title="Customers" description="Accounts, balances and activity." />
 
-      <Card className="overflow-hidden">
-        <Table>
-          <THead>
-            <tr>
-              <TH>Customer</TH>
-              <TH>Credits</TH>
-              <TH className="text-right">Chats</TH>
-              <TH>Status</TH>
-              <TH>Joined</TH>
-              <TH />
-            </tr>
-          </THead>
-          <TBody>
-            {rows.length === 0 ? (
-              <EmptyRow colSpan={6}>No customers yet.</EmptyRow>
-            ) : (
-              rows.map((user) => (
-                <TR key={user.id}>
-                  <TD>
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white">
-                        {initialsOf(user.name)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{user.name}</p>
-                        <p className="truncate text-xs text-slate-400">{user.email}</p>
-                      </div>
-                      {user.isAdmin ? <Badge tone="brand">admin</Badge> : null}
-                    </div>
-                  </TD>
-                  <TD className="font-semibold">{user.credits.toLocaleString('en-US')}</TD>
-                  <TD className="text-right">{user.chatCount}</TD>
-                  <TD>
-                    <form action={toggleUserActiveAction}>
-                      <input type="hidden" name="id" value={user.id} />
-                      <button type="submit">
-                        <Badge tone={user.isActive ? 'green' : 'rose'}>
-                          {user.isActive ? 'Active' : 'Suspended'}
-                        </Badge>
-                      </button>
-                    </form>
-                  </TD>
-                  <TD className="text-slate-400">{formatDate(user.createdAt)}</TD>
-                  <TD className="text-right">
-                    <Link
-                      href={`/admin/customers/${user.id}`}
-                      className="grid size-8 place-items-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </TD>
-                </TR>
-              ))
-            )}
-          </TBody>
-        </Table>
-      </Card>
+      <CustomersList rows={items} view={view} />
+
     </div>
   );
 }

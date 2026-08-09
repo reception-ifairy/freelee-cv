@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
-import { Trash2 } from 'lucide-react';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { plans } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { PlansList, type PlanRow } from './plans-list';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
 import { Input, Textarea, Select, Label, Checkbox } from '@/components/ui/field';
 import { savePlanAction, deletePlanAction } from '@/server/actions/admin-billing';
 import { formatMoney } from '@/lib/utils';
@@ -16,7 +14,18 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Subscription plans' };
 
 export default async function AdminPlansPage() {
+  const view = await getAdminView('plans');
   const rows = await db.select().from(plans).orderBy(asc(plans.sort), asc(plans.priceCents));
+
+  const items: PlanRow[] = rows.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    subtitle: `${plan.key} · every ${plan.intervalCount} ${plan.intervalUnit}${plan.intervalCount > 1 ? 's' : ''}`,
+    price: formatMoney(plan.priceCents, plan.currency),
+    credits: plan.creditsPerCycle.toLocaleString('en-GB'),
+    isActive: plan.isActive,
+    isPublic: plan.isPublic,
+  }));
 
   return (
     <div>
@@ -80,52 +89,9 @@ export default async function AdminPlansPage() {
           </label>
         </InlineForm>
 
-        <Card className="overflow-hidden lg:col-span-2">
-          <Table>
-            <THead>
-              <tr>
-                <TH>Plan</TH>
-                <TH>Price</TH>
-                <TH>Credits/cycle</TH>
-                <TH>Status</TH>
-                <TH />
-              </tr>
-            </THead>
-            <TBody>
-              {rows.length === 0 ? (
-                <EmptyRow colSpan={5}>No plans yet.</EmptyRow>
-              ) : (
-                rows.map((plan) => (
-                  <TR key={plan.id}>
-                    <TD>
-                      <p className="font-medium">{plan.name}</p>
-                      <p className="text-xs text-slate-400">
-                        {plan.key} · every {plan.intervalCount} {plan.intervalUnit}
-                        {plan.intervalCount > 1 ? 's' : ''}
-                      </p>
-                    </TD>
-                    <TD className="font-mono text-xs">{formatMoney(plan.priceCents, plan.currency)}</TD>
-                    <TD className="text-xs">{plan.creditsPerCycle.toLocaleString('en-US')}</TD>
-                    <TD>
-                      <div className="flex gap-1">
-                        <Badge tone={plan.isActive ? 'green' : 'slate'}>{plan.isActive ? 'active' : 'off'}</Badge>
-                        {plan.isPublic ? <Badge tone="brand">public</Badge> : null}
-                      </div>
-                    </TD>
-                    <TD className="text-right">
-                      <form action={deletePlanAction}>
-                        <input type="hidden" name="id" value={plan.id} />
-                        <button type="submit" className="grid size-8 place-items-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-                          <Trash2 className="size-4" />
-                        </button>
-                      </form>
-                    </TD>
-                  </TR>
-                ))
-              )}
-            </TBody>
-          </Table>
-        </Card>
+        <div className="lg:col-span-2">
+          <PlansList rows={items} view={view} />
+        </div>
       </div>
     </div>
   );

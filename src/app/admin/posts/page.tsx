@@ -1,16 +1,14 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { CalendarClock, LayoutGrid, Trash2 } from 'lucide-react';
+
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, posts, users } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
+import { getAdminView } from '@/lib/admin/view-preference-server';
+import { PostsList, type PostRow } from './posts-list';
 import { Input, Textarea, Label, Select, Checkbox, Hint } from '@/components/ui/field';
-import { deletePostAction, savePostAction } from '@/server/actions/admin';
+import { savePostAction } from '@/server/actions/admin';
 import { isScheduled } from '@/lib/blog/visibility';
 import { formatDate } from '@/lib/utils';
 
@@ -22,6 +20,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Blog posts' };
 
 export default async function AdminPostsPage() {
+  const view = await getAdminView('posts');
   const [rows, categoryRows] = await Promise.all([
     db
       .select({
@@ -41,6 +40,18 @@ export default async function AdminPostsPage() {
       .limit(50),
     db.select().from(categories).orderBy(categories.position),
   ]);
+
+  const items: PostRow[] = rows.map((post) => ({
+    id: post.id,
+    title: post.title,
+    slug: post.slug,
+    isPublished: post.isPublished,
+    isScheduled: isScheduled(post),
+    publishedLabel: post.publishedAt ? formatDate(post.publishedAt) : '—',
+    views: post.views,
+    authorName: post.authorName,
+    categoryName: post.categoryName,
+  }));
 
   return (
     <div>
@@ -77,69 +88,9 @@ export default async function AdminPostsPage() {
           </label>
         </InlineForm>
 
-        <Card className="overflow-hidden lg:col-span-2">
-          <Table>
-            <THead>
-              <tr>
-                <TH>Title</TH>
-                <TH>Category</TH>
-                <TH className="text-right">Views</TH>
-                <TH>Status</TH>
-                <TH />
-              </tr>
-            </THead>
-            <TBody>
-              {rows.length === 0 ? (
-                <EmptyRow colSpan={5}>No posts yet.</EmptyRow>
-              ) : (
-                rows.map((post) => (
-                  <TR key={post.id}>
-                    <TD>
-                      <p className="font-medium">{post.title}</p>
-                      <p className="text-xs text-slate-400">
-                        /{post.slug} · {formatDate(post.publishedAt)}
-                      </p>
-                    </TD>
-                    <TD>{post.categoryName ?? '—'}</TD>
-                    <TD className="text-right">{post.views.toLocaleString('en-US')}</TD>
-                    <TD>
-                      {/* A future publish date used to be ignored entirely, so
-                          "Published" was a lie for scheduled posts. Now it says
-                          which one it is. */}
-                      {isScheduled(post) ? (
-                        <Badge tone="amber" title={post.publishedAt?.toISOString()}>
-                          <CalendarClock className="size-3" /> Scheduled
-                        </Badge>
-                      ) : (
-                        <Badge tone={post.isPublished ? 'green' : 'slate'}>
-                          {post.isPublished ? 'Published' : 'Draft'}
-                        </Badge>
-                      )}
-                    </TD>
-                    <TD className="text-right">
-                      <Link
-                        href={`/admin/posts/${post.id}/builder`}
-                        title="Open the block builder"
-                        className="mr-1 inline-grid size-8 place-items-center rounded-lg align-middle text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      >
-                        <LayoutGrid className="size-4" />
-                      </Link>
-                      <form action={deletePostAction} className="inline">
-                        <input type="hidden" name="id" value={post.id} />
-                        <button
-                          type="submit"
-                          className="grid size-8 place-items-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </form>
-                    </TD>
-                  </TR>
-                ))
-              )}
-            </TBody>
-          </Table>
-        </Card>
+        <div className="lg:col-span-2">
+          <PostsList rows={items} view={view} />
+        </div>
       </div>
     </div>
   );

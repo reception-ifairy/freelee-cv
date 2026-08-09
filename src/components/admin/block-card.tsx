@@ -15,6 +15,7 @@ import type { ActionState } from '@/server/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import { FormMessage } from '@/components/ui/field';
 import { BlockIcon } from '@/components/ui/block-icon';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { BlockFields } from './block-fields';
 import { BlockLayoutControls } from './block-layout-controls';
 import { cn } from '@/lib/utils';
@@ -113,54 +114,47 @@ export function BlockCard({
         !row.isVisible && 'opacity-60',
       )}
     >
-      <div className="flex flex-wrap items-center gap-3 p-4">
+      {/* Deliberately a tight single line, and deliberately still vertical:
+          in a page builder the order on screen IS the order on the page, so a
+          grid would break the one thing this list is for. The five loose icon
+          buttons that used to sit here are now one labelled ⋯ menu. */}
+      <div className="flex items-center gap-2.5 px-3 py-2">
         <button
           type="button"
           ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
           aria-label={`Reorder ${meta.label}`}
-          className="cursor-grab touch-none rounded-lg p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800"
+          className="cursor-grab touch-none rounded-lg p-0.5 text-slate-300 hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800"
         >
-          <GripVertical className="size-5" />
+          <GripVertical className="size-4" />
         </button>
 
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-          <BlockIcon name={meta.icon} className="size-4" />
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <BlockIcon name={meta.icon} className="size-3.5" />
         </span>
 
-        <button type="button" onClick={() => setOpen(!open)} className="min-w-0 flex-1 text-left" aria-expanded={open}>
-          <p className="truncate font-semibold">{meta.label}</p>
-          <p className="truncate text-xs text-slate-400">{meta.description}</p>
+        <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-baseline gap-2 text-left" aria-expanded={open}>
+          <span className="truncate text-sm font-semibold">{meta.label}</span>
+          <span className="hidden truncate text-xs text-slate-400 sm:inline">{meta.description}</span>
         </button>
 
         {dirty ? <Badge tone="amber">unsaved</Badge> : null}
         {!row.isVisible ? <Badge tone="slate">hidden</Badge> : null}
         {meta.dataDriven ? <Badge tone="slate">live data</Badge> : null}
 
-        <div className="flex items-center gap-1">
-          {/* Arrow buttons stay beside drag-and-drop: they work without
-              JavaScript and are unambiguous when a list is long. */}
-          <IconButton label="Move up" onClick={() => onMove(row.id, 'up')} disabled={isFirst}>
-            <ChevronDown className="size-4 rotate-180" />
-          </IconButton>
-          <IconButton label="Move down" onClick={() => onMove(row.id, 'down')} disabled={isLast}>
-            <ChevronDown className="size-4" />
-          </IconButton>
-          <IconButton label={row.isVisible ? 'Hide' : 'Show'} onClick={() => onToggle(row.id, row.isVisible)}>
-            {row.isVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-          </IconButton>
-          {meta.repeatable ? (
-            <>
-              <IconButton label="Duplicate" onClick={() => onDuplicate(row.id)}>
-                <Copy className="size-4" />
-              </IconButton>
-              <IconButton label="Delete" onClick={() => onDelete(row.id)} tone="danger">
-                <Trash2 className="size-4" />
-              </IconButton>
-            </>
-          ) : null}
-        </div>
+        <ActionMenu
+          label={`${meta.label} actions`}
+          items={[
+            { label: open ? 'Close editor' : 'Edit content', icon: <Pencil className="size-4" />, onSelect: () => { setTab('content'); setOpen(!open); } },
+            { label: 'Layout & grid', icon: <LayoutGrid className="size-4" />, onSelect: () => { setTab('layout'); setOpen(true); } },
+            { label: 'Move up', icon: <ChevronDown className="size-4 rotate-180" />, onSelect: () => onMove(row.id, 'up'), disabled: isFirst, separated: true },
+            { label: 'Move down', icon: <ChevronDown className="size-4" />, onSelect: () => onMove(row.id, 'down'), disabled: isLast },
+            { label: row.isVisible ? 'Hide from the page' : 'Show on the page', icon: row.isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />, onSelect: () => onToggle(row.id, row.isVisible), separated: true },
+            { label: 'Duplicate', icon: <Copy className="size-4" />, onSelect: () => onDuplicate(row.id), disabled: !meta.repeatable },
+            { label: 'Delete', icon: <Trash2 className="size-4" />, onSelect: () => onDelete(row.id), disabled: !meta.repeatable, danger: true, separated: true },
+          ]}
+        />
       </div>
 
       {meta.container ? (
@@ -218,30 +212,6 @@ export function BlockCard({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function IconButton({
-  label, onClick, disabled, tone, children,
-}: {
-  label: string; onClick: () => void; disabled?: boolean; tone?: 'danger'; children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'grid size-8 place-items-center rounded-lg border border-slate-200 transition disabled:opacity-30 dark:border-slate-700',
-        tone === 'danger'
-          ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10'
-          : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800',
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
