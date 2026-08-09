@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Copy, Volume2, ShieldAlert } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Check, Copy, Volume2, Loader2, ShieldAlert } from 'lucide-react';
+import { speakAction } from '@/server/actions/voice';
 import { Markdown } from '@/components/site/markdown';
 import { NarrativeMessage } from './narrative-message';
 import type { ChatLayoutConfig } from '@/lib/chat/layouts';
@@ -23,6 +24,7 @@ const DENSITY: Record<ChatLayoutConfig['density'], string> = {
 export function MessageBubble({
   role,
   text,
+  chatId,
   images = [],
   layout,
   speaker,
@@ -33,6 +35,8 @@ export function MessageBubble({
 }: {
   role: 'user' | 'assistant';
   text: string;
+  /** Needed for read-aloud, which is an owned-conversation action because it costs money. */
+  chatId?: string;
   images?: { url: string; mediaType: string }[];
   layout: ChatLayoutConfig;
   speaker?: string;
@@ -42,6 +46,8 @@ export function MessageBubble({
   isGuardrail?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const isUser = role === 'user';
   const showCopy = Boolean(canCopy) && layout.showCopy && !isUser && text.trim().length > 0;
 
@@ -56,10 +62,41 @@ export function MessageBubble({
     }
   }
 
-  function speak() {
+  function speakInBrowser() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+
+  /**
+   * Tries the good voice first, falls back to the browser's own.
+   *
+   * Losing ElevenLabs should never mean losing read-aloud — it's an
+   * accessibility affordance on the Learning and Supportive layouts, not a
+   * flourish. Any failure degrades to `speechSynthesis` silently.
+   */
+  async function speak() {
+    if (!chatId) return speakInBrowser();
+    setSpeaking(true);
+    try {
+      const form = new FormData();
+      form.set('chatId', chatId);
+      form.set('text', text);
+      const result = await speakAction(null, form);
+
+      if (result?.url) {
+        audioRef.current?.pause();
+        const audio = new Audio(result.url);
+        audioRef.current = audio;
+        await audio.play();
+        return;
+      }
+      speakInBrowser();
+    } catch {
+      speakInBrowser();
+    } finally {
+      setSpeaking(false);
+    }
   }
 
   const gallery =
@@ -107,11 +144,12 @@ export function MessageBubble({
         {canSpeak ? (
           <button
             type="button"
-            onClick={speak}
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            onClick={() => void speak()}
+            disabled={speaking}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           >
-            <Volume2 className="size-3" />
-            Read aloud
+            {speaking ? <Loader2 className="size-3 animate-spin" /> : <Volume2 className="size-3" />}
+            {speaking ? 'Preparing…' : 'Read aloud'}
           </button>
         ) : null}
       </div>

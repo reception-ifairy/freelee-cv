@@ -116,4 +116,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Integration candidates** (ranked shortlist of external APIs — ElevenLabs voice, search grounding, moderation, object storage — mapped to the seams that already exist) — `27-integration-candidates.md`
 - **Local models & AI moderation** (Ollama/Llama on this box with real CPU throughput numbers; classifier-based input moderation and why OpenAI's free endpoint doesn't work here) — `28-local-models-and-moderation.md`
 - **Tool calling** (personas can compute and act, not just talk — category-suggested tools, safe expression parser, no `eval`) — `29-tools.md`
+- **Voice (ElevenLabs)** (real TTS with a total browser fallback — built but unverified against the live API) — `30-voice.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

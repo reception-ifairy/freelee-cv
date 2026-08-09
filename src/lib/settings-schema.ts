@@ -33,6 +33,11 @@ export const SETTINGS_SCHEMA = {
     { key: 'ollama_base_url', label: 'Ollama base URL', type: 'string', help: 'e.g. http://localhost:11434/v1' },
     { key: 'guest_free_messages', label: 'Free messages before signup', type: 'int' },
     { key: 'signup_bonus_credits', label: 'Signup bonus credits', type: 'int' },
+    { key: 'elevenlabs_api_key', label: 'ElevenLabs API key', type: 'secret' },
+    {
+      key: 'elevenlabs_voice_id', label: 'ElevenLabs voice ID', type: 'string',
+      help: 'Leave blank for the default voice. Only used when an ElevenLabs key is set — without one, read-aloud falls back to the browser voice.',
+    },
     {
       key: 'moderation_mode', label: 'Input moderation', type: 'string',
       help: "'wordlist' (default, free), 'ai' (a classifier call per message — catches meaning, costs a little), or 'off'. Only applies to personas with \"Filter offensive input\" ticked.",

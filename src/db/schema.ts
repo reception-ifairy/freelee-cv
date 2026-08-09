@@ -80,7 +80,7 @@ export const orderKind = pgEnum('order_kind', ['credit_pack', 'subscription', 'p
  * compiler checks every read and write — jsonb is not an escape hatch here.
  * ------------------------------------------------------------------------- */
 /** One image on a message — `url` is a site-relative path like `/uploads/ab12.png`. */
-export type MessageAttachment = { url: string; mediaType: string; kind: 'upload' | 'generated' };
+export type MessageAttachment = { url: string; mediaType: string; kind: 'upload' | 'generated' | 'speech' };
 
 export type PersonaCapabilities = {
   vision?: boolean; images?: boolean; voiceIn?: boolean; voiceOut?: boolean;

@@ -27,12 +27,13 @@ export interface MediaStore {
   get(name: string): Promise<FetchedObject | null>;
 }
 
-/** Only formats every current model actually accepts. */
+/** Image formats every current model accepts, plus the audio format TTS returns. */
 export const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'audio/mpeg': 'mp3',
 };
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -46,7 +47,7 @@ export function extensionFor(mediaType: string): string | null {
  * *shape* — rather than sanitising an arbitrary string — is what makes path
  * traversal impossible in the local driver: `..` and `/` cannot match.
  */
-export const OBJECT_NAME_RE = /^[a-f0-9-]{36}\.(png|jpg|webp|gif)$/;
+export const OBJECT_NAME_RE = /^[a-f0-9-]{36}\.(png|jpg|webp|gif|mp3)$/;
 
 export function isValidObjectName(name: string): boolean {
   return OBJECT_NAME_RE.test(name);
@@ -57,4 +58,5 @@ export const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   jpg: 'image/jpeg',
   webp: 'image/webp',
   gif: 'image/gif',
+  mp3: 'audio/mpeg',
 };

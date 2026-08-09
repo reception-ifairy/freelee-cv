@@ -157,6 +157,7 @@ export function ChatWindow({
             key={message.id}
             role={message.role === 'user' ? 'user' : 'assistant'}
             text={message.role === 'user' ? textOf(message) : parseSuggestions(textOf(message)).text}
+            chatId={chatId}
             images={imagesOf(message)}
             layout={layout}
             canCopy={capabilities.copy}
