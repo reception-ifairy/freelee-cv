@@ -1,10 +1,9 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ImageIcon, X } from 'lucide-react';
-import { generateImageAction } from '@/server/actions/images';
-import type { ActionState } from '@/server/actions/auth';
+import { generateImageAction, type ImageActionState, type GeneratedMessage } from '@/server/actions/images';
 import { Input, FormMessage } from '@/components/ui/field';
 
 function GenerateButton() {
@@ -29,18 +28,34 @@ function GenerateButton() {
  * Only rendered when the persona has the `images` capability; the action
  * re-checks that server-side regardless.
  */
-export function ImageGenerator({ chatId }: { chatId: string }) {
-  const [state, formAction] = useActionState<ActionState, FormData>(generateImageAction, null);
+export function ImageGenerator({
+  chatId,
+  onGenerated,
+}: {
+  chatId: string;
+  /** Hands the newly created messages to the transcript that owns them. */
+  onGenerated: (created: GeneratedMessage[]) => void;
+}) {
+  const [state, formAction] = useActionState<ImageActionState, FormData>(generateImageAction, null);
   const [open, setOpen] = useState(false);
+  const appliedRef = useRef<string | null>(null);
 
-  // The action writes the new messages server-side, but the transcript is
-  // `useChat` state seeded once from a prop — a server revalidate can't push
-  // into it, so the image would sit in the database unseen until the user
-  // happened to refresh. A full reload is blunt but honest, and generation is
-  // already a deliberate multi-second action where one is unsurprising.
+  // The action returns the messages it wrote, and they're appended straight to
+  // the live transcript. This used to reload the whole page — the component
+  // sat outside ChatWindow and so had no way to reach `useChat`'s state.
+  //
+  // Guarded by the last applied message id because `useActionState` keeps the
+  // previous result across re-renders: without it, any unrelated re-render
+  // would append the same pair of messages again.
   useEffect(() => {
-    if (state?.success) window.location.reload();
-  }, [state?.success]);
+    const created = state?.created;
+    if (!created?.length) return;
+    const marker = created[created.length - 1].id;
+    if (appliedRef.current === marker) return;
+    appliedRef.current = marker;
+    onGenerated(created);
+    setOpen(false);
+  }, [state?.created, onGenerated]);
 
   if (!open) {
     return (

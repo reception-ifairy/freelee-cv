@@ -21,7 +21,8 @@
     "i18n:extract": "tsx scripts/extract-translations.ts",
     "i18n:translate": "tsx scripts/translate-bank.ts",
     "i18n:export": "tsx scripts/export-translations.ts",
-    "i18n:import": "tsx scripts/import-translations.ts"
+    "i18n:import": "tsx scripts/import-translations.ts",
+    "media:verify": "tsx scripts/verify-sigv4.ts && tsx scripts/verify-s3-store.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",

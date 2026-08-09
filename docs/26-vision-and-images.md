@@ -80,22 +80,66 @@ static-file manifest when the server starts, so a file written there afterwards 
 the process restarts**. Verified directly — an upload 404'd, a `pm2 restart` with no other change
 made the same URL return 200. Every user upload would have been broken until someone restarted.
 
-Files now live in `storage/uploads` (outside `public/`, gitignored) and are served by
-`src/app/uploads/[name]/route.ts`, which reads from disk per request. The public URL is unchanged.
-Filenames must match `<uuid>.<ext>`, which is what makes path traversal impossible — `..` and `/`
-simply cannot match the pattern.
+Files live outside `public/` and are served by `src/app/uploads/[name]/route.ts`, which reads
+through the storage driver per request. Filenames must match `<uuid>.<ext>`, which is what makes
+path traversal impossible — `..` and `/` simply cannot match the pattern.
 
-**Local disk is a deliberate limitation.** Right for one box behind pm2, which is this deployment;
-wrong the moment there are two instances or an ephemeral filesystem. Swapping in object storage
-means changing `src/lib/media/store.ts` and that route, and nothing else.
+## Storage is pluggable (2026-08-09)
 
-## One rough edge, knowingly left
+`src/lib/media/` is now driver-based:
 
-A generated image triggers a **full page reload**. The action writes the messages server-side, but
-the transcript is `useChat` state seeded once from a prop, and a server revalidate can't push into
-it — without the reload the image would sit in the database unseen. Blunt, but generation is
-already a deliberate multi-second action. The tidy fix is for the generator to hand the new
-messages to `useChat` directly, which means lifting it inside `ChatWindow`.
+| File | Role |
+|---|---|
+| `types.ts` | The `MediaStore` contract — `put` and `get`, nothing more |
+| `local-store.ts` | Local disk. The default. |
+| `s3-store.ts` | Any S3-compatible bucket — AWS, Cloudflare R2, MinIO, B2 |
+| `sigv4.ts` | Request signing, hand-rolled |
+| `store.ts` | Driver selection + the data-URL helpers callers use |
+
+`MEDIA_STORE=s3` plus `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_ENDPOINT`
+switches backend. Misconfiguring it **throws** rather than silently falling back to local disk:
+on a multi-instance deployment that fallback produces images that work on one box and 404 on the
+next, which is a miserable intermittent bug to chase.
+
+**Why local disk is still the default and still correct**: this is one box behind pm2. The trigger
+for switching is a *second instance* or an ephemeral filesystem — not disk size — because instance
+A cannot serve a file instance B wrote.
+
+SigV4 is hand-rolled rather than pulling in `@aws-sdk/client-s3`, which is tens of megabytes for
+two HTTP calls. That puts the burden on the signing being right, so it's verified:
+
+```bash
+npm run media:verify
+```
+
+- `scripts/verify-sigv4.ts` checks the signature against **AWS's own published `get-vanilla` test
+  vector**. This caught a real bug: `x-amz-content-sha256` was being signed unconditionally, which
+  is correct for S3 and wrong for generic SigV4, so the vector didn't reproduce. The algorithm was
+  right; the header set wasn't.
+- `scripts/verify-s3-store.ts` round-trips a real object through a local mock endpoint and asserts
+  path-style URL, content type, credential scope, signed-header list, byte-identical retrieval, and
+  that an invalid object name is refused *without* a network call.
+
+**Stated plainly**: none of this has touched a real bucket — there are no credentials here. Do one
+smoke test before trusting it with anything that matters.
+
+## The generation reload, fixed (2026-08-09)
+
+Generating an image used to trigger `window.location.reload()`. The action wrote the messages
+server-side, but the transcript is `useChat` state seeded once from a prop, and a server
+revalidate can't push into it — without the reload the image sat in the database unseen.
+
+`ImageGenerator` now lives **inside** `ChatWindow`, where `setMessages` is in scope.
+`generateImageAction` returns the two messages it created, and they're appended in place.
+
+Two details that matter:
+- The append is guarded by the last created message id. `useActionState` keeps its previous result
+  across re-renders, so without the guard any unrelated re-render would append the same pair again.
+- `revalidatePath` is still called, so a *fresh* page load is correct too. The returned messages
+  only fix the transcript that's already open.
+
+Verified by tagging the live document with a sentinel before generating: the image appeared, and
+the sentinel survived — proving the document was never replaced.
 
 ## Verified
 

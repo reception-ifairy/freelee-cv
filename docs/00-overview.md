@@ -113,4 +113,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Conversation controls** (per-chat tone/writing/output/length + interaction style and how-it-handles-unknowns, without editing the persona) — `24-chat-controls.md`
 - **Google (Gemini) provider** (full driver + live model fetch; the "listed ≠ usable" gotcha and why tiers point at `-latest` aliases) — `25-google-provider.md`
 - **Vision, image generation, embedding, input filtering** (the last four unwired capability flags; includes the `public/` static-manifest trap and why uploads are served by a route) — `26-vision-and-images.md`
+- **Integration candidates** (ranked shortlist of external APIs — ElevenLabs voice, search grounding, moderation, object storage — mapped to the seams that already exist) — `27-integration-candidates.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

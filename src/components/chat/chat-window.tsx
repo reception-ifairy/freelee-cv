@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { parseSuggestions } from '@/lib/persona/prompt';
@@ -9,6 +9,8 @@ import { parseNarrative, choicesOf } from '@/lib/chat/narrative';
 import { MessageBubble } from './message-bubble';
 import { Composer, type PendingImage } from './composer';
 import { SuggestionChips } from './suggestion-chips';
+import { ImageGenerator } from './image-generator';
+import type { GeneratedMessage } from '@/server/actions/images';
 import { cn } from '@/lib/utils';
 
 export type ChatCapabilities = {
@@ -65,7 +67,7 @@ export function ChatWindow({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const layout = resolveChatLayout(layoutKey);
 
-  const { messages, sendMessage, status, error, stop } = useChat({
+  const { messages, setMessages, sendMessage, status, error, stop } = useChat({
     id: chatId,
     messages: initialMessages,
     transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -98,6 +100,26 @@ export function ChatWindow({
     setDraft(value);
     inputRef.current?.focus();
   }
+
+  // Appends the messages a generation just wrote. `useCallback` because it's
+  // a dependency of the generator's effect — an unstable identity there would
+  // re-run it on every render.
+  const appendGenerated = useCallback(
+    (created: GeneratedMessage[]) => {
+      setMessages((current) => [
+        ...current,
+        ...created.map((message) => ({
+          id: message.id,
+          role: message.role,
+          parts: [
+            ...message.images.map((image) => ({ type: 'file' as const, mediaType: image.mediaType, url: image.url })),
+            { type: 'text' as const, text: message.text },
+          ],
+        })),
+      ]);
+    },
+    [setMessages],
+  );
 
   function submit() {
     const text = draft.trim();
@@ -167,7 +189,9 @@ export function ChatWindow({
       </div>
 
       <footer className="border-t border-slate-200 p-4 dark:border-slate-800">
-        <div className={cn(layout.bubbleStyle === 'document' && 'mx-auto w-full max-w-3xl')}>
+        <div className={cn('space-y-2', layout.bubbleStyle === 'document' && 'mx-auto w-full max-w-3xl')}>
+          {capabilities.images ? <ImageGenerator chatId={chatId} onGenerated={appendGenerated} /> : null}
+
           <Composer
             value={draft}
             onChange={setDraft}

@@ -14,6 +14,20 @@ import { spendCredits, getBalanceForTeam, InsufficientCreditsError } from '@/lib
 import { hasActiveEntitlement } from '@/lib/billing/entitlements';
 import type { ActionState } from './auth';
 
+/**
+ * Returns the two messages it created, so the caller can splice them straight
+ * into the live transcript. Without this the client had no way to learn what
+ * had happened server-side and fell back to reloading the whole page.
+ */
+export type GeneratedMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  images: { url: string; mediaType: string }[];
+};
+
+export type ImageActionState = (ActionState & { created?: GeneratedMessage[] }) | null;
+
 const schema = z.object({
   chatId: z.string().min(1),
   prompt: z.string().trim().min(3, 'Describe the image you want.').max(1000),
@@ -34,7 +48,7 @@ const schema = z.object({
  * user whose balance drops between the check and the charge — is bounded by
  * one image and resolves itself on the next attempt.
  */
-export async function generateImageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function generateImageAction(_prev: ImageActionState, formData: FormData): Promise<ImageActionState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Check the prompt.' };
   const { chatId, prompt } = parsed.data;
@@ -93,21 +107,35 @@ export async function generateImageAction(_prev: ActionState, formData: FormData
   }
 
   const position = (await db.$count(messages, eq(messages.chatId, chatId))) + 1;
+  const promptText = `Create an image: ${prompt}`;
+  const replyText = `Here's the image you asked for.`;
 
-  await db.insert(messages).values([
-    { chatId, role: 'user', content: `Create an image: ${prompt}`, position, status: 'complete' },
-    {
-      chatId,
-      role: 'assistant',
-      content: `Here's the image you asked for.`,
-      attachments: [stored],
-      position: position + 1,
-      status: 'complete',
-    },
-  ]);
+  const inserted = await db
+    .insert(messages)
+    .values([
+      { chatId, role: 'user', content: promptText, position, status: 'complete' },
+      {
+        chatId,
+        role: 'assistant',
+        content: replyText,
+        attachments: [stored],
+        position: position + 1,
+        status: 'complete',
+      },
+    ])
+    .returning({ id: messages.id, role: messages.role });
 
   await db.update(chats).set({ lastMessageAt: new Date() }).where(eq(chats.id, chatId));
 
+  // Still revalidated so a *fresh* load of the page is correct — the returned
+  // messages only fix the transcript that's already open.
   revalidatePath(`/chat/${chatId}`);
-  return { success: `Created with ${choice.label}.` };
+
+  return {
+    success: `Created with ${choice.label}.`,
+    created: [
+      { id: inserted[0].id, role: 'user', text: promptText, images: [] },
+      { id: inserted[1].id, role: 'assistant', text: replyText, images: [{ url: stored.url, mediaType: stored.mediaType }] },
+    ],
+  };
 }

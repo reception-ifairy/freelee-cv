@@ -12,7 +12,6 @@ import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { ChatWindow } from '@/components/chat/chat-window';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { ChatControls } from '@/components/chat/chat-controls';
-import { ImageGenerator } from '@/components/chat/image-generator';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
 
@@ -145,12 +144,6 @@ export default async function ChatPage({ params }: { params: Params }) {
               </form>
             </div>
           </header>
-
-          {capabilities.images ? (
-            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <ImageGenerator chatId={chat.id} />
-            </div>
-          ) : null}
 
           <ChatControls
             chatId={chat.id}
