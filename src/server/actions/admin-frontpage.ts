@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { pageSections } from '@/db/schema';
+import { pages, pageSections, posts } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
 import { blockMeta, canNest, isBlockKey } from '@/lib/blocks/catalog';
 import { validateBlockConfig } from '@/lib/blocks/validate';
@@ -275,4 +275,35 @@ export async function duplicateSectionAction(formData: FormData) {
 export async function deleteBlocksForScope(ids: number[]) {
   if (ids.length === 0) return;
   await db.delete(pageSections).where(inArray(pageSections.id, ids));
+}
+
+/**
+ * Switches a CMS page or blog post between its markdown field and the block
+ * builder.
+ *
+ * Non-destructive in both directions: `content` is never touched, so switching
+ * to blocks and back restores the original text exactly. The renderer also
+ * falls back to `content` when a page is set to blocks but has none yet, so
+ * flipping this can never leave a visitor looking at a blank page.
+ */
+export async function setPageBuilderAction(formData: FormData) {
+  await requireAdmin();
+  const pageId = z.coerce.number().int().positive().parse(formData.get('pageId'));
+  const useBuilder = formData.get('useBuilder') === 'true';
+
+  await db.update(pages).set({ useBuilder, updatedAt: new Date() }).where(eq(pages.id, pageId));
+
+  revalidatePath('/', 'layout');
+  revalidatePath(`/admin/pages/${pageId}/builder`);
+}
+
+export async function setPostBuilderAction(formData: FormData) {
+  await requireAdmin();
+  const postId = z.coerce.number().int().positive().parse(formData.get('postId'));
+  const useBuilder = formData.get('useBuilder') === 'true';
+
+  await db.update(posts).set({ useBuilder, updatedAt: new Date() }).where(eq(posts.id, postId));
+
+  revalidatePath('/', 'layout');
+  revalidatePath(`/admin/posts/${postId}/builder`);
 }

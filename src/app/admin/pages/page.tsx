@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { LayoutGrid, Trash2 } from 'lucide-react';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { pages } from '@/db/schema';
@@ -77,8 +78,15 @@ export default async function AdminPagesPage() {
                       </Badge>
                     </TD>
                     <TD className="text-right">
+                      <Link
+                        href={`/admin/pages/${page.id}/builder`}
+                        title="Open the block builder"
+                        className="mr-1 inline-grid size-8 place-items-center rounded-lg align-middle text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <LayoutGrid className="size-4" />
+                      </Link>
                       {page.isLocked ? null : (
-                        <form action={deletePageAction}>
+                        <form action={deletePageAction} className="inline">
                           <input type="hidden" name="id" value={page.id} />
                           <button
                             type="submit"
