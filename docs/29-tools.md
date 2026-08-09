@@ -69,3 +69,39 @@ only reason that wasn't logged as a bug.
 
 The obvious additions are API-backed and need keys: web search (Tavily/Brave), weather, currency
 rates, company lookup. Each is one entry in the registry plus a `needsKey` guard.
+
+---
+
+## Live-data tools (added 2026-08-09)
+
+Three tools that reach outside the box. Two need no key at all, which is why they were chosen first.
+
+| Tool | Source | Key needed | Verified |
+|---|---|---|---|
+| `weather` | Open-Meteo | No | ✅ Warsaw → "mainly clear with a temperature of 24.9°C" |
+| `currency` | Frankfurter (ECB reference rates) | No | ✅ 250 GBP → 1,252.93 PLN, matching the ECB rate of 5.0117 exactly |
+| `web_search` | Tavily | **Yes** | ✅ refuses gracefully: "Live web search is currently unavailable." |
+
+The currency check is the useful one: the figure was compared against the published ECB rate rather
+than merely "looking plausible", which is the only way to catch an inverted conversion.
+
+### Why the catalog/registry split
+
+`TOOL_CATALOG` (`src/lib/tools/catalog.ts`) holds the metadata — key, label, description, whether a
+key is required, which categories suggest it. `src/lib/tools/registry.ts` holds the
+implementations and is `server-only`, because tools read API keys out of settings.
+
+They are separate files because the persona admin form is a **client** component and needs the
+metadata to render the tool picker. Importing the registry there pulled `@/lib/settings` — and
+therefore the database — into the client bundle, which failed the build with eight errors. The
+catalog is the client-safe half; the registry joins the two on `key` at module load.
+
+This is the second time a `server-only` import has leaked into a client bundle this month (the first
+was the AI provider registry). The pattern that works: **constants in one file, implementations in
+another, joined server-side.**
+
+### Graceful refusal without a key
+
+`web_search` is registered with `needsKey: true`. With no Tavily key it is still offered to the
+model, but returns a refusal string rather than throwing — so the persona says "live web search is
+currently unavailable" instead of the chat erroring out. Verified live.

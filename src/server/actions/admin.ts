@@ -18,7 +18,7 @@ import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
 import { isChatProvider } from '@/lib/ai/registry';
 import { isChatLayoutKey } from '@/lib/chat/layouts';
-import { isToolKey } from '@/lib/tools/registry';
+import { isToolKey } from '@/lib/tools/catalog';
 import type { ActionState } from './auth';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);

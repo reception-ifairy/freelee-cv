@@ -60,3 +60,79 @@ item. It's tap-to-play, not automatic, for exactly that reason.
 valuable half for accessibility — every browser can record audio. It needs an upload path for the
 recording and a transcription call, and is the obvious next step once the TTS half is confirmed
 working.
+
+---
+
+# Speech-to-text (ElevenLabs Scribe)
+
+Added 2026-08-09.
+
+## The problem it fixes
+
+`capabilities.voiceIn` used the browser's `SpeechRecognition` API. That API **only exists in
+Chrome** — Firefox and Safari users saw no mic button at all. On the Learning and Supportive
+layouts, where dictation is a genuine accessibility affordance rather than a nicety, that meant the
+feature simply did not exist for a large share of visitors.
+
+Scribe replaces it with a server-side transcription that works in any browser with `MediaRecorder`,
+which is all of them.
+
+## How it works
+
+1. The composer records a clip with `MediaRecorder`, picking the first container the browser
+   supports (`audio/webm;codecs=opus` in Chrome/Firefox, `audio/mp4` in Safari).
+2. On stop, the microphone tracks are stopped **immediately** — leaving them live keeps the
+   browser's recording indicator on, which reads to the user as the site still listening.
+3. The clip is posted to `transcribeAction`, which checks conversation ownership (transcription
+   costs money, same rule as TTS), then calls `POST /v1/speech-to-text` with `model_id=scribe_v1`.
+4. The transcript is appended to whatever is already in the box, rather than replacing it.
+
+## Fallback behaviour
+
+`transcribeAction` returns `{ fallback: true }` — never a hard error — when ElevenLabs is
+unconfigured or unreachable. The mic button then behaves exactly as it did before Scribe existed:
+the Chrome-only recogniser, where available. Which route is in use is decided per browser:
+
+| Browser | ElevenLabs key set | Result |
+|---|---|---|
+| Any | Yes | Scribe |
+| Chrome | No | `SpeechRecognition` (as before) |
+| Firefox / Safari | No | No mic button (as before) |
+
+So this is strictly an improvement on what was there — nothing regresses when the key is absent.
+
+## Verification status — updated
+
+The earlier warning on this page said the ElevenLabs integration was completely unverified. That has
+improved, though it is still not fully verified:
+
+**Verified against the live API** — both `POST /v1/text-to-speech/{voice}` and
+`POST /v1/speech-to-text` were called with a deliberately invalid key and both returned:
+
+```
+HTTP 401 {"detail":{"type":"authentication_error","code":"unauthorized","message":"Invalid API key"}}
+```
+
+A 401 means the URL, method, headers and (for Scribe) the multipart body all reached ElevenLabs'
+authentication layer. A wrong path would have been a 404 and a malformed body a 422. So the request
+shape is right up to authentication.
+
+**Verified in a real browser** — with a key configured, in headless Chromium:
+
+| Check | Result |
+|---|---|
+| Mic button appears once a key is configured | ✅ |
+| Recording starts, label changes to "Stop dictating" | ✅ |
+| Stopping uploads the clip and calls the action | ✅ |
+| Invalid key degrades gracefully | ✅ "Using the browser voice instead — press the mic again." |
+| No client-side errors anywhere in the flow | ✅ |
+
+**Still unverified**: the response body on a *successful* call. Nobody has run either endpoint with
+a valid key, so the audio playback path and the `{ text }` parse are still assumed correct. That is
+the one remaining gap, and it needs nothing but a funded key to close.
+
+## Cost guards
+
+- `MAX_TTS_CHARACTERS = 2500` — one very long reply cannot cost pounds.
+- `MAX_STT_BYTES = 10 MB` — checked in both the action and the library.
+- Both paths require conversation ownership before spending anything.

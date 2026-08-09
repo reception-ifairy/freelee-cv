@@ -213,6 +213,68 @@ export const MODULES: ModuleManifest[] = [
     provides: { capabilities: ['chat.layouts', 'chat.narrative_output', 'chat.capability_gating', 'chat.conversation_controls', 'chat.vision', 'chat.image_generation', 'chat.embed', 'chat.input_filter'] },
     permissions: [],
   },
+  {
+    key: 'persona-tools',
+    name: 'Tool Calling',
+    version: '1.1.0',
+    description:
+      'Personas can compute and look things up instead of guessing: a safe expression calculator ' +
+      '(hand-written shunting-yard parser, no eval), unit conversion, date maths, text stats and dice. ' +
+      'Since 1.1.0 also live data — weather (Open-Meteo) and currency rates (Frankfurter/ECB), both ' +
+      'keyless, and web search (Tavily) which needs a key and refuses gracefully without one. Tools ' +
+      'are suggested per category and stored on the persona version. See docs/29-tools.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning'] },
+    provides: { capabilities: ['tools.calculator', 'tools.conversions', 'tools.live_data', 'tools.web_search'] },
+    permissions: [],
+  },
+  {
+    key: 'voice',
+    name: 'Voice (ElevenLabs)',
+    version: '1.1.0',
+    description:
+      'Text-to-speech via ElevenLabs with a total fallback to the browser\'s own speechSynthesis, so ' +
+      'read-aloud never disappears entirely. Since 1.1.0 also speech-to-text via ElevenLabs Scribe, ' +
+      'which replaces the Chrome-only SpeechRecognition API with a MediaRecorder upload that works in ' +
+      'every current browser; with no key configured it falls back to the old Chrome-only path. ' +
+      'See docs/30-voice.md.',
+    type: 'integration',
+    isCore: false,
+    requires: { modules: ['chat-layouts'] },
+    provides: { capabilities: ['voice.tts', 'voice.stt'] },
+    permissions: [],
+  },
+  {
+    key: 'transactional-email',
+    name: 'Transactional Email',
+    version: '1.0.0',
+    description:
+      'A pluggable email transport (Resend, or a log driver that prints the message to the server log) ' +
+      'and the first thing that needs it: self-service password reset. Tokens are stored hashed, are ' +
+      'single-use, and the request endpoint reports the same result whether or not the address exists, ' +
+      'so it cannot be used to enumerate accounts. See docs/31-email-and-password-reset.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['email.send', 'auth.password_reset'] },
+    permissions: [],
+  },
+  {
+    key: 'observability',
+    name: 'Error Tracking (Sentry)',
+    version: '1.0.0',
+    description:
+      'Optional Sentry integration, entirely inert without a DSN. Events are scrubbed before they ' +
+      'leave the box: cookies, authorization headers, request bodies and credential-bearing query ' +
+      'strings are removed — `sendDefaultPii: false` alone does not do this, which was found by ' +
+      'capturing real envelopes. See docs/32-observability.md.',
+    type: 'integration',
+    isCore: false,
+    requires: {},
+    provides: { capabilities: ['observability.error_tracking'] },
+    permissions: [],
+  },
   groupChat,
   crews,
 ];

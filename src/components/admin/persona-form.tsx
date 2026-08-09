@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardRadioGroup } from '@/components/ui/card-radio-group';
 import { CHAT_LAYOUTS, layoutsForSurface } from '@/lib/chat/layouts';
-import { TOOLS } from '@/lib/tools/registry';
+import { TOOL_CATALOG } from '@/lib/tools/catalog';
 import type { ChatLayoutKey } from '@/lib/chat/layouts';
 import { GridSelect } from '@/components/ui/grid-select';
 import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
@@ -640,7 +640,7 @@ export function PersonaForm({
                 on the persona&apos;s categories. See docs/29-tools.md.
               </Hint>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {TOOLS.map((toolDef) => {
+                {TOOL_CATALOG.map((toolDef) => {
                   const checked = version
                     ? version.tools.includes(toolDef.key)
                     : suggestedTools.includes(toolDef.key);
@@ -653,6 +653,11 @@ export function PersonaForm({
                       <span>
                         <span className="block text-sm font-medium">{toolDef.label}</span>
                         <span className="block text-xs text-slate-500 dark:text-slate-400">{toolDef.summary}</span>
+                        {toolDef.needsKey ? (
+                          <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                            needs an API key
+                          </span>
+                        ) : null}
                       </span>
                     </label>
                   );

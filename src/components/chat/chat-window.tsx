@@ -32,6 +32,8 @@ export type ChatWindowProps = {
   layoutKey?: string | null;
   capabilities?: ChatCapabilities;
   locale?: string;
+  /** True when ElevenLabs Scribe is configured, which makes dictation work outside Chrome. */
+  serverTranscription?: boolean;
 };
 
 /** Image parts of a message — uploads on the way in, generated images on the way back. */
@@ -60,6 +62,7 @@ export function ChatWindow({
   layoutKey,
   capabilities = {},
   locale = 'en-GB',
+  serverTranscription = false,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('');
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -207,6 +210,8 @@ export function ChatWindow({
             onImagesChange={setPendingImages}
             locale={locale}
             inputRef={inputRef}
+            chatId={chatId}
+            serverTranscription={serverTranscription}
           />
 
           <p className="mt-2 text-center text-[11px] text-slate-400">

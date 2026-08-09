@@ -7,7 +7,7 @@ import { getProviderRegistry } from '@/lib/ai/registry';
 import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { PersonaForm } from '@/components/admin/persona-form';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
-import { suggestedToolsFor } from '@/lib/tools/registry';
+import { suggestedToolsFor } from '@/lib/tools/catalog';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { loginAction, type ActionState } from '@/server/actions/auth';
@@ -36,6 +38,11 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
       <div>
         <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" required autoComplete="current-password" />
+        <p className="mt-2 text-right text-xs">
+          <Link href="/forgot-password" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+            Forgot your password?
+          </Link>
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

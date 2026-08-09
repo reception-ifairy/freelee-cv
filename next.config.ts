@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const config: NextConfig = {
   reactStrictMode: true,
@@ -48,4 +49,26 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+/**
+ * The Sentry build plugin only earns its keep when there is an auth token to
+ * upload source maps with. Without one it adds build time and warnings for
+ * nothing, so an unconfigured box gets the plain config it had before — error
+ * capture itself is a runtime concern and works either way.
+ */
+const sentryConfigured = Boolean(
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT,
+);
+
+export default sentryConfigured
+  ? withSentryConfig(config, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: true,
+      widenClientFileUpload: true,
+      // Source maps are uploaded to Sentry, then deleted so they are never
+      // served publicly from this box.
+      sourcemaps: { deleteSourcemapsAfterUpload: true },
+      disableLogger: true,
+    })
+  : config;

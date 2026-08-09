@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Mic, Send, Square, X } from 'lucide-react';
+import { ImagePlus, Loader2, Mic, Send, Square, X } from 'lucide-react';
+import { transcribeAction } from '@/server/actions/voice';
 import type { ChatLayoutConfig } from '@/lib/chat/layouts';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,18 @@ type SpeechRecognitionLike = {
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES = 4;
+
+/**
+ * Server-side transcription needs a recorder and a container the API accepts.
+ * Chrome/Firefox give webm/opus, Safari gives mp4 — both are fine for Scribe.
+ */
+function pickRecordingType(): string | null {
+  if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') return null;
+  for (const type of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return null;
+}
 
 function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null;
@@ -46,6 +59,8 @@ export function Composer({
   onImagesChange,
   locale = 'en-GB',
   inputRef,
+  chatId,
+  serverTranscription = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -60,16 +75,96 @@ export function Composer({
   onImagesChange: (images: PendingImage[]) => void;
   locale?: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  chatId: string;
+  /** True when ElevenLabs Scribe is configured; otherwise the Chrome-only recogniser is used. */
+  serverTranscription?: boolean;
 }) {
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+
+  // Scribe works in every browser with MediaRecorder; the browser recogniser is
+  // the fallback and only exists in Chrome. Prefer Scribe whenever it's usable.
+  const useScribe = serverTranscription && pickRecordingType() !== null;
 
   // Feature-detected after mount, never during render — the server has no
   // `window`, and a mismatch here would be a hydration error.
   useEffect(() => {
-    setVoiceAvailable(Boolean(canVoiceIn) && speechRecognitionCtor() !== null);
-  }, [canVoiceIn]);
+    if (!canVoiceIn) {
+      setVoiceAvailable(false);
+      return;
+    }
+    // Show the mic if either route works: Scribe (any browser with a recorder)
+    // or the browser's own recogniser (Chrome only).
+    const scribeUsable = serverTranscription && pickRecordingType() !== null;
+    setVoiceAvailable(scribeUsable || speechRecognitionCtor() !== null);
+  }, [canVoiceIn, serverTranscription]);
+
+  function appendTranscript(transcript: string) {
+    onChange(value ? `${value} ${transcript}` : transcript);
+  }
+
+  /** Records a clip, then posts it to Scribe. Falls back to the browser recogniser on any failure. */
+  async function toggleRecording() {
+    if (recorderRef.current) {
+      recorderRef.current.stop();
+      return;
+    }
+
+    const mimeType = pickRecordingType();
+    if (!mimeType) return;
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setVoiceError('Microphone access was blocked.');
+      return;
+    }
+
+    const recorder = new MediaRecorder(stream, { mimeType });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+    recorder.onstop = async () => {
+      // Release the mic immediately — leaving the track live keeps the browser's
+      // recording indicator on, which reads as the site still listening.
+      stream.getTracks().forEach((track) => track.stop());
+      recorderRef.current = null;
+      setListening(false);
+
+      const blob = new Blob(chunks, { type: mimeType });
+      if (blob.size === 0) return;
+
+      setTranscribing(true);
+      try {
+        const formData = new FormData();
+        formData.append('chatId', chatId);
+        formData.append('audio', blob, 'dictation');
+        const result = await transcribeAction(null, formData);
+        if (result?.text) {
+          appendTranscript(result.text);
+        } else if (result?.fallback && speechRecognitionCtor()) {
+          setVoiceError('Using the browser voice instead — press the mic again.');
+        } else {
+          setVoiceError(result?.error ?? 'That recording could not be transcribed.');
+        }
+      } catch {
+        setVoiceError('That recording could not be transcribed.');
+      } finally {
+        setTranscribing(false);
+      }
+    };
+
+    recorderRef.current = recorder;
+    setVoiceError(null);
+    setListening(true);
+    recorder.start();
+  }
 
   function toggleListening() {
     const Ctor = speechRecognitionCtor();
@@ -86,7 +181,7 @@ export function Composer({
     recognition.interimResults = false;
     recognition.onresult = (event) => {
       const transcript = Array.from({ length: event.results.length }, (_, i) => event.results[i][0].transcript).join(' ');
-      onChange(value ? `${value} ${transcript}` : transcript);
+      appendTranscript(transcript);
     };
     recognition.onend = () => setListening(false);
     recognition.onerror = () => setListening(false);
@@ -95,6 +190,13 @@ export function Composer({
     setListening(true);
     recognition.start();
   }
+
+  useEffect(() => {
+    return () => {
+      recorderRef.current?.stop();
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   const placeholder = layout.placeholder.replace('{name}', personaName ?? 'the assistant');
 
@@ -195,17 +297,25 @@ export function Composer({
       {voiceAvailable ? (
         <button
           type="button"
-          onClick={toggleListening}
+          onClick={() => (useScribe ? void toggleRecording() : toggleListening())}
+          disabled={transcribing}
           aria-label={listening ? 'Stop dictating' : 'Dictate a message'}
+          title={useScribe ? 'Dictate a message' : 'Dictate a message (this browser only)'}
           className={cn(
-            'grid size-11 shrink-0 place-items-center rounded-xl border transition',
+            'grid size-11 shrink-0 place-items-center rounded-xl border transition disabled:opacity-60',
             listening
               ? 'animate-pulse border-rose-300 bg-rose-50 text-rose-600 dark:border-rose-800 dark:bg-rose-500/10'
               : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800',
           )}
         >
-          <Mic className="size-4" />
+          {transcribing ? <Loader2 className="size-4 animate-spin" /> : <Mic className="size-4" />}
         </button>
+      ) : null}
+
+      {voiceError ? (
+        <p role="status" className="w-full text-xs text-amber-600 dark:text-amber-400">
+          {voiceError}
+        </p>
       ) : null}
 
       {busy ? (

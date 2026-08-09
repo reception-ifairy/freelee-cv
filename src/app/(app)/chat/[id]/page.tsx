@@ -11,6 +11,7 @@ import { getBalanceForTeam } from '@/lib/billing/credits';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
 import { ChatWindow } from '@/components/chat/chat-window';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
+import { isTranscriptionConfigured } from '@/lib/voice/elevenlabs';
 import { ChatControls } from '@/components/chat/chat-controls';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
@@ -161,6 +162,7 @@ export default async function ChatPage({ params }: { params: Params }) {
             personaName={persona?.name}
             layoutKey={layoutKey}
             capabilities={capabilities}
+            serverTranscription={await isTranscriptionConfigured()}
           />
         </div>
       </div>

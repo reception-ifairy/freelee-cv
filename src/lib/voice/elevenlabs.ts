@@ -97,3 +97,67 @@ export async function listVoices(): Promise<VoiceOption[]> {
     return [];
   }
 }
+
+/**
+ * Speech-to-text (ElevenLabs Scribe).
+ *
+ * **Why this exists**: `capabilities.voiceIn` uses the browser's
+ * `SpeechRecognition`, which is Chrome-only — Firefox and Safari users see no
+ * mic button at all. Scribe replaces it with a server-side transcription that
+ * works in any browser with `MediaRecorder`, i.e. everything current. When no
+ * key is configured the composer falls back to the Chrome-only path, so this is
+ * strictly an improvement on what was there.
+ */
+
+/** Their general-purpose model; `scribe_v1_experimental` exists but is not stable enough to default to. */
+const DEFAULT_STT_MODEL = 'scribe_v1';
+
+/** ElevenLabs accepts far larger files, but a chat dictation is seconds long — this is a cost guard, not a format limit. */
+export const MAX_STT_BYTES = 10 * 1024 * 1024;
+
+export type TranscriptResult = { text: string } | { error: string };
+
+export async function isTranscriptionConfigured(): Promise<boolean> {
+  return isVoiceConfigured();
+}
+
+export async function transcribe(audio: Uint8Array, mediaType: string): Promise<TranscriptResult> {
+  const apiKey = (await getSettingString('elevenlabs_api_key')) || process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) return { error: 'No ElevenLabs API key configured (Settings → AI).' };
+  if (audio.byteLength === 0) return { error: 'Nothing was recorded.' };
+  if (audio.byteLength > MAX_STT_BYTES) return { error: 'That recording is too long.' };
+
+  const model = (await getSettingString('elevenlabs_stt_model')) || DEFAULT_STT_MODEL;
+
+  const form = new FormData();
+  // The extension has to match the media type — Scribe sniffs the filename as
+  // well as the part's content type, and a mismatch is rejected as unsupported.
+  const extension = mediaType.includes('mp4') ? 'mp4' : mediaType.includes('ogg') ? 'ogg' : 'webm';
+  form.append('file', new Blob([new Uint8Array(audio)], { type: mediaType }), `dictation.${extension}`);
+  form.append('model_id', model);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+
+  try {
+    const response = await fetch(`${API}/speech-to-text`, {
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey },
+      body: form,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      return { error: `ElevenLabs refused the recording: ${detail.slice(0, 200) || `HTTP ${response.status}`}` };
+    }
+
+    const body = (await response.json()) as { text?: unknown };
+    const text = typeof body.text === 'string' ? body.text.trim() : '';
+    return text ? { text } : { error: 'Nothing could be heard in that recording.' };
+  } catch {
+    return { error: 'Could not reach ElevenLabs.' };
+  } finally {
+    clearTimeout(timeout);
+  }
+}

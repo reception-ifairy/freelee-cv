@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { assertChatAccess } from '@/server/actions/chat';
-import { synthesise, isVoiceConfigured } from '@/lib/voice/elevenlabs';
+import { synthesise, isVoiceConfigured, transcribe, isTranscriptionConfigured, MAX_STT_BYTES } from '@/lib/voice/elevenlabs';
 import { storeBase64 } from '@/lib/media/store';
 
 /**
@@ -35,4 +35,39 @@ export async function speakAction(_prev: SpeakState, formData: FormData): Promis
   if (!stored) return { fallback: true };
 
   return { url: stored.url };
+}
+
+/**
+ * Transcribes a dictated clip.
+ *
+ * Mirrors `speakAction`'s shape: `{ fallback: true }` means "use the browser's
+ * own recogniser instead", so an unconfigured or unreachable ElevenLabs degrades
+ * to exactly the behaviour that existed before Scribe, rather than to nothing.
+ */
+export type TranscribeState = { text?: string; error?: string; fallback?: boolean } | null;
+
+const ALLOWED_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
+
+export async function transcribeAction(_prev: TranscribeState, formData: FormData): Promise<TranscribeState> {
+  const chatId = formData.get('chatId');
+  const file = formData.get('audio');
+  if (typeof chatId !== 'string' || !chatId || !(file instanceof File)) return { fallback: true };
+
+  // Transcription costs money, so it carries the same ownership check as TTS.
+  const chat = await assertChatAccess(chatId);
+  if (!chat) return { error: 'You do not have access to this conversation.' };
+
+  if (file.size > MAX_STT_BYTES) return { error: 'That recording is too long.' };
+
+  // `MediaRecorder` appends codec parameters (`audio/webm;codecs=opus`), so
+  // compare the base type only.
+  const mediaType = (file.type.split(';')[0] || 'audio/webm').toLowerCase();
+  if (!ALLOWED_AUDIO.includes(mediaType)) return { error: 'That audio format is not supported.' };
+
+  if (!(await isTranscriptionConfigured())) return { fallback: true };
+
+  const result = await transcribe(new Uint8Array(await file.arrayBuffer()), mediaType);
+  if ('error' in result) return { fallback: true, error: result.error };
+
+  return { text: result.text };
 }

@@ -33,6 +33,7 @@ export const SETTINGS_SCHEMA = {
     { key: 'ollama_base_url', label: 'Ollama base URL', type: 'string', help: 'e.g. http://localhost:11434/v1' },
     { key: 'guest_free_messages', label: 'Free messages before signup', type: 'int' },
     { key: 'signup_bonus_credits', label: 'Signup bonus credits', type: 'int' },
+    { key: 'tavily_api_key', label: 'Tavily API key (web search tool)', type: 'secret' },
     { key: 'elevenlabs_api_key', label: 'ElevenLabs API key', type: 'secret' },
     {
       key: 'elevenlabs_voice_id', label: 'ElevenLabs voice ID', type: 'string',
@@ -45,6 +46,13 @@ export const SETTINGS_SCHEMA = {
     {
       key: 'badword_list', label: 'Blocked words', type: 'text',
       help: 'Comma or newline separated. Replaces the built-in list entirely. Only applies to personas with "Filter offensive input" ticked.',
+    },
+  ],
+  email: [
+    { key: 'resend_api_key', label: 'Resend API key', type: 'secret' },
+    {
+      key: 'email_from', label: 'From address', type: 'string',
+      help: 'e.g. "Freelee <hello@yourdomain.com>". Both this and the key are required — without them, emails are printed to the server log instead of sent.',
     },
   ],
   billing: [

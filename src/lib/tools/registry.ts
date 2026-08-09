@@ -1,5 +1,8 @@
+import 'server-only';
 import { z } from 'zod';
 import { evaluateExpression } from './expression';
+import { getSettingString } from '@/lib/settings';
+import { TOOL_CATALOG, type ToolMeta } from './catalog';
 
 /**
  * Tools a persona can actually invoke mid-conversation.
@@ -14,27 +17,18 @@ import { evaluateExpression } from './expression';
  * failure mode. Which tools a persona may use is data (`persona_versions.tools`);
  * the tools themselves cannot be.
  *
- * Every tool here works with **no API key**, which is deliberate for the first
- * set: it makes the whole path verifiable end to end without signing up for
- * anything. API-backed tools (search, weather, market data) slot into the same
- * shape and are the natural next addition.
+ * **Most need no API key**, which is deliberate: it keeps the whole path
+ * verifiable end to end without signing up for anything. Weather (Open-Meteo)
+ * and currency (Frankfurter/ECB) are live network calls that happen to be
+ * free and unauthenticated, so they're verified too. Only `web_search` needs
+ * a key, and it says so rather than failing mysteriously — see `needsKey`.
  */
 
-export type ToolCategoryHint = string;
-
-export type ToolDefinition = {
-  key: string;
-  label: string;
-  /** Shown in the admin picker. */
-  summary: string;
+export type ToolDefinition = ToolMeta & {
   /** Given to the model. Written for the model, not the admin — it decides when to call. */
   description: string;
   inputSchema: z.ZodTypeAny;
   execute: (input: never) => Promise<unknown> | unknown;
-  /** Category slugs where this tool is suggested by default. */
-  suggestFor: ToolCategoryHint[];
-  /** True when it needs credentials — none do yet. */
-  needsKey?: boolean;
 };
 
 const UNITS: Record<string, { base: number; kind: string }> = {
@@ -57,11 +51,38 @@ function convertTemperature(value: number, from: string, to: string): number | n
   return to === 'c' ? toC : to === 'f' ? toC * (9 / 5) + 32 : to === 'k' ? toC + 273.15 : null;
 }
 
-export const TOOLS: ToolDefinition[] = [
+
+/** Shared fetch for the API-backed tools: short timeout, never hangs a chat turn. */
+async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/** WMO weather codes are integers; a model reads "Light rain" far better than "61". */
+function describeWeatherCode(code?: number): string {
+  if (code === undefined) return 'Unknown';
+  const map: Record<number, string> = {
+    0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Freezing fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Heavy freezing rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+    80: 'Light showers', 81: 'Showers', 82: 'Violent showers',
+    85: 'Snow showers', 86: 'Heavy snow showers',
+    95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Severe thunderstorm with hail',
+  };
+  return map[code] ?? `Code ${code}`;
+}
+
+const IMPLEMENTATIONS: (Pick<ToolDefinition,'key'|'description'|'inputSchema'|'execute'>)[] = [
   {
     key: 'calculator',
-    label: 'Calculator',
-    summary: 'Arithmetic the model would otherwise guess at.',
     description:
       'Evaluate an arithmetic expression exactly. Use this for ANY calculation rather than working it out yourself — ' +
       'you are unreliable at arithmetic and this is not. Supports + - * / % ^, parentheses, and ' +
@@ -74,15 +95,9 @@ export const TOOLS: ToolDefinition[] = [
         return { error: error instanceof Error ? error.message : 'Could not evaluate that.' };
       }
     },
-    suggestFor: [
-      'business-and-finance', 'science-and-research', 'engineering-and-architecture',
-      'education-and-training', 'environment-and-sustainability', 'technology-and-web-development',
-    ],
   },
   {
     key: 'unit_convert',
-    label: 'Unit converter',
-    summary: 'Length, mass, volume and temperature, exactly.',
     description:
       'Convert a value between units. Units: mm cm m km in ft yd mi (length); g kg t oz lb st (mass); ' +
       'ml l pt gal (volume); c f k (temperature). Use this instead of recalling conversion factors.',
@@ -105,15 +120,9 @@ export const TOOLS: ToolDefinition[] = [
 
       return { result: Number(((value * source.base) / target.base).toFixed(6)), from: a, to: b };
     },
-    suggestFor: [
-      'engineering-and-architecture', 'science-and-research', 'health-and-medicine',
-      'travel-and-hospitality', 'education-and-training', 'environment-and-sustainability',
-    ],
   },
   {
     key: 'date_math',
-    label: 'Date calculator',
-    summary: 'Days between dates, and dates in the future or past.',
     description:
       'Work with dates exactly. Either the number of days between two dates, or the date a number of days ' +
       'from a starting date. Use this rather than counting — you get date arithmetic wrong, especially across ' +
@@ -141,12 +150,9 @@ export const TOOLS: ToolDefinition[] = [
       const result = new Date(start.getTime() + days * 86_400_000);
       return { date: result.toISOString().slice(0, 10), weekday: result.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }) };
     },
-    suggestFor: ['travel-and-hospitality', 'business-and-finance', 'legal-and-compliance', 'human-resources-and-career-development'],
   },
   {
     key: 'text_stats',
-    label: 'Text statistics',
-    summary: 'Word and character counts, reading time.',
     description:
       'Count words, characters and sentences in a piece of text, and estimate reading time. Use this whenever ' +
       'asked how long something is, or to check a draft against a word limit — do not estimate.',
@@ -161,15 +167,9 @@ export const TOOLS: ToolDefinition[] = [
         readingMinutes: Math.max(1, Math.ceil(words / 200)),
       };
     },
-    suggestFor: [
-      'writing-and-content-creation', 'marketing-and-advertising', 'digital-marketing',
-      'creative-arts-and-design', 'translation-and-localisation', 'education-and-training',
-    ],
   },
   {
     key: 'dice_roll',
-    label: 'Dice & random choice',
-    summary: 'Real randomness for stories and games.',
     description:
       'Roll dice or pick randomly from a list. Use this whenever an outcome should be genuinely uncertain — ' +
       'you cannot produce real randomness yourself and will unconsciously favour certain results.',
@@ -184,21 +184,133 @@ export const TOOLS: ToolDefinition[] = [
       const rolls = Array.from({ length: count ?? 1 }, () => 1 + Math.floor(Math.random() * faces));
       return { rolls, total: rolls.reduce((a, b) => a + b, 0), sides: faces };
     },
-    suggestFor: ['entertainment-and-media', 'creative-arts-and-design'],
+  },
+  {
+    key: 'weather',
+    description:
+      'Look up current weather and a short forecast for a named place. Use this whenever asked about ' +
+      'weather — your training data has no idea what today is like. Give the place as a city or town name.',
+    inputSchema: z.object({
+      place: z.string().describe('e.g. "Warsaw" or "Leeds, UK"'),
+      days: z.number().int().min(1).max(7).optional().describe('forecast days, default 3'),
+    }),
+    execute: async ({ place, days }: { place: string; days?: number }) => {
+      try {
+        const geo = (await fetchJson(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1`,
+        )) as { results?: { name: string; country?: string; latitude: number; longitude: number; timezone: string }[] };
+
+        const found = geo.results?.[0];
+        if (!found) return { error: `Could not find a place called "${place}".` };
+
+        const data = (await fetchJson(
+          `https://api.open-meteo.com/v1/forecast?latitude=${found.latitude}&longitude=${found.longitude}` +
+            `&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code` +
+            `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code` +
+            `&timezone=${encodeURIComponent(found.timezone)}&forecast_days=${days ?? 3}`,
+        )) as {
+          current?: Record<string, number>;
+          daily?: { time: string[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: (number | null)[]; weather_code: number[] };
+        };
+
+        return {
+          place: [found.name, found.country].filter(Boolean).join(', '),
+          current: data.current
+            ? {
+                temperatureC: data.current.temperature_2m,
+                feelsLikeC: data.current.apparent_temperature,
+                windKph: data.current.wind_speed_10m,
+                conditions: describeWeatherCode(data.current.weather_code),
+              }
+            : undefined,
+          forecast: data.daily?.time.map((date, i) => ({
+            date,
+            maxC: data.daily!.temperature_2m_max[i],
+            minC: data.daily!.temperature_2m_min[i],
+            rainChancePercent: data.daily!.precipitation_probability_max[i],
+            conditions: describeWeatherCode(data.daily!.weather_code[i]),
+          })),
+        };
+      } catch {
+        return { error: 'Could not reach the weather service.' };
+      }
+    },
+  },
+  {
+    key: 'currency',
+    description:
+      'Convert between currencies at the current published rate, or look up a rate. Use this rather than ' +
+      'recalling a rate — rates move daily and yours are stale. Currencies are ISO codes like GBP, USD, EUR, PLN.',
+    inputSchema: z.object({
+      from: z.string().describe('ISO code, e.g. "GBP"'),
+      to: z.string().describe('ISO code, e.g. "PLN"'),
+      amount: z.number().optional().describe('amount to convert, default 1'),
+    }),
+    execute: async ({ from, to, amount }: { from: string; to: string; amount?: number }) => {
+      const base = from.trim().toUpperCase();
+      const target = to.trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(base) || !/^[A-Z]{3}$/.test(target)) {
+        return { error: 'Currencies must be three-letter ISO codes, e.g. GBP.' };
+      }
+
+      try {
+        const data = (await fetchJson(
+          `https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${target}`,
+        )) as { date?: string; rates?: Record<string, number> };
+
+        const rate = data.rates?.[target];
+        if (typeof rate !== 'number') return { error: `No rate published for ${base} to ${target}.` };
+
+        const value = (amount ?? 1) * rate;
+        return { from: base, to: target, rate, amount: amount ?? 1, result: Number(value.toFixed(4)), asOf: data.date };
+      } catch {
+        return { error: 'Could not reach the exchange-rate service.' };
+      }
+    },
+  },
+  {
+    key: 'web_search',
+    description:
+      'Search the web for current information and get back short extracts with source URLs. Use this for ' +
+      'anything recent, anything that changes, or anything you are unsure about — and cite the URLs you get back. ' +
+      'Do not use it for general knowledge you already have.',
+    inputSchema: z.object({
+      query: z.string().describe('a focused search query, not a whole question'),
+      results: z.number().int().min(1).max(8).optional(),
+    }),
+    execute: async ({ query, results }: { query: string; results?: number }) => {
+      const apiKey = (await getSettingString('tavily_api_key')) || process.env.TAVILY_API_KEY;
+      if (!apiKey) return { error: 'Web search is not configured — add a Tavily API key in Settings → AI.' };
+
+      try {
+        const data = (await fetchJson('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ query, max_results: results ?? 5, search_depth: 'basic' }),
+        })) as { answer?: string; results?: { title: string; url: string; content: string }[] };
+
+        return {
+          summary: data.answer,
+          sources: (data.results ?? []).map((r) => ({ title: r.title, url: r.url, extract: r.content?.slice(0, 400) })),
+        };
+      } catch {
+        return { error: 'Could not reach the search service.' };
+      }
+    },
   },
 ];
 
-export const TOOL_KEYS = TOOLS.map((t) => t.key);
+/**
+ * Metadata + implementation, joined on `key`. An implementation with no
+ * catalogue entry is dropped rather than silently offered without a label.
+ */
+export const TOOLS: ToolDefinition[] = IMPLEMENTATIONS.flatMap((impl) => {
+  const meta = TOOL_CATALOG.find((m) => m.key === impl.key);
+  return meta ? [{ ...meta, ...impl }] : [];
+});
 
 export function findTool(key: string): ToolDefinition | undefined {
   return TOOLS.find((t) => t.key === key);
 }
 
-export function isToolKey(key: string): boolean {
-  return TOOL_KEYS.includes(key);
-}
-
-/** Which tools to pre-tick for a persona in these categories. */
-export function suggestedToolsFor(categorySlugs: string[]): string[] {
-  return TOOLS.filter((tool) => tool.suggestFor.some((slug) => categorySlugs.includes(slug))).map((t) => t.key);
-}
+export { isToolKey, suggestedToolsFor, TOOL_CATALOG } from './catalog';
