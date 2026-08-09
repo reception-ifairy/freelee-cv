@@ -121,5 +121,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Error tracking (Sentry)** (optional and inert without a DSN; why `sendDefaultPii: false` does not stop session cookies leaving the box) — `32-observability.md`
 - **Block builder** (the frontpage editor rebuilt as a real builder — 17 block types, a shared grid system, drag and drop, and the same blocks on CMS pages and blog posts; supersedes `19`) — `33-block-builder.md`
 - **Navigation** (nested menus and accessible dropdowns — the site previously had no `parent_id` at all and could not render one) — `34-navigation.md`
-- **Admin lists** (every admin list rebuilt as a grid/table with a remembered preference and a labelled `⋯` menu, replacing rows of unlabelled icon buttons) — `35-admin-lists.md`
+- **Admin lists** (every admin list rebuilt as a grid/table with a remembered preference and a labelled `⋯` menu; plus URL-driven search, filtering, sorting and pagination that scale past what fits on one screen) — `35-admin-lists.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

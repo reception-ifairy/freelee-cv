@@ -72,5 +72,5 @@ export function PersonasList({ rows, view }: { rows: PersonaRow[]; view: AdminVi
     ],
   }));
 
-  return <ResourceView module="personas" view={view} items={items} empty="No personas yet." columns={4} />;
+  return <ResourceView module="personas" view={view} items={items} empty="No personas match those filters." columns={4} showCount={false} />;
 }

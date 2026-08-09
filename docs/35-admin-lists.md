@@ -110,10 +110,127 @@ Every admin page loaded as an admin, with console and page errors captured:
 
 ## Still open
 
-- No sorting or filtering controls in either view beyond what a page already had.
 - No bulk selection — actions are per item.
-- The grid does not paginate; Sectors renders all 103 cards at once. Fine at this size, worth
-  revisiting if any list grows into the thousands.
+
+(Sorting, filtering and pagination were the other two entries here; they are the second half of this
+page.)
 
 *(No module registry entry: this is a cross-cutting UI convention rather than a capability, so
 inventing a module for it would make the registry less accurate, not more.)*
+
+---
+
+# Search, filtering, sorting and pagination
+
+Added after the grid landed, when it became obvious that a grid of 5,000 AI
+cards is no more usable than a table of 5,000 rows.
+
+## State lives in the URL
+
+`?q=legal&status=featured&provider=google&sort=popular&page=2`
+
+Not in React state. That single decision buys:
+
+- a filtered view is a **link** — bookmarkable, shareable, survives a reload
+- the **back button works**
+- the **server** filters in SQL, so a list of 5,000 personas is never loaded
+  into memory to display 24 of them
+
+| File | Role |
+|---|---|
+| `src/lib/admin/list-query.ts` | parse/serialise params, page maths (**plain module**) |
+| `src/components/admin/list-toolbar.tsx` | search, filter dropdowns, sort, page size (client) |
+| `src/components/admin/list-pagination.tsx` | page links (**server**-rendered) |
+
+A page declares a `ListConfig` — its filters and its sorts — and everything else
+follows. Filter options are data, so the Provider filter is built from the AI
+registry rather than a hardcoded list: add a provider and it appears here with
+no further edit.
+
+## Details that matter
+
+**Every control resets to page 1.** Narrowing 300 results to 12 while sitting on
+page 7 shows an empty list, which reads as "no results" when it means "no page
+7".
+
+**Search is debounced (300ms) and uses `replace`, not `push`.** A five-letter
+word is one request, not five, and typing does not bury the back button under a
+keystroke-per-entry history.
+
+**The URL is the source of truth for the search box too.** "Clear all" and
+browser-back both update the input rather than being overwritten by stale local
+state.
+
+**Unknown filter values are dropped at parse time.** A hand-edited
+`?status=nonsense` narrows nothing instead of reaching SQL as junk — verified,
+it returns the full unfiltered list.
+
+**The count uses the same conditions as the page query**, so "21 results" always
+matches what paging all the way through would actually give you.
+
+**Category filtering uses `EXISTS`, not a join.** A persona in three categories
+must appear once; a join would return it three times and break both the count
+and the page size.
+
+**Pagination is plain server-rendered links.** Paging works with JavaScript off,
+each page is a real URL, and the browser prefetches on hover for free. A
+disabled arrow is a `<span>`, not a dead anchor that is still focusable and
+still announced as a link.
+
+## Verified against 150 seeded personas
+
+Seeded across ten expertises, five providers, three audiences and mixed
+published/featured/premium states, then removed. Every count checked against
+SQL, not eyeballed:
+
+| Query | UI | SQL |
+|---|---|---|
+| no filters | 151 | 151 |
+| search "Legal" | 15 | 15 |
+| status=draft | 37 | 37 |
+| status=featured | 21 | 21 |
+| status=premium | 13 | 13 |
+| provider=google | 30 | 30 |
+| audience=B2G | 50 | 50 |
+| google **and** published | 23 | 23 |
+| `?status=nonsense` | 151 (rejected) | — |
+
+Plus: page 1 and page 2 share **zero** items; the last page of 151 at 24/page
+holds exactly 7; `per=96` returns 96 cards; `sort=name` is genuinely A–Z;
+`sort=popular` leads with the highest message count. Sectors: 103 → 10 for
+"Marketing", matching SQL, and `sort=b2g` leads with Compliance Management.
+
+## A second silent bug, same root cause as packs
+
+`/admin/customers` reported **0 chats for every customer**. Same unqualified
+correlated subquery as the packs 500:
+
+```ts
+sql`(select count(*) from ${chats} where ${chats.userId} = ${users.id})::int`
+```
+
+Rendered as `where "user_id" = "id"`, binding `id` to `chats.id` instead of
+`users.id`. Here both columns are text, so Postgres did **not** error — it just
+quietly returned the wrong number, which is worse. Platform Admin has 6 chats
+and the page said 0. Replaced with a `LEFT JOIN` + `GROUP BY`; now shows 6.
+
+A grep confirms these were the only two instances in the codebase.
+
+## Applied to
+
+`personas` (search · category · status · provider · audience · 4 sorts) ·
+`sectors` (search · category · status · 5 sorts) ·
+`customers` (search by name or email · status · 3 sorts)
+
+The remaining lists are small, fixed configuration sets — 20 categories, a
+handful of plans — where a toolbar would be noise. Adding it to one is a
+`ListConfig` plus three lines.
+
+## Still open
+
+- Search is `ILIKE '%term%'`, which cannot use a normal index. Fine into the low
+  tens of thousands; a trigram index (`pg_trgm`) is the fix if it ever matters.
+- No saved views or multi-select filters — one value per filter.
+- Deep pagination uses `OFFSET`, which slows down on very large tables. Keyset
+  pagination is the answer if any list reaches that size.
+

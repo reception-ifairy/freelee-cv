@@ -40,6 +40,7 @@ export function ResourceView({
   items,
   empty = 'Nothing here yet.',
   columns = 3,
+  showCount = true,
 }: {
   /** Cookie key for the grid/list preference. */
   module: string;
@@ -47,13 +48,19 @@ export function ResourceView({
   items: ResourceItem[];
   empty?: string;
   columns?: 2 | 3 | 4;
+  /** Off when a ListToolbar above already reports the total, which is the real one when filters are applied. */
+  showCount?: boolean;
 }) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-400">
-          {items.length} {items.length === 1 ? 'item' : 'items'}
-        </p>
+        {showCount ? (
+          <p className="text-xs text-slate-400">
+            {items.length} {items.length === 1 ? 'item' : 'items'}
+          </p>
+        ) : (
+          <span />
+        )}
         <ViewToggle module={module} view={view} />
       </div>
 

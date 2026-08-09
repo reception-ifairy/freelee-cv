@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, sectors } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { Select } from '@/components/ui/field';
 import { getAdminView } from '@/lib/admin/view-preference-server';
+import { parseListParams, type ListConfig } from '@/lib/admin/list-query';
+import { ListToolbar } from '@/components/admin/list-toolbar';
+import { ListPagination } from '@/components/admin/list-pagination';
 import { SectorsList } from './sectors-list';
 
 /**
@@ -19,14 +21,59 @@ export const metadata: Metadata = { title: 'Sectors' };
 export default async function AdminSectorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoryId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { categoryId } = await searchParams;
-  const filterId = categoryId ? Number(categoryId) : undefined;
-
-  const view = await getAdminView('sectors');
-  const [categoryRows, rows] = await Promise.all([
+  const [rawParams, categoryRows, view] = await Promise.all([
+    searchParams,
     db.select().from(categories).orderBy(asc(categories.position)),
+    getAdminView('sectors'),
+  ]);
+
+  const config: ListConfig = {
+    filters: [
+      { key: 'category', label: 'Category', options: categoryRows.map((c) => ({ id: String(c.id), label: c.name })) },
+      {
+        key: 'status',
+        label: 'Status',
+        options: [
+          { id: 'active', label: 'Active' },
+          { id: 'hidden', label: 'Hidden' },
+        ],
+      },
+    ],
+    sorts: [
+      { id: 'position', label: 'Sort: by category' },
+      { id: 'name', label: 'Sort: name A–Z' },
+      { id: 'b2c', label: 'Sort: best for consumers' },
+      { id: 'b2b', label: 'Sort: best for business' },
+      { id: 'b2g', label: 'Sort: best for government' },
+    ],
+    defaultSort: 'position',
+  };
+
+  const params = parseListParams(rawParams, config);
+
+  const conditions = [];
+  if (params.q) {
+    const term = `%${params.q}%`;
+    conditions.push(or(ilike(sectors.name, term), ilike(sectors.code, term), ilike(sectors.slug, term)));
+  }
+  if (params.filters.category) conditions.push(eq(sectors.categoryId, Number(params.filters.category)));
+  if (params.filters.status === 'active') conditions.push(eq(sectors.isActive, true));
+  if (params.filters.status === 'hidden') conditions.push(eq(sectors.isActive, false));
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const orderBy =
+    {
+      position: [asc(sectors.categoryId), asc(sectors.position)],
+      name: [asc(sectors.name)],
+      b2c: [desc(sectors.b2cSuitability)],
+      b2b: [desc(sectors.b2bSuitability)],
+      b2g: [desc(sectors.b2gSuitability)],
+    }[params.sort] ?? [asc(sectors.categoryId), asc(sectors.position)];
+
+  const [rows, [{ total }]] = await Promise.all([
     db
       .select({
         id: sectors.id,
@@ -42,9 +89,14 @@ export default async function AdminSectorsPage({
       })
       .from(sectors)
       .leftJoin(categories, eq(categories.id, sectors.categoryId))
-      .where(filterId ? eq(sectors.categoryId, filterId) : undefined)
-      .orderBy(asc(sectors.categoryId), asc(sectors.position)),
+      .where(where)
+      .orderBy(...orderBy)
+      .limit(params.perPage)
+      .offset((params.page - 1) * params.perPage),
+    db.select({ total: sql<number>`count(*)::int` }).from(sectors).where(where),
   ]);
+
+  const filterId = params.filters.category ? Number(params.filters.category) : undefined;
 
   return (
     <div>
@@ -61,25 +113,13 @@ export default async function AdminSectorsPage({
         }
       />
 
-      <form method="GET" className="mb-4 flex items-end gap-3">
-        <div className="w-64">
-          <Select name="categoryId" defaultValue={filterId ?? ''}>
-            <option value="">All categories</option>
-            {categoryRows.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </Select>
-        </div>
-        <button
-          type="submit"
-          className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-        >
-          Filter
-        </button>
-      </form>
+      {/* Replaces a category dropdown that needed a separate "Filter" button
+          press to apply. Filters now take effect as they are chosen. */}
+      <ListToolbar params={params} config={config} total={total} />
 
       <SectorsList rows={rows} view={view} />
 
+      <ListPagination pathname="/admin/sectors" params={params} config={config} total={total} />
     </div>
   );
 }

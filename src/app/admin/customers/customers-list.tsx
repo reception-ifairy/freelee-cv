@@ -52,5 +52,5 @@ export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: Admin
     ],
   }));
 
-  return <ResourceView module="customers" view={view} items={items} empty="No customers yet." columns={3} />;
+  return <ResourceView module="customers" view={view} items={items} empty="No customers match those filters." columns={3} showCount={false} />;
 }

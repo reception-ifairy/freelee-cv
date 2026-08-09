@@ -41,5 +41,5 @@ export function SectorsList({ rows, view }: { rows: SectorRow[]; view: AdminView
     ],
   }));
 
-  return <ResourceView module="sectors" view={view} items={items} empty="No sectors yet." columns={4} />;
+  return <ResourceView module="sectors" view={view} items={items} empty="No sectors match those filters." columns={4} showCount={false} />;
 }
