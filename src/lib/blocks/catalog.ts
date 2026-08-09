@@ -420,6 +420,30 @@ export const BLOCK_CATALOG: BlockMeta[] = [
     defaultConfig: { height: 'md', divider: false },
   },
   {
+    key: 'showcase',
+    label: 'Showcase',
+    description: 'Real work your assistants have produced, curated in Admin → Showcase.',
+    group: 'data',
+    icon: 'sparkles',
+    repeatable: true,
+    dataDriven: true,
+    supportsColumns: true,
+    defaultLayout: { width: 'wide', columns: 4, paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      {
+        key: 'limit', label: 'How many to show', type: 'number', min: 1, max: 48,
+        help: 'Newest curated pieces first, up to this many. Leave blank for 12.',
+      },
+      {
+        key: 'personaId', label: 'Only this persona', type: 'text',
+        help: 'A persona id, to show only that persona\'s work. Leave blank for everyone.',
+      },
+    ],
+    defaultConfig: { title: 'Made with Freelee', limit: 8 },
+  },
+  {
     key: 'columns',
     label: 'Columns',
     description: 'Puts other blocks side by side.',

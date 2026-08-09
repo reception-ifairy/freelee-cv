@@ -314,6 +314,40 @@ export const MODULES: ModuleManifest[] = [
     provides: { capabilities: ['observability.error_tracking'] },
     permissions: [],
   },
+  {
+    key: 'site-assistant',
+    name: 'Site Assistant',
+    version: '1.0.0',
+    description:
+      'A chat bubble on every public page that IS a persona — its model, tone, tools, guardrails, ' +
+      'capabilities and chat layout are edited in Personas like any other, and it renders the same ' +
+      'ChatWindow as the chat page and the embed widget. Free for everyone with its own guest ' +
+      'allowance, so asking for help never uses up a trial. Free status is derived server-side from ' +
+      'the configured slug and the chat\'s own personaId, never from the request. Also introduces ' +
+      'the first rate limiting in this codebase. See docs/37-site-assistant.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning', 'chat-layouts'] },
+    provides: { capabilities: ['assistant.bubble', 'assistant.free_support', 'platform.rate_limiting'] },
+    permissions: [],
+  },
+  {
+    key: 'showcase',
+    name: 'Showcase',
+    version: '1.0.0',
+    description:
+      'Curated examples of real assistant work, shown through a block with a lightbox. Items are ' +
+      'promoted from a conversation (the server re-reads the message, so the form cannot supply its ' +
+      'own content) or added by hand. Curation is the privacy boundary: nothing a customer generates ' +
+      'is published unless an admin chose it, and a promoted prompt arrives hidden until read. ' +
+      'See docs/38-showcase.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['block-builder'] },
+    provides: { capabilities: ['showcase.curation', 'showcase.block'] },
+    permissions: [],
+    navigation: [{ label: 'Showcase', href: '/admin/showcase', group: 'admin', order: 19 }],
+  },
   groupChat,
   crews,
 ];

@@ -10,6 +10,8 @@ import { db } from '@/db';
 import { chats, messages, personas, personaVersions } from '@/db/schema';
 import { currentUser } from '@/lib/auth';
 import { resolveChatTeamId } from '@/lib/teams';
+import { getSiteAssistant } from '@/lib/assistant/config';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const GUEST_COOKIE = 'aigency_guest';
 
@@ -30,20 +32,18 @@ export async function guestToken(): Promise<string> {
   return token;
 }
 
-export async function startChatAction(formData: FormData) {
-  const slug = z.string().min(1).parse(formData.get('persona'));
-  // Set by the embed page so the new chat opens inside the iframe rather than
-  // navigating the host site's top-level window to /chat/<id>.
-  const embed = formData.get('embed') === '1';
+type PersonaRow = typeof personas.$inferSelect;
 
-  const [persona] = await db
-    .select()
-    .from(personas)
-    .where(and(eq(personas.slug, slug), eq(personas.isActive, true)))
-    .limit(1);
-
-  if (!persona) redirect('/personas');
-
+/**
+ * Creates a conversation for a persona and returns it.
+ *
+ * Extracted from `startChatAction` so callers that must not navigate — the
+ * assistant bubble, which lives on whatever page the visitor is already
+ * reading — can reuse the exact same creation path. Everything that made the
+ * original correct (version pinning, welcome message, counters, guest token)
+ * lives here, so the two cannot drift.
+ */
+async function createChatForPersona(persona: PersonaRow) {
   const user = await currentUser();
 
   // Content (welcomeMessage, etc.) lives on persona_versions since Phase 4
@@ -51,8 +51,7 @@ export async function startChatAction(formData: FormData) {
   // when the persona opted into it (pinVersioning=true) — otherwise it's
   // left null and src/app/api/chat/route.ts always resolves the *current*
   // version live, so an admin editing a persona takes effect on every
-  // existing conversation immediately, not just new ones (same behavior as
-  // before this table existed).
+  // existing conversation immediately, not just new ones.
   const [version] = persona.currentVersionId
     ? await db.select().from(personaVersions).where(eq(personaVersions.id, persona.currentVersionId)).limit(1)
     : [undefined];
@@ -85,8 +84,55 @@ export async function startChatAction(formData: FormData) {
     .set({ chatsCount: persona.chatsCount + 1 })
     .where(eq(personas.id, persona.id));
 
+  return { chat, welcome: version?.welcomeMessage ?? null };
+}
+
+export async function startChatAction(formData: FormData) {
+  const slug = z.string().min(1).parse(formData.get('persona'));
+  // Set by the embed page so the new chat opens inside the iframe rather than
+  // navigating the host site's top-level window to /chat/<id>.
+  const embed = formData.get('embed') === '1';
+
+  const [persona] = await db
+    .select()
+    .from(personas)
+    .where(and(eq(personas.slug, slug), eq(personas.isActive, true)))
+    .limit(1);
+
+  if (!persona) redirect('/personas');
+
+  const { chat } = await createChatForPersona(persona);
   redirect(embed ? `/embed/${persona.slug}?c=${chat.id}` : `/chat/${chat.id}`);
 }
+
+/**
+ * Starts an assistant conversation and returns its id instead of redirecting.
+ *
+ * The persona is resolved from the **setting**, never from the caller: the
+ * bubble cannot be pointed at an arbitrary (paid) persona by editing a request.
+ */
+export async function startAssistantChatAction(): Promise<{ chatId: string; welcome: string | null } | { error: string }> {
+  const assistant = await getSiteAssistant();
+  if (!assistant) return { error: 'The assistant is not available right now.' };
+
+  // One conversation per visitor per window — creating chats is the cheap part,
+  // but an unauthenticated endpoint that writes rows still needs a ceiling.
+  const user = await currentUser();
+  const gate = checkRateLimit({
+    name: 'assistant-start',
+    key: user?.id ?? (await guestToken()),
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!gate.ok) return { error: 'Too many conversations started. Please try again later.' };
+
+  const [persona] = await db.select().from(personas).where(eq(personas.id, assistant.personaId)).limit(1);
+  if (!persona) return { error: 'The assistant is not available right now.' };
+
+  const { chat, welcome } = await createChatForPersona(persona);
+  return { chatId: chat.id, welcome };
+}
+
 
 /** Shared ownership check used by every chat mutation and by the API route. */
 export async function assertChatAccess(chatId: string) {

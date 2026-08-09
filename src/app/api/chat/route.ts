@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { chats, messages, personas, personaVersions, promptModifiers, usageEvents } from '@/db/schema';
 import { currentUser } from '@/lib/auth';
+import { isAssistantPersona, DEFAULT_ASSISTANT_GUEST_MESSAGES } from '@/lib/assistant/config';
+import { checkRateLimit, callerIp } from '@/lib/rate-limit';
 import { assertChatAccess } from '@/server/actions/chat';
 import { getModel, resolveProviderId, resolveTierModel, providerIsConfigured, getProviderRegistry } from '@/lib/ai/registry';
 import { searchMany } from '@/lib/knowledge/registry';
@@ -96,6 +98,35 @@ export async function POST(request: Request) {
   /* ----------------------------- Spend guards ----------------------------- */
   const flatCost = persona?.creditsPerMessage ?? 0;
 
+  /**
+   * The site assistant answers support questions and is never billed — see
+   * docs/37-site-assistant.md.
+   *
+   * Derived here from the configured slug and this chat's own `personaId`.
+   * Deliberately **not** taken from the request: a client-supplied flag would
+   * let anyone talk to any paid persona for free by sending it.
+   */
+  const isAssistant = await isAssistantPersona(chat.personaId);
+
+  // A free, unauthenticated LLM on every public page needs a ceiling, or one
+  // script can drain the account's API quota. Keyed on the signed-in user or
+  // the guest cookie, with the caller IP as a last resort.
+  if (isAssistant) {
+    const gate = checkRateLimit({
+      name: 'assistant-message',
+      key: user?.id ?? chat.guestToken ?? callerIp(request),
+      limit: 20,
+      windowMs: 5 * 60 * 1000,
+    });
+
+    if (!gate.ok) {
+      return new Response(
+        JSON.stringify({ error: 'That is a lot of questions at once. Please wait a moment and try again.' }),
+        { status: 429, headers: { 'content-type': 'application/json', 'retry-after': String(gate.retryAfter) } },
+      );
+    }
+  }
+
   // A pass or subscription can grant unmetered platform access — see
   // docs/12-billing-overhaul.md. Checked once here (gates entry) and reused
   // in onFinish below (gates whether credits actually get spent) rather than
@@ -105,15 +136,26 @@ export async function POST(request: Request) {
   if (user) {
     const required = flatCost > 0 ? flatCost : MINIMUM_CHARGE;
 
-    if (!coveredByPass && (await getBalanceForTeam(chat.teamId)) < required) {
+    // Support is free for customers too: charging someone to ask about their
+    // own invoice is exactly the wrong moment to meter.
+    if (!isAssistant && !coveredByPass && (await getBalanceForTeam(chat.teamId)) < required) {
       return fail('You are out of credits. Top up to keep chatting.', 402);
     }
   } else {
-    const limit = await getSettingInt('guest_free_messages', Number(process.env.GUEST_FREE_MESSAGES ?? 3));
+    // The assistant gets its own allowance, so asking for help never eats the
+    // free messages someone was going to spend trying a persona.
+    const limit = isAssistant
+      ? await getSettingInt('site_assistant_guest_messages', DEFAULT_ASSISTANT_GUEST_MESSAGES)
+      : await getSettingInt('guest_free_messages', Number(process.env.GUEST_FREE_MESSAGES ?? 3));
     const sent = await db.$count(messages, and(eq(messages.chatId, chatId), eq(messages.role, 'user')));
 
     if (sent >= limit) {
-      return fail(`You have used your ${limit} free messages. Create a free account to keep going.`, 402);
+      return fail(
+        isAssistant
+          ? `You have used your ${limit} free messages. Create a free account to keep talking.`
+          : `You have used your ${limit} free messages. Create a free account to keep going.`,
+        402,
+      );
     }
   }
 
@@ -276,7 +318,10 @@ export async function POST(request: Request) {
 
       let creditsCharged = 0;
 
-      if (user && !coveredByPass) {
+      // `isAssistant` again rather than a cheaper local flag: this is the line
+      // that actually moves money, so it reads the same server-derived truth
+      // the entry guard did.
+      if (user && !coveredByPass && !isAssistant) {
         try {
           await spendCredits(user.id, cost, {
             teamId: chat.teamId,

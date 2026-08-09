@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, ExternalLink, Cpu,
-  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy,
+  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images
 } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { logoutAction } from '@/server/actions/auth';
@@ -40,6 +40,7 @@ const SECTIONS = [
     heading: 'Content',
     items: [
       { href: '/admin/frontpage', label: 'Frontpage', icon: LayoutTemplate },
+      { href: '/admin/showcase', label: 'Showcase', icon: Images },
       { href: '/admin/posts', label: 'Blog', icon: PenLine },
       { href: '/admin/pages', label: 'Pages', icon: FileText },
       { href: '/admin/menus', label: 'Menus', icon: MenuIcon },

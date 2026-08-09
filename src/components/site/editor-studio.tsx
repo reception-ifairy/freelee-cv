@@ -29,6 +29,10 @@ import { cn } from '@/lib/utils';
  *
  * Layout mode is a CSS flag on <html>, so switching it off restores the real
  * site instantly with no re-render.
+ *
+ * Anchored **bottom-left**, not bottom-right: the site assistant bubble owns
+ * the conventional bottom-right corner, and an admin sees both at once. They
+ * collided there, and the customer-facing one should win.
  */
 export function EditorStudio({
   blocks,
@@ -118,12 +122,12 @@ export function EditorStudio({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-4 right-4 z-[150] inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-2xl hover:bg-brand-700"
+          className="fixed bottom-4 left-4 z-[150] inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-2xl hover:bg-brand-700"
         >
           <LayoutPanelTop className="size-4" /> Edit page
         </button>
       ) : (
-        <aside className="fixed bottom-4 right-4 z-[150] flex max-h-[70vh] w-72 flex-col rounded-2xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+        <aside className="fixed bottom-4 left-4 z-[150] flex max-h-[70vh] w-72 flex-col rounded-2xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
           <div className="flex items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
             <LayoutPanelTop className="size-4 text-brand-600" />
             <p className="flex-1 text-sm font-bold">Page builder</p>

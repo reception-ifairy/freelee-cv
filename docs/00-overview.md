@@ -123,4 +123,6 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Navigation** (nested menus and accessible dropdowns — the site previously had no `parent_id` at all and could not render one) — `34-navigation.md`
 - **Admin lists** (every admin list rebuilt as a grid/table with a remembered preference and a labelled `⋯` menu; plus URL-driven search, filtering, sorting and pagination that scale past what fits on one screen) — `35-admin-lists.md`
 - **On-page editing** (edit blocks on the live page instead of a separate admin screen — ported from ifairy.co.uk's landing editor, extended to every scope and made keyboard-accessible) — `36-on-page-editing.md`
+- **Site assistant** (a chat bubble on every public page that *is* a persona — free, rate-limited, and provably not spoofable into free chat with a paid persona) — `37-site-assistant.md`
+- **Showcase** (curated examples of real assistant work, promoted from conversations or added by hand, shown through a block with a lightbox) — `38-showcase.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

@@ -48,6 +48,18 @@ export const SETTINGS_SCHEMA = {
       help: 'Comma or newline separated. Replaces the built-in list entirely. Only applies to personas with "Filter offensive input" ticked.',
     },
   ],
+  assistant: [
+    { key: 'site_assistant_enabled', label: 'Show the assistant bubble', type: 'bool' },
+    {
+      key: 'site_assistant_persona', label: 'Assistant persona (slug)', type: 'string',
+      help: 'The slug of the persona that answers in the bubble — e.g. "support". Its tone, tools, model and guardrails are edited in Personas like any other. Leave blank and no bubble appears.',
+    },
+    {
+      key: 'site_assistant_guest_messages', label: 'Free messages for visitors', type: 'int',
+      help: 'How many messages a signed-out visitor may send to the assistant per conversation. Separate from the free persona messages, so asking for help does not use up someone\'s trial. Default 10.',
+    },
+    { key: 'site_assistant_label', label: 'Bubble label', type: 'string', help: 'Shown on the launcher. Default "Ask us anything".' },
+  ],
   email: [
     { key: 'resend_api_key', label: 'Resend API key', type: 'secret' },
     {

@@ -1504,6 +1504,43 @@ export const pageSections = pgTable(
 export type PageSectionRow = typeof pageSections.$inferSelect;
 export type NewPageSectionRow = typeof pageSections.$inferInsert;
 
+
+/**
+ * Curated examples of what the assistants produce — the front page showcase.
+ *
+ * Its own table rather than a view over `messages`: once an admin promotes a
+ * piece it is the site's marketing asset, so it must survive the conversation
+ * being deleted and must not change because a customer edited theirs. The
+ * curation step is also the privacy boundary — nothing a customer generates is
+ * published unless someone chose it. See docs/38-showcase.md.
+ */
+export const showcaseItems = pgTable(
+  'showcase_items',
+  {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    caption: text('caption'),
+    mediaUrl: text('media_url').notNull(),
+    mediaType: text('media_type').notNull().default('image/png'),
+    /** The ask that produced it. Optional per item — a real prompt can carry details a customer would not want published. */
+    prompt: text('prompt'),
+    showPrompt: boolean('show_prompt').notNull().default(true),
+    personaId: integer('persona_id').references(() => personas.id, { onDelete: 'set null' }),
+    /** Provenance; nulls out with the conversation while the showcase entry survives. */
+    messageId: text('message_id').references(() => messages.id, { onDelete: 'set null' }),
+    position: integer('position').notNull().default(0),
+    isVisible: boolean('is_visible').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('showcase_order_idx').on(t.isVisible, t.position),
+    index('showcase_persona_idx').on(t.personaId),
+  ],
+);
+
+export type ShowcaseItemRow = typeof showcaseItems.$inferSelect;
+
 export const activityLog = pgTable(
   'activity_log',
   {

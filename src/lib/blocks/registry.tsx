@@ -12,6 +12,8 @@ import {
   FeaturesGridBlock, StatsBlock, FaqBlock, TestimonialsBlock, LogosBlock,
   ImageTextBlock, VideoBlock, SpacerBlock, ColumnsBlock,
 } from '@/components/site/blocks';
+import { ShowcaseGallery } from '@/components/site/blocks/showcase';
+import { listShowcase } from '@/lib/showcase/queries';
 import { blockMeta, withDefaults } from './catalog';
 import { resolveLayout, type BlockLayout } from './layout';
 
@@ -95,6 +97,22 @@ export async function renderBlockContent(
       return SpacerBlock({ config });
     case 'columns':
       return ColumnsBlock({ layout, children });
+
+    case 'showcase': {
+      // Fetched here rather than in the component so the gallery stays a thin
+      // client component and the query never reaches the browser.
+      const personaId = Number(config.personaId);
+      const pieces = await listShowcase({
+        limit: Number(config.limit) || 12,
+        personaId: Number.isInteger(personaId) && personaId > 0 ? personaId : undefined,
+      });
+      // Rendered as JSX, not called as a function like the blocks above it.
+      // ShowcaseGallery is the first *client* block (it needs state for the
+      // lightbox), and a client component can only cross the boundary as an
+      // element — calling it throws "Attempted to call ShowcaseGallery() from
+      // the server". That is also why this file is .tsx rather than .ts.
+      return <ShowcaseGallery pieces={pieces} layout={layout} title={config.title} subtitle={config.subtitle} />;
+    }
 
     default:
       return null;
