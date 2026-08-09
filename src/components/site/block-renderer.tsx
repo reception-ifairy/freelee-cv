@@ -1,6 +1,9 @@
 import { layoutFor, renderBlockContent, type BlockRow } from '@/lib/blocks/registry';
 import { blockMeta } from '@/lib/blocks/catalog';
 import { outerClasses, innerClasses } from '@/lib/blocks/layout';
+import { BlockChrome } from './block-chrome';
+import { BLOCK_ANCHOR_ATTR, type EditScope } from './editor-types';
+import { cn } from '@/lib/utils';
 
 /**
  * Renders an ordered list of blocks, each wrapped in its layout band.
@@ -15,9 +18,24 @@ import { outerClasses, innerClasses } from '@/lib/blocks/layout';
  * `rows` is the **whole** scope including nested children; this component
  * partitions them, so a container renders its own children and they are not
  * also drawn at the top level.
+ *
+ * When `canEdit` is set, each top-level block additionally carries its admin
+ * chrome. That is gated on the server, so a visitor never receives the editing
+ * components at all — hiding them in CSS alone would ship the whole editor to
+ * everyone.
  */
-export async function BlockRenderer({ rows }: { rows: BlockRow[] }) {
-  const visible = rows.filter((row) => row.isVisible);
+export async function BlockRenderer({
+  rows,
+  canEdit = false,
+  scope,
+}: {
+  rows: BlockRow[];
+  canEdit?: boolean;
+  scope?: EditScope;
+}) {
+  // Admins see hidden blocks too, faded, so a hidden block can be found and
+  // brought back without going to a separate screen.
+  const visible = canEdit ? rows : rows.filter((row) => row.isVisible);
 
   const childrenByParent = new Map<number, BlockRow[]>();
   for (const row of visible) {
@@ -38,7 +56,9 @@ export async function BlockRenderer({ rows }: { rows: BlockRow[] }) {
       // A container's children are rendered bare and dropped into its grid;
       // they do not get their own band, or every column would carry the
       // parent's padding a second time.
-      const kids = blockMeta(row.type)?.container ? (childrenByParent.get(row.id) ?? []) : [];
+      const kids = blockMeta(row.type)?.container
+        ? (childrenByParent.get(row.id) ?? []).filter((kid) => kid.isVisible || canEdit)
+        : [];
       const children =
         kids.length > 0
           ? await Promise.all(
@@ -52,13 +72,33 @@ export async function BlockRenderer({ rows }: { rows: BlockRow[] }) {
     }),
   );
 
+  const drawn = rendered.filter((entry) => entry.content !== null);
+
   return (
     <>
-      {rendered.map(({ row, layout, content }) => {
-        if (content === null) return null;
+      {drawn.map(({ row, layout, content }, index) => {
         const outer = outerClasses(layout);
         return (
-          <div key={row.id} className={outer || undefined}>
+          <div
+            key={row.id}
+            {...(canEdit ? { [BLOCK_ANCHOR_ATTR]: row.id } : {})}
+            className={cn(outer || undefined, canEdit && 'relative', canEdit && !row.isVisible && 'opacity-40')}
+          >
+            {canEdit && scope ? (
+              <BlockChrome
+                block={{
+                  id: row.id,
+                  type: row.type,
+                  isVisible: row.isVisible,
+                  config: (row.config ?? {}) as Record<string, unknown>,
+                  layout: row.layout,
+                  parentId: row.parentId ?? null,
+                }}
+                scope={scope}
+                isFirst={index === 0}
+                isLast={index === drawn.length - 1}
+              />
+            ) : null}
             <div className={innerClasses(layout)}>{content}</div>
           </div>
         );

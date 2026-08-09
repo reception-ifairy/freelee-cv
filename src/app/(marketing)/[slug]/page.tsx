@@ -6,6 +6,9 @@ import { db } from '@/db';
 import { pages, pageSections } from '@/db/schema';
 import { Markdown } from '@/components/site/markdown';
 import { BlockRenderer } from '@/components/site/block-renderer';
+import { EditorStudio } from '@/components/site/editor-studio';
+import type { EditableBlock } from '@/components/site/editor-types';
+import { currentUser } from '@/lib/auth';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { formatDate, truncate } from '@/lib/utils';
 
@@ -51,13 +54,31 @@ export default async function CmsPage({ params }: { params: Params }) {
         .orderBy(asc(pageSections.position))
     : [];
 
-  if (blocks.length > 0) {
+  const user = await currentUser();
+  const canEdit = user?.isAdmin === true;
+  const scope = { page: 'page', pageId: page.id };
+
+  // The builder appears whenever an admin is on a page that uses blocks, so
+  // there is no separate "go to the editor" step.
+  if (blocks.length > 0 || (canEdit && page.useBuilder)) {
+    const editable: EditableBlock[] = blocks
+      .filter((row) => row.parentId == null)
+      .map((row) => ({
+        id: row.id,
+        type: row.type,
+        isVisible: row.isVisible,
+        config: (row.config ?? {}) as Record<string, unknown>,
+        layout: row.layout,
+        parentId: row.parentId ?? null,
+      }));
+
     return (
       <div className="py-6">
         <div className="container-app">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{page.title}</h1>
         </div>
-        <BlockRenderer rows={blocks} />
+        <BlockRenderer rows={blocks} canEdit={canEdit} scope={scope} />
+        {canEdit ? <EditorStudio blocks={editable} scope={scope} adminHref={`/admin/pages/${page.id}/builder`} /> : null}
       </div>
     );
   }

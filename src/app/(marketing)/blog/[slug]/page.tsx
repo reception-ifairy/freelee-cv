@@ -9,6 +9,9 @@ import { publiclyVisible } from '@/lib/blog/visibility';
 import { pageSections } from '@/db/schema';
 import { Markdown } from '@/components/site/markdown';
 import { BlockRenderer } from '@/components/site/block-renderer';
+import { EditorStudio } from '@/components/site/editor-studio';
+import type { EditableBlock } from '@/components/site/editor-types';
+import { currentUser } from '@/lib/auth';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { formatDate, truncate } from '@/lib/utils';
 
@@ -63,6 +66,10 @@ export default async function BlogPostPage({ params }: { params: Params }) {
     .set({ views: sql`${posts.views} + 1` })
     .where(eq(posts.id, post.id))
     .catch(() => undefined);
+  const viewer = await currentUser();
+  const canEdit = viewer?.isAdmin === true;
+  const postScope = { page: 'post', postId: post.id };
+
   // As with CMS pages: blocks take over only when the post is switched to the
   // builder AND has at least one, so flipping the toggle can never blank a post.
   const blocks = post.useBuilder
@@ -109,7 +116,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
 
         {blocks.length > 0 ? (
           <div className="mt-10">
-            <BlockRenderer rows={blocks} />
+            <BlockRenderer rows={blocks} canEdit={canEdit} scope={postScope} />
           </div>
         ) : (
           <div className="mx-auto mt-10 max-w-3xl">
@@ -117,6 +124,26 @@ export default async function BlogPostPage({ params }: { params: Params }) {
           </div>
         )}
       </article>
+
+      {/* Same rule as CMS pages: the builder appears whenever an admin is on a
+          post that uses blocks, so the first block can be added from the post
+          itself rather than from a separate screen. */}
+      {canEdit && post.useBuilder ? (
+        <EditorStudio
+          blocks={blocks
+            .filter((row) => row.parentId == null)
+            .map((row) => ({
+              id: row.id,
+              type: row.type,
+              isVisible: row.isVisible,
+              config: (row.config ?? {}) as Record<string, unknown>,
+              layout: row.layout,
+              parentId: row.parentId ?? null,
+            }))}
+          scope={postScope}
+          adminHref={`/admin/posts/${post.id}/builder`}
+        />
+      ) : null}
 
       {related.length > 0 ? (
         <section className="container-app pb-20">

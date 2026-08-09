@@ -136,3 +136,34 @@
     box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-brand-300) 45%, transparent), 0 0 36px -4px color-mix(in oklab, var(--color-brand-400) 80%, transparent);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   On-page editing (docs/36-on-page-editing.md)
+
+   The chrome is always in the DOM for an admin but invisible and
+   non-interactive until layout mode is switched on in the studio. That keeps
+   the site looking like the site while an admin is simply reading it, and
+   costs one CSS flag on <html> instead of a re-render.
+--------------------------------------------------------------------------- */
+.block-chrome {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+[data-layout-mode='on'] .block-chrome {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Outline every block so the page reads as a stack of parts, and reserve room
+   at the top so the controls never sit on top of a heading. */
+[data-layout-mode='on'] [data-block-id] {
+  outline: 1px dashed color-mix(in oklab, var(--color-brand-500) 55%, transparent);
+  outline-offset: -3px;
+  padding-top: 3.25rem;
+}
+
+[data-layout-mode='on'] [data-block-id]:hover {
+  outline-style: solid;
+}

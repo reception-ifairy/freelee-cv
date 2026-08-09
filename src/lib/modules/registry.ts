@@ -189,12 +189,13 @@ export const MODULES: ModuleManifest[] = [
       'level of nesting through a columns container. Adding a block type is a catalog entry plus a ' +
       'render function — the field declarations drive the editing UI and the server-side validation ' +
       'alike. The same blocks build CMS pages and blog posts, with a non-destructive fallback to ' +
-      'their markdown. See docs/33-block-builder.md.',
+      'their markdown. Admins edit blocks on the live page itself, not only from the admin ' +
+      'screen — see docs/33-block-builder.md and docs/36-on-page-editing.md.',
     type: 'core',
     isCore: true,
     requires: { modules: ['frontpage-sections'] },
     provides: {
-      capabilities: ['blocks.catalog', 'blocks.grid_layout', 'blocks.drag_and_drop', 'blocks.nesting', 'blocks.page_scopes'],
+      capabilities: ['blocks.catalog', 'blocks.grid_layout', 'blocks.drag_and_drop', 'blocks.nesting', 'blocks.page_scopes', 'blocks.on_page_editing'],
     },
     permissions: [],
     navigation: [{ label: 'Frontpage', href: '/admin/frontpage', group: 'admin', order: 17 }],
