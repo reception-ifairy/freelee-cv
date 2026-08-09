@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 import { ArrowLeft, CalendarDays, Clock } from 'lucide-react';
 import { db } from '@/db';
 import { posts, users } from '@/db/schema';
+import { publiclyVisible } from '@/lib/blog/visibility';
+import { pageSections } from '@/db/schema';
 import { Markdown } from '@/components/site/markdown';
+import { BlockRenderer } from '@/components/site/block-renderer';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { formatDate, truncate } from '@/lib/utils';
 
@@ -24,11 +27,12 @@ async function loadPost(slug: string) {
       publishedAt: posts.publishedAt,
       readingMinutes: posts.readingMinutes,
       categoryId: posts.categoryId,
+      useBuilder: posts.useBuilder,
       authorName: users.name,
     })
     .from(posts)
     .leftJoin(users, eq(users.id, posts.authorId))
-    .where(and(eq(posts.slug, slug), eq(posts.isPublished, true)))
+    .where(and(eq(posts.slug, slug), publiclyVisible()))
     .limit(1);
 
   return post ?? null;
@@ -59,12 +63,22 @@ export default async function BlogPostPage({ params }: { params: Params }) {
     .set({ views: sql`${posts.views} + 1` })
     .where(eq(posts.id, post.id))
     .catch(() => undefined);
+  // As with CMS pages: blocks take over only when the post is switched to the
+  // builder AND has at least one, so flipping the toggle can never blank a post.
+  const blocks = post.useBuilder
+    ? await db
+        .select()
+        .from(pageSections)
+        .where(and(eq(pageSections.page, 'post'), eq(pageSections.postId, post.id)))
+        .orderBy(asc(pageSections.position))
+    : [];
+
 
   const related = post.categoryId
     ? await db
         .select({ title: posts.title, slug: posts.slug, publishedAt: posts.publishedAt })
         .from(posts)
-        .where(and(eq(posts.isPublished, true), eq(posts.categoryId, post.categoryId), ne(posts.id, post.id)))
+        .where(and(publiclyVisible(), eq(posts.categoryId, post.categoryId), ne(posts.id, post.id)))
         .orderBy(desc(posts.publishedAt))
         .limit(3)
     : [];
@@ -93,9 +107,15 @@ export default async function BlogPostPage({ params }: { params: Params }) {
           </div>
         </div>
 
-        <div className="mx-auto mt-10 max-w-3xl">
-          <Markdown>{post.content}</Markdown>
-        </div>
+        {blocks.length > 0 ? (
+          <div className="mt-10">
+            <BlockRenderer rows={blocks} />
+          </div>
+        ) : (
+          <div className="mx-auto mt-10 max-w-3xl">
+            <Markdown>{post.content}</Markdown>
+          </div>
+        )}
       </article>
 
       {related.length > 0 ? (

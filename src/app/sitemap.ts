@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { pages, personas, posts } from '@/db/schema';
+import { publiclyVisible } from '@/lib/blog/visibility';
 
 export const revalidate = 3600;
 
@@ -28,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       db
         .select({ slug: posts.slug, updatedAt: posts.updatedAt })
         .from(posts)
-        .where(eq(posts.isPublished, true)),
+        .where(publiclyVisible()),
       db
         .select({ slug: pages.slug, updatedAt: pages.updatedAt, noindex: pages.noindex })
         .from(pages)

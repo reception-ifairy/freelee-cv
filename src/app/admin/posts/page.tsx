@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarClock, LayoutGrid, Trash2 } from 'lucide-react';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, posts, users } from '@/db/schema';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
 import { Input, Textarea, Label, Select, Checkbox, Hint } from '@/components/ui/field';
 import { deletePostAction, savePostAction } from '@/server/actions/admin';
+import { isScheduled } from '@/lib/blog/visibility';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -101,12 +103,28 @@ export default async function AdminPostsPage() {
                     <TD>{post.categoryName ?? '—'}</TD>
                     <TD className="text-right">{post.views.toLocaleString('en-US')}</TD>
                     <TD>
-                      <Badge tone={post.isPublished ? 'green' : 'slate'}>
-                        {post.isPublished ? 'Published' : 'Draft'}
-                      </Badge>
+                      {/* A future publish date used to be ignored entirely, so
+                          "Published" was a lie for scheduled posts. Now it says
+                          which one it is. */}
+                      {isScheduled(post) ? (
+                        <Badge tone="amber" title={post.publishedAt?.toISOString()}>
+                          <CalendarClock className="size-3" /> Scheduled
+                        </Badge>
+                      ) : (
+                        <Badge tone={post.isPublished ? 'green' : 'slate'}>
+                          {post.isPublished ? 'Published' : 'Draft'}
+                        </Badge>
+                      )}
                     </TD>
                     <TD className="text-right">
-                      <form action={deletePostAction}>
+                      <Link
+                        href={`/admin/posts/${post.id}/builder`}
+                        title="Open the block builder"
+                        className="mr-1 inline-grid size-8 place-items-center rounded-lg align-middle text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <LayoutGrid className="size-4" />
+                      </Link>
+                      <form action={deletePostAction} className="inline">
                         <input type="hidden" name="id" value={post.id} />
                         <button
                           type="submit"

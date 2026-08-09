@@ -4,6 +4,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { CalendarDays, Clock, Filter, Newspaper } from 'lucide-react';
 import { db } from '@/db';
 import { posts, users, categories } from '@/db/schema';
+import { publiclyVisible } from '@/lib/blog/visibility';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { helpTopics } from '@/lib/help/topics';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -28,7 +29,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Se
   const categoryRows = await db
     .select({ slug: categories.slug, name: categories.name, count: sql<number>`count(${posts.id})::int` })
     .from(categories)
-    .innerJoin(posts, and(eq(posts.categoryId, categories.id), eq(posts.isPublished, true)))
+    .innerJoin(posts, and(eq(posts.categoryId, categories.id), publiclyVisible()))
     .groupBy(categories.slug, categories.name, categories.position)
     .orderBy(asc(categories.position));
 
@@ -48,7 +49,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Se
     .from(posts)
     .leftJoin(users, eq(users.id, posts.authorId))
     .leftJoin(categories, eq(categories.id, posts.categoryId))
-    .where(active ? and(eq(posts.isPublished, true), eq(categories.slug, active.slug)) : eq(posts.isPublished, true))
+    .where(active ? and(publiclyVisible(), eq(categories.slug, active.slug)) : publiclyVisible())
     .orderBy(desc(posts.publishedAt));
 
   return (

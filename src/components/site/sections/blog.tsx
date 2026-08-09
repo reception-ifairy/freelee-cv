@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts } from '@/db/schema';
+import { publiclyVisible } from '@/lib/blog/visibility';
 import { formatDate, truncate } from '@/lib/utils';
 import { getFrontendT } from '@/lib/i18n/translate';
 
 export async function BlogSection() {
   const [latestPosts, { t }] = await Promise.all([
-    db.select().from(posts).where(eq(posts.isPublished, true)).orderBy(desc(posts.publishedAt)).limit(3),
+    db.select().from(posts).where(publiclyVisible()).orderBy(desc(posts.publishedAt)).limit(3),
     getFrontendT(),
   ]);
 

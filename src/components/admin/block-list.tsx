@@ -1,6 +1,6 @@
 'use client';
 
-import { useOptimistic, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import {
   DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
   type DragEndEvent,
@@ -33,19 +33,39 @@ export type BlockScopeProps = { page: string; pageId?: number; postId?: number }
  * The whole order is persisted in one request on drop, rather than a request
  * per nudge as the old arrow-only editor did.
  */
+/** Identity of the server's data, so local state resets only when it actually changed — not on every re-render. */
+function signatureOf(rows: BlockCardRow[]): string {
+  return rows.map((r) => `${r.id}:${r.type}:${r.isVisible}:${r.parentId ?? ''}`).join('|');
+}
+
 export function BlockList({ rows, scope }: { rows: BlockCardRow[]; scope: BlockScopeProps }) {
-  const [items, setItems] = useState(rows.filter((r) => r.parentId == null));
+  const topLevel = rows.filter((r) => r.parentId == null);
+
   const childrenByParent = new Map<number, BlockCardRow[]>();
   for (const row of rows) {
     if (row.parentId == null) continue;
     childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
   }
-  const [, startTransition] = useTransition();
 
-  // The server is the source of truth, but waiting for a round-trip before the
-  // card moves makes dragging feel broken. Optimistic order, reconciled when
-  // the revalidated page arrives.
-  const [optimistic, setOptimistic] = useOptimistic(items, (_state: BlockCardRow[], next: BlockCardRow[]) => next);
+  // Local state so a drag moves the card immediately instead of after a
+  // round-trip — but the server is the source of truth, so it is resynced
+  // whenever the server sends different data.
+  //
+  // This resync is not optional: `useState(rows)` only reads its argument on
+  // mount, so without it, adding a block wrote the row and revalidated the
+  // route while the list on screen never changed. Adjusting state during
+  // render (rather than in an effect) is React's documented pattern for
+  // "derive from props but keep local edits" and avoids a second paint.
+  const [items, setItems] = useState(topLevel);
+  const [signature, setSignature] = useState(() => signatureOf(topLevel));
+  const incoming = signatureOf(topLevel);
+  if (incoming !== signature) {
+    setSignature(incoming);
+    setItems(topLevel);
+  }
+
+  const [, startTransition] = useTransition();
+  const optimistic = items;
 
   const sensors = useSensors(
     // A small distance threshold so a click on a button inside the card is not
@@ -70,9 +90,9 @@ export function BlockList({ rows, scope }: { rows: BlockCardRow[]; scope: BlockS
 
     const next = arrayMove(optimistic, oldIndex, newIndex);
     setItems(next);
+    setSignature(signatureOf(next));
 
     startTransition(async () => {
-      setOptimistic(next);
       const formData = new FormData();
       formData.set('order', JSON.stringify(next.map((r) => r.id)));
       scopeFields(formData);

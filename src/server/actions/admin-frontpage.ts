@@ -41,12 +41,25 @@ function scopeWhere(scope: BlockScope) {
   return and(eq(pageSections.page, scope.page), isNull(pageSections.pageId), isNull(pageSections.postId));
 }
 
-/** Repaint everything a block change could be visible on. Cheap, and avoids a stale home page after editing a shared block. */
+/**
+ * Repaint everything a block change could be visible on.
+ *
+ * The builder route itself has to be listed explicitly. Revalidating
+ * `/admin/pages` does not cover `/admin/pages/[id]/builder`, so without these
+ * the list of blocks stayed stale after adding one — the row was written, the
+ * screen just did not show it.
+ */
 function revalidateScope(scope: BlockScope) {
   revalidatePath('/', 'layout');
   revalidatePath('/admin/frontpage');
-  if (scope.pageId) revalidatePath('/admin/pages');
-  if (scope.postId) revalidatePath('/admin/posts');
+  if (scope.pageId) {
+    revalidatePath('/admin/pages');
+    revalidatePath(`/admin/pages/${scope.pageId}/builder`);
+  }
+  if (scope.postId) {
+    revalidatePath('/admin/posts');
+    revalidatePath(`/admin/posts/${scope.postId}/builder`);
+  }
 }
 
 export async function toggleSectionAction(formData: FormData) {
