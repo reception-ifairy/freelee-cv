@@ -14,7 +14,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { pageSections } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { blockMeta, isBlockKey } from '@/lib/blocks/catalog';
+import { blockMeta, canNest, isBlockKey } from '@/lib/blocks/catalog';
 import { validateBlockConfig } from '@/lib/blocks/validate';
 import { resolveLayout } from '@/lib/blocks/layout';
 import type { ActionState } from './auth';
@@ -182,11 +182,10 @@ export async function createSectionAction(formData: FormData): Promise<void> {
 
   if (parentId !== null) {
     const [parent] = await db.select().from(pageSections).where(eq(pageSections.id, parentId)).limit(1);
-    // One level of nesting only: the parent must be a container, and must not
-    // itself be nested. Enforced in the action, not just the UI — the same
-    // posture as the core-section delete guard below.
-    if (!parent || !blockMeta(parent.type)?.container || parent.parentId !== null) return;
-    if (meta.container) return;
+    // One level of nesting only. Enforced here, not just hidden in the UI — the
+    // same posture as the core-section delete guard below. The rule itself
+    // lives in `canNest` so it can be tested directly.
+    if (!canNest(parent ?? null, type)) return;
   }
 
   const [{ max }] = await db

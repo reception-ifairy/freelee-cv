@@ -4,11 +4,13 @@ import { useState, useTransition } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ChevronDown, Copy, Eye, EyeOff, GripVertical, LayoutGrid, Pencil, Trash2,
+  ChevronDown, Copy, Eye, EyeOff, GripVertical, LayoutGrid, Pencil, Plus, Trash2,
 } from 'lucide-react';
-import { blockMeta } from '@/lib/blocks/catalog';
+import { BLOCK_CATALOG, blockMeta } from '@/lib/blocks/catalog';
 import { resolveLayout, type BlockLayout } from '@/lib/blocks/layout';
-import { saveBlockAction } from '@/server/actions/admin-frontpage';
+import {
+  createSectionAction, deleteSectionAction, moveSectionAction, saveBlockAction,
+} from '@/server/actions/admin-frontpage';
 import type { ActionState } from '@/server/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import { FormMessage } from '@/components/ui/field';
@@ -23,6 +25,7 @@ export type BlockCardRow = {
   isVisible: boolean;
   config: Record<string, unknown>;
   layout: unknown;
+  parentId?: number | null;
 };
 
 type Tab = 'content' | 'layout';
@@ -43,6 +46,8 @@ export function BlockCard({
   isFirst,
   isLast,
   onMove,
+  childRows = [],
+  scopeFields,
 }: {
   row: BlockCardRow;
   scope: { page: string; pageId?: number; postId?: number };
@@ -52,6 +57,9 @@ export function BlockCard({
   isFirst: boolean;
   isLast: boolean;
   onMove: (id: number, direction: 'up' | 'down') => void;
+  /** Only ever populated for a container block — nesting is capped at one level. */
+  childRows?: BlockCardRow[];
+  scopeFields?: (formData: FormData) => void;
 }) {
   const meta = blockMeta(row.type);
   // `setNodeRef` marks the whole card as the sortable item; `setActivatorNodeRef`
@@ -155,6 +163,12 @@ export function BlockCard({
         </div>
       </div>
 
+      {meta.container ? (
+        <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+          <ContainerChildren parentId={row.id} rows={childRows} scopeFields={scopeFields} />
+        </div>
+      ) : null}
+
       {open ? (
         <div className="border-t border-slate-100 dark:border-slate-800">
           <div className="flex gap-1 border-b border-slate-100 px-4 dark:border-slate-800">
@@ -244,5 +258,114 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
       {icon}
       {children}
     </button>
+  );
+}
+
+/**
+ * The inside of a `columns` container.
+ *
+ * Deliberately simpler than the top-level list: children reorder with buttons
+ * only, and the picker offers non-container blocks alone. Nesting is capped at
+ * one level, so there is no recursion here — and the cap is enforced in the
+ * server action too, since hiding it in the UI would not stop a crafted
+ * request.
+ */
+function ContainerChildren({
+  parentId,
+  rows,
+  scopeFields,
+}: {
+  parentId: number;
+  rows: BlockCardRow[];
+  scopeFields?: (formData: FormData) => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [adding, setAdding] = useState(false);
+
+  function run(action: (fd: FormData) => Promise<unknown>, fields: Record<string, string>) {
+    startTransition(async () => {
+      const formData = new FormData();
+      for (const [k, v] of Object.entries(fields)) formData.set(k, v);
+      scopeFields?.(formData);
+      await action(formData);
+    });
+  }
+
+  const options = BLOCK_CATALOG.filter((b) => b.repeatable && !b.container);
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Inside this container</p>
+
+      {rows.length === 0 ? (
+        <p className="mb-2 text-xs text-slate-400">Empty — add a block to fill the columns.</p>
+      ) : (
+        <ul className="mb-2 space-y-1.5">
+          {rows.map((child, i) => (
+            <li
+              key={child.id}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm dark:border-slate-700"
+            >
+              <BlockIcon name={blockMeta(child.type)?.icon} className="size-3.5 text-slate-400" />
+              <span className="flex-1 truncate">{blockMeta(child.type)?.label ?? child.type}</span>
+              <button
+                type="button"
+                onClick={() => run(moveSectionAction, { id: String(child.id), direction: 'up' })}
+                disabled={i === 0 || pending}
+                aria-label="Move up"
+                className="text-slate-400 disabled:opacity-30"
+              >
+                <ChevronDown className="size-3.5 rotate-180" />
+              </button>
+              <button
+                type="button"
+                onClick={() => run(moveSectionAction, { id: String(child.id), direction: 'down' })}
+                disabled={i === rows.length - 1 || pending}
+                aria-label="Move down"
+                className="text-slate-400 disabled:opacity-30"
+              >
+                <ChevronDown className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => run(deleteSectionAction, { id: String(child.id) })}
+                disabled={pending}
+                aria-label="Remove from container"
+                className="text-rose-400 hover:text-rose-600"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {adding ? (
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {options.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => {
+                run(createSectionAction, { type: option.key, parentId: String(parentId) });
+                setAdding(false);
+              }}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-left text-xs hover:border-brand-400 dark:border-slate-700"
+            >
+              <BlockIcon name={option.icon} className="size-3.5 text-slate-400" />
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <Plus className="size-3.5" /> Add block inside
+        </button>
+      )}
+    </div>
   );
 }

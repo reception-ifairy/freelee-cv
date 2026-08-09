@@ -15,7 +15,7 @@ export default async function FrontpagePage() {
   const rows = await db
     .select()
     .from(pageSections)
-    .where(and(eq(pageSections.page, 'home'), isNull(pageSections.pageId), isNull(pageSections.parentId)))
+    .where(and(eq(pageSections.page, 'home'), isNull(pageSections.pageId), isNull(pageSections.postId)))
     .orderBy(asc(pageSections.position));
 
   const blocks: BlockCardRow[] = rows.map((row) => ({
@@ -24,6 +24,7 @@ export default async function FrontpagePage() {
     isVisible: row.isVisible,
     config: (row.config ?? {}) as Record<string, unknown>,
     layout: row.layout,
+    parentId: row.parentId,
   }));
 
   return (

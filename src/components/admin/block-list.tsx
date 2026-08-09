@@ -34,7 +34,12 @@ export type BlockScopeProps = { page: string; pageId?: number; postId?: number }
  * per nudge as the old arrow-only editor did.
  */
 export function BlockList({ rows, scope }: { rows: BlockCardRow[]; scope: BlockScopeProps }) {
-  const [items, setItems] = useState(rows);
+  const [items, setItems] = useState(rows.filter((r) => r.parentId == null));
+  const childrenByParent = new Map<number, BlockCardRow[]>();
+  for (const row of rows) {
+    if (row.parentId == null) continue;
+    childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
+  }
   const [, startTransition] = useTransition();
 
   // The server is the source of truth, but waiting for a round-trip before the
@@ -113,6 +118,8 @@ export function BlockList({ rows, scope }: { rows: BlockCardRow[]; scope: BlockS
                   run(deleteSectionAction, { id: String(id) });
                 }}
                 onDuplicate={(id) => run(duplicateSectionAction, { id: String(id) })}
+                childRows={childrenByParent.get(row.id) ?? []}
+                scopeFields={scopeFields}
               />
             ))}
           </div>

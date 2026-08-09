@@ -9,11 +9,11 @@ export default async function HomePage() {
   const rows = await db
     .select()
     .from(pageSections)
-    .where(and(eq(pageSections.page, 'home'), isNull(pageSections.pageId), isNull(pageSections.parentId)))
+    .where(and(eq(pageSections.page, 'home'), isNull(pageSections.pageId), isNull(pageSections.postId)))
     .orderBy(asc(pageSections.position));
 
-  // `parentId is null` keeps children of a columns container out of the top
-  // level — the container renders its own children, so listing them here too
-  // would draw them twice.
+  // Children of a columns container are fetched too — BlockRenderer partitions
+  // them so a container draws its own children and they are not also rendered
+  // at the top level.
   return <BlockRenderer rows={rows} />;
 }

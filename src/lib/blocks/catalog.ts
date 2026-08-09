@@ -231,6 +231,207 @@ export const BLOCK_CATALOG: BlockMeta[] = [
     ],
     defaultConfig: { heading: 'New section', body: 'Write something here.' },
   },
+  // ---------------------------------------------------------------------
+  // Blocks added with the builder. Unlike the eight above, these render bare
+  // content and let the layout wrapper supply width, padding and background —
+  // which is why their default layout is the real one, not LEGACY_LAYOUT.
+  // ---------------------------------------------------------------------
+  {
+    key: 'features_grid',
+    label: 'Feature grid',
+    description: 'A grid of icon + title + text, for selling points.',
+    group: 'marketing',
+    icon: 'star',
+    repeatable: true,
+    supportsColumns: true,
+    defaultLayout: { width: 'wide', columns: 3, paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      {
+        key: 'items', label: 'Features', type: 'repeater', itemLabel: 'Feature', min: 1, max: 12,
+        help: 'Aim for a number that divides evenly into your column count, so the last row is not left ragged.',
+        fields: [
+          { key: 'icon', label: 'Icon', type: 'icon', help: ICON_HELP },
+          { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+          { key: 'body', label: 'Description', type: 'textarea', maxLength: 240 },
+        ],
+      },
+    ],
+    defaultConfig: {
+      title: 'Why teams choose us',
+      items: [
+        { icon: 'bolt', title: 'Fast', body: 'Replies stream as they are written.' },
+        { icon: 'shield', title: 'Private', body: 'Your conversations stay yours.' },
+        { icon: 'heart', title: 'Friendly', body: 'Built to be understood, not admired.' },
+      ],
+    },
+  },
+  {
+    key: 'stats',
+    label: 'Statistics',
+    description: 'Big numbers with short labels.',
+    group: 'marketing',
+    icon: 'chart',
+    repeatable: true,
+    supportsColumns: true,
+    defaultLayout: { width: 'wide', columns: 4, background: 'subtle', paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      {
+        key: 'items', label: 'Figures', type: 'repeater', itemLabel: 'Figure', min: 1, max: 8,
+        fields: [
+          { key: 'value', label: 'Number', type: 'text', required: true, maxLength: 20, help: 'Written exactly as it should appear — "12k", "99.9%", "24/7".' },
+          { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 60 },
+        ],
+      },
+    ],
+    defaultConfig: {
+      items: [
+        { value: '20', label: 'Specialist categories' },
+        { value: '100+', label: 'Personas' },
+        { value: '24/7', label: 'Always available' },
+      ],
+    },
+  },
+  {
+    key: 'faq',
+    label: 'FAQ',
+    description: 'Questions and answers in an accordion.',
+    group: 'content',
+    icon: 'message-square',
+    repeatable: true,
+    defaultLayout: { width: 'wide', paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      {
+        key: 'items', label: 'Questions', type: 'repeater', itemLabel: 'Question', min: 1, max: 20,
+        fields: [
+          { key: 'question', label: 'Question', type: 'text', required: true, maxLength: 200 },
+          { key: 'answer', label: 'Answer', type: 'markdown', required: true, maxLength: 2000 },
+        ],
+      },
+    ],
+    defaultConfig: {
+      title: 'Frequently asked questions',
+      items: [{ question: 'How does billing work?', answer: 'Credits are deducted per message. There is no subscription.' }],
+    },
+  },
+  {
+    key: 'testimonials',
+    label: 'Testimonials',
+    description: 'Quotes from customers, with names and photos.',
+    group: 'marketing',
+    icon: 'heart',
+    repeatable: true,
+    supportsColumns: true,
+    defaultLayout: { width: 'wide', columns: 3, paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      {
+        key: 'items', label: 'Quotes', type: 'repeater', itemLabel: 'Quote', min: 1, max: 12,
+        fields: [
+          { key: 'quote', label: 'Quote', type: 'textarea', required: true, maxLength: 400 },
+          { key: 'name', label: 'Name', type: 'text', required: true, maxLength: 80 },
+          { key: 'role', label: 'Role or company', type: 'text', maxLength: 80 },
+          { key: 'avatar', label: 'Photo', type: 'image' },
+        ],
+      },
+    ],
+    defaultConfig: { title: 'What people say', items: [{ quote: 'It saved us a whole afternoon a week.', name: 'A customer', role: '' }] },
+  },
+  {
+    key: 'logos',
+    label: 'Logo wall',
+    description: 'A row of customer or partner logos.',
+    group: 'marketing',
+    icon: 'globe',
+    repeatable: true,
+    defaultLayout: { width: 'wide', paddingY: 'sm' },
+    fields: [
+      { key: 'title', label: 'Caption', type: 'text', maxLength: 120, help: 'A short line above the logos, e.g. "Trusted by".' },
+      {
+        key: 'items', label: 'Logos', type: 'repeater', itemLabel: 'Logo', min: 1, max: 16,
+        fields: [
+          { key: 'imageUrl', label: 'Image', type: 'image', required: true },
+          { key: 'name', label: 'Name', type: 'text', required: true, maxLength: 60, help: 'Used as the image description for screen readers.' },
+          { key: 'href', label: 'Link', type: 'link' },
+        ],
+      },
+    ],
+    defaultConfig: { title: 'Trusted by', items: [] },
+  },
+  {
+    key: 'image_text',
+    label: 'Image & text',
+    description: 'A picture beside a heading, text and a button.',
+    group: 'content',
+    icon: 'sparkles',
+    repeatable: true,
+    defaultLayout: { width: 'wide', paddingY: 'md' },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'body', label: 'Text', type: 'markdown', maxLength: 4000 },
+      { key: 'imageUrl', label: 'Image', type: 'image' },
+      {
+        key: 'imagePosition', label: 'Image side', type: 'select', columns: 2,
+        options: [{ id: 'right', label: 'Right' }, { id: 'left', label: 'Left' }],
+        help: 'On a phone the image always sits above the text, whichever side you pick.',
+      },
+      { key: 'ctaLabel', label: 'Button label', type: 'text', maxLength: 60 },
+      { key: 'ctaHref', label: 'Button link', type: 'link' },
+    ],
+    defaultConfig: { heading: 'A heading', body: 'Some text beside a picture.', imagePosition: 'right' },
+  },
+  {
+    key: 'video',
+    label: 'Video',
+    description: 'An embedded YouTube or Vimeo video.',
+    group: 'content',
+    icon: 'bolt',
+    repeatable: true,
+    defaultLayout: { width: 'wide', paddingY: 'md' },
+    fields: [
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120 },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300 },
+      { key: 'url', label: 'Video link', type: 'link', required: true, help: 'Paste the normal YouTube or Vimeo page link. Only those two are accepted — anything else renders nothing rather than a broken frame.' },
+      { key: 'caption', label: 'Caption', type: 'text', maxLength: 200 },
+    ],
+    defaultConfig: { url: '' },
+  },
+  {
+    key: 'spacer',
+    label: 'Spacer',
+    description: 'Empty space, optionally with a dividing line.',
+    group: 'layout',
+    icon: 'clock',
+    repeatable: true,
+    defaultLayout: { width: 'wide', paddingY: 'none' },
+    fields: [
+      {
+        key: 'height', label: 'Height', type: 'select', columns: 3,
+        options: [{ id: 'sm', label: 'Small' }, { id: 'md', label: 'Medium' }, { id: 'lg', label: 'Large' }],
+      },
+      { key: 'divider', label: 'Show a dividing line', type: 'toggle' },
+    ],
+    defaultConfig: { height: 'md', divider: false },
+  },
+  {
+    key: 'columns',
+    label: 'Columns',
+    description: 'Puts other blocks side by side.',
+    group: 'layout',
+    icon: 'check',
+    repeatable: true,
+    container: true,
+    supportsColumns: true,
+    defaultLayout: { width: 'wide', columns: 2, paddingY: 'md' },
+    fields: [],
+    defaultConfig: {},
+  },
 ];
 
 export function blockMeta(key: string): BlockMeta | undefined {
@@ -258,4 +459,33 @@ export function withDefaults(key: string, config: unknown): Record<string, unkno
   const meta = blockMeta(key);
   if (!meta) return (config ?? {}) as Record<string, unknown>;
   return { ...meta.defaultConfig, ...((config ?? {}) as Record<string, unknown>) };
+}
+
+/**
+ * May `childType` be placed inside the block described by `parent`?
+ *
+ * Nesting is capped at one level. Extracted here, as a named pure function
+ * rather than a condition inside the server action, so the rule can be tested
+ * directly — see `scripts/verify-block-nesting.ts`. The action calls this; the
+ * UI also calls it to decide what to offer, but the action is what actually
+ * enforces it, since hiding an option does not stop a crafted request.
+ */
+export function canNest(
+  parent: { type: string; parentId: number | null } | null | undefined,
+  childType: string,
+): boolean {
+  if (!parent) return false;
+
+  const parentMeta = blockMeta(parent.type);
+  const childMeta = blockMeta(childType);
+  if (!parentMeta || !childMeta) return false;
+
+  // Only a container can hold anything.
+  if (!parentMeta.container) return false;
+  // The container must itself be top level — this is the one-level cap.
+  if (parent.parentId !== null) return false;
+  // A container inside a container would defeat the cap.
+  if (childMeta.container) return false;
+
+  return true;
 }
