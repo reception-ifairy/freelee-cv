@@ -119,4 +119,6 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Voice (ElevenLabs)** (real TTS with a total browser fallback, plus Scribe speech-to-text that replaces the Chrome-only recogniser) — `30-voice.md`
 - **Transactional email & password reset** (pluggable email transport with a usable log driver; enumeration-safe, single-use password reset) — `31-email-and-password-reset.md`
 - **Error tracking (Sentry)** (optional and inert without a DSN; why `sendDefaultPii: false` does not stop session cookies leaving the box) — `32-observability.md`
+- **Block builder** (the frontpage editor rebuilt as a real builder — 17 block types, a shared grid system, drag and drop, and the same blocks on CMS pages and blog posts; supersedes `19`) — `33-block-builder.md`
+- **Navigation** (nested menus and accessible dropdowns — the site previously had no `parent_id` at all and could not render one) — `34-navigation.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

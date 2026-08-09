@@ -179,6 +179,44 @@ export const MODULES: ModuleManifest[] = [
     navigation: [{ label: 'Translations', href: '/admin/translations', group: 'admin', order: 25 }],
   },
   {
+    key: 'block-builder',
+    name: 'Block Builder',
+    version: '1.0.0',
+    description:
+      'The frontpage editor rebuilt as a general block builder: 17 block types, a grid system ' +
+      '(width/columns/background/spacing/responsive visibility) stored in its own column so every ' +
+      'block inherits it, drag-and-drop reordering via @dnd-kit with full keyboard support, and one ' +
+      'level of nesting through a columns container. Adding a block type is a catalog entry plus a ' +
+      'render function — the field declarations drive the editing UI and the server-side validation ' +
+      'alike. The same blocks build CMS pages and blog posts, with a non-destructive fallback to ' +
+      'their markdown. See docs/33-block-builder.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['frontpage-sections'] },
+    provides: {
+      capabilities: ['blocks.catalog', 'blocks.grid_layout', 'blocks.drag_and_drop', 'blocks.nesting', 'blocks.page_scopes'],
+    },
+    permissions: [],
+    navigation: [{ label: 'Frontpage', href: '/admin/frontpage', group: 'admin', order: 17 }],
+  },
+  {
+    key: 'navigation',
+    name: 'Navigation',
+    version: '1.0.0',
+    description:
+      'Nested menus and accessible dropdowns. Before this the schema had no parent_id at all, so the ' +
+      'site could not render a dropdown menu; the header selected one flat list. One shared tree ' +
+      'builder applies visibility before nesting so the header and footer cannot disagree, orphans ' +
+      'are dropped rather than promoted to the top level, and depth is capped at one in the action. ' +
+      'See docs/34-navigation.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['navigation.nested_menus', 'navigation.dropdowns'] },
+    permissions: [],
+    navigation: [{ label: 'Menus', href: '/admin/menus', group: 'admin', order: 18 }],
+  },
+  {
     key: 'frontpage-sections',
     name: 'Frontpage Sections',
     version: '1.0.0',

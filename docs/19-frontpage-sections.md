@@ -1,3 +1,8 @@
+> **Superseded.** This page describes the first frontpage editor. It was rebuilt as a general block
+> builder in `docs/33-block-builder.md` — 17 block types, a shared grid system, drag and drop, and
+> the same blocks on CMS pages and blog posts. This page is kept because it records why the
+> `page_sections` table was shaped the way it was, which is what made the rebuild additive.
+
 # Frontpage Sections
 
 Shipped 2026-08-07. Replaces the home page's fixed, hardcoded sequence of 7 JSX sections with an
