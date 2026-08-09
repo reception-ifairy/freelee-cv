@@ -18,6 +18,7 @@ import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
 import { isChatProvider } from '@/lib/ai/registry';
 import { isChatLayoutKey } from '@/lib/chat/layouts';
+import { isToolKey } from '@/lib/tools/registry';
 import type { ActionState } from './auth';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);
@@ -153,6 +154,7 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     suggestions: formData.getAll('suggestions').map((v) => String(v).trim()).filter(Boolean),
     aiProvider: data.aiProvider,
     chatLayout: data.chatLayout && isChatLayoutKey(data.chatLayout) ? data.chatLayout : null,
+    tools: formData.getAll('tools').map(String).filter(isToolKey),
     // Server-enforced mutual exclusivity — a tier and an explicit model id
     // can't both be trusted, so the tier (when present) always wins and the
     // free-text model is discarded, regardless of what the form submitted.

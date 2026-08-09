@@ -1,4 +1,4 @@
-import { streamText, convertToModelMessages, type UIMessage } from 'ai';
+import { streamText, convertToModelMessages, tool, stepCountIs, type UIMessage } from 'ai';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db';
@@ -9,6 +9,7 @@ import { getModel, resolveProviderId, resolveTierModel, providerIsConfigured, ge
 import { searchMany } from '@/lib/knowledge/registry';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { narrativePromptFragment } from '@/lib/chat/layouts';
+import { findTool } from '@/lib/tools/registry';
 import { buildSystemPrompt } from '@/lib/persona/prompt';
 import {
   costForTokens, spendCredits, getBalanceForTeam, MINIMUM_CHARGE, InsufficientCreditsError,
@@ -213,12 +214,33 @@ export async function POST(request: Request) {
   );
   const startedAt = Date.now();
 
+  // Tools the persona is allowed to invoke. An unknown key in the column is
+  // skipped rather than throwing — a tool removed from the registry must not
+  // break every persona that still lists it.
+  const enabledTools = (version?.tools ?? [])
+    .map(findTool)
+    .filter((t): t is NonNullable<typeof t> => Boolean(t));
+
+  const toolSet = enabledTools.length
+    ? Object.fromEntries(
+        enabledTools.map((t) => [
+          t.key,
+          tool({ description: t.description, inputSchema: t.inputSchema, execute: t.execute as never }),
+        ]),
+      )
+    : undefined;
+
   const result = streamText({
     model: getModel(registry, providerId, modelId, {
       apiKey: apiKeyFromSettings || undefined,
       baseUrl: baseUrlFromSettings || undefined,
     }),
     system,
+    tools: toolSet,
+    // Without this the model calls a tool and the turn ends there — the user
+    // sees nothing. Each step is one model round trip, so the cap bounds both
+    // latency and cost; 4 is enough for call → read → call again → answer.
+    stopWhen: toolSet ? stepCountIs(5) : undefined,
     messages: await convertToModelMessages(history),
     temperature: version?.temperature ?? 0.8,
     topP: version?.topP ?? undefined,

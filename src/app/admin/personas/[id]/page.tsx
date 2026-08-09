@@ -7,6 +7,7 @@ import { getProviderRegistry } from '@/lib/ai/registry';
 import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { PersonaForm } from '@/components/admin/persona-form';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
+import { suggestedToolsFor } from '@/lib/tools/registry';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -56,9 +57,14 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     version?.audienceSegments,
   );
 
+  const suggestedTools = suggestedToolsFor(
+    categoryRows.filter((c) => links.some((l) => l.categoryId === c.id)).map((c) => c.slug),
+  );
+
   return (
     <PersonaForm
       suggestedLayout={suggestedLayout}
+      suggestedTools={suggestedTools}
       persona={persona}
       version={version}
       versionHistory={versionHistory.filter((v) => v.status === 'published')}

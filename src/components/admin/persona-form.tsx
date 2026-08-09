@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardRadioGroup } from '@/components/ui/card-radio-group';
 import { CHAT_LAYOUTS, layoutsForSurface } from '@/lib/chat/layouts';
+import { TOOLS } from '@/lib/tools/registry';
 import type { ChatLayoutKey } from '@/lib/chat/layouts';
 import { GridSelect } from '@/components/ui/grid-select';
 import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
@@ -72,10 +73,12 @@ type Props = {
   knowledgeSources: { key: string; label: string }[];
   /** What `suggestLayoutForPersona()` would pick — shown so the auto-default is visible, not hidden magic. */
   suggestedLayout?: ChatLayoutKey;
+  /** Tool keys suggested by this persona's categories — pre-ticked on a new persona. */
+  suggestedTools?: string[];
 };
 
 export function PersonaForm({
-  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources, suggestedLayout,
+  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [],
 }: Props) {
   const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
@@ -626,6 +629,34 @@ export function PersonaForm({
                     })),
                   ]}
                 />
+              </div>
+            </div>
+
+            <div>
+              <Label>Tools</Label>
+              <Hint>
+                Things this persona can actually <em>do</em> mid-conversation, rather than guess at. A model asked to
+                add up a column of numbers will guess; with the calculator ticked it computes. Ticked by default based
+                on the persona&apos;s categories. See docs/29-tools.md.
+              </Hint>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {TOOLS.map((toolDef) => {
+                  const checked = version
+                    ? version.tools.includes(toolDef.key)
+                    : suggestedTools.includes(toolDef.key);
+                  return (
+                    <label
+                      key={toolDef.key}
+                      className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-brand-300 dark:border-slate-700"
+                    >
+                      <Checkbox name="tools" value={toolDef.key} defaultChecked={checked} className="mt-0.5" />
+                      <span>
+                        <span className="block text-sm font-medium">{toolDef.label}</span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">{toolDef.summary}</span>
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 

@@ -682,6 +682,12 @@ export const personaVersions = pgTable(
     capabilities: jsonb('capabilities').$type<PersonaCapabilities>().notNull().default(sql`'{}'::jsonb`),
     groundingSources: jsonb('grounding_sources').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     guardrails: jsonb('guardrails').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Tool keys this persona may invoke mid-conversation (docs/29-tools.md).
+     * Code lives in src/lib/tools/registry.ts — a tool has an implementation,
+     * so it can't be pure data; *which* tools a persona gets is.
+     */
+    tools: jsonb('tools').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     audienceSegments: jsonb('audience_segments').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
 
     blueprint: jsonb('blueprint').$type<PersonaBlueprint>(),
