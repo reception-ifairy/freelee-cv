@@ -9,7 +9,7 @@ import { assertChatAccess } from '@/server/actions/chat';
 import { currentUser } from '@/lib/auth';
 import { resolveImageModel, generateImage } from '@/lib/ai/generate-image';
 import { storeBase64 } from '@/lib/media/store';
-import { checkInput } from '@/lib/moderation/filter';
+import { moderateInput } from '@/lib/moderation/filter';
 import { spendCredits, getBalanceForTeam, InsufficientCreditsError } from '@/lib/billing/credits';
 import { hasActiveEntitlement } from '@/lib/billing/entitlements';
 import type { ActionState } from './auth';
@@ -68,7 +68,7 @@ export async function generateImageAction(_prev: ImageActionState, formData: For
   if (!version?.capabilities.images) return { error: 'This assistant cannot create images.' };
 
   if (version.capabilities.badwordFilter) {
-    const check = await checkInput(prompt);
+    const check = await moderateInput(prompt);
     if (check.blocked) return { error: 'That description contains language this assistant will not act on.' };
   }
 

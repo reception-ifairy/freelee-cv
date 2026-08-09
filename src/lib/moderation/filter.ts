@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSettingString } from '@/lib/settings';
+import { classifyInput } from './ai-filter';
 
 /**
  * Input filtering for personas with `capabilities.badwordFilter` ticked.
@@ -82,6 +83,34 @@ async function activeTerms(): Promise<string[]> {
 }
 
 export type FilterResult = { blocked: false } | { blocked: true; term: string };
+
+/**
+ * The public entry point. `moderation_mode` picks the strategy:
+ *
+ *   `wordlist` (default) — the matcher below. Fast, free, shallow.
+ *   `ai`                 — a classifier call, falling back to the word list
+ *                          if the provider is unreachable or returns nonsense.
+ *   `off`                — nothing, even for personas with the flag ticked.
+ *
+ * Defaults to `wordlist` so behaviour is unchanged until an admin opts in —
+ * switching every persona to a paid, slower check without being asked would
+ * be a surprising bill.
+ */
+export async function moderateInput(text: string): Promise<FilterResult> {
+  const mode = await getSettingString('moderation_mode', 'wordlist');
+  if (mode === 'off') return { blocked: false };
+
+  if (mode === 'ai') {
+    const verdict = await classifyInput(text);
+    if (verdict.usable) {
+      return verdict.blocked ? { blocked: true, term: verdict.category ?? 'flagged' } : { blocked: false };
+    }
+    // Classifier unavailable — fall through to the word list rather than
+    // letting everything past.
+  }
+
+  return checkInput(text);
+}
 
 /**
  * Word-boundary matched against the normalised text, so `class` never trips

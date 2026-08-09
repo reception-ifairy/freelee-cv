@@ -15,7 +15,7 @@ import {
 } from '@/lib/billing/credits';
 import { hasActiveEntitlement } from '@/lib/billing/entitlements';
 import { getSettingInt, getSettingString } from '@/lib/settings';
-import { checkInput } from '@/lib/moderation/filter';
+import { moderateInput } from '@/lib/moderation/filter';
 import { storeDataUrl } from '@/lib/media/store';
 
 /** A hard cap so one message can't post a hundred images at the model (or at the disk). */
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
   // message costs nothing and never reaches the provider. Word-list only —
   // see src/lib/moderation/filter.ts on what that does and doesn't catch.
   if (version?.capabilities.badwordFilter) {
-    const check = await checkInput(userText);
+    const check = await moderateInput(userText);
     if (check.blocked) {
       return fail('That message contains language this assistant will not respond to. Please rephrase it.', 422);
     }

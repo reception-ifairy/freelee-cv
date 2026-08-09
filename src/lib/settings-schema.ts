@@ -34,6 +34,10 @@ export const SETTINGS_SCHEMA = {
     { key: 'guest_free_messages', label: 'Free messages before signup', type: 'int' },
     { key: 'signup_bonus_credits', label: 'Signup bonus credits', type: 'int' },
     {
+      key: 'moderation_mode', label: 'Input moderation', type: 'string',
+      help: "'wordlist' (default, free), 'ai' (a classifier call per message — catches meaning, costs a little), or 'off'. Only applies to personas with \"Filter offensive input\" ticked.",
+    },
+    {
       key: 'badword_list', label: 'Blocked words', type: 'text',
       help: 'Comma or newline separated. Replaces the built-in list entirely. Only applies to personas with "Filter offensive input" ticked.',
     },
