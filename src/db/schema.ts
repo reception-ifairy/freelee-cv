@@ -1309,6 +1309,8 @@ export const posts = pgTable(
     isPublished: boolean('is_published').notNull().default(false),
     isFeatured: boolean('is_featured').notNull().default(false),
     publishedAt: timestamp('published_at', { withTimezone: true }),
+    /** As `pages.useBuilder` — block-built body, with the markdown `content` as the fallback. */
+    useBuilder: boolean('use_builder').notNull().default(false),
     views: integer('views').notNull().default(0),
     readingMinutes: integer('reading_minutes').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1351,6 +1353,8 @@ export const pages = pgTable(
     isPublished: boolean('is_published').notNull().default(true),
     isLocked: boolean('is_locked').notNull().default(false),
     noindex: boolean('noindex').notNull().default(false),
+    /** When true the page renders from `pageSections` instead of `content`; falls back to markdown if it has no blocks yet. */
+    useBuilder: boolean('use_builder').notNull().default(false),
     position: integer('position').notNull().default(0),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1369,8 +1373,22 @@ export const menuItems = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     isLocked: boolean('is_locked').notNull().default(false),
     position: integer('position').notNull().default(0),
+    /**
+     * Parent item, for dropdown navigation. Depth is capped at one level in
+     * the action — a child cannot itself have children. Before this column
+     * the site was structurally incapable of a dropdown: the header selected
+     * one flat ordered list.
+     */
+    parentId: integer('parent_id').references((): AnyPgColumn => menuItems.id, { onDelete: 'cascade' }),
+    /** Curated icon key (src/lib/blocks/catalog.ts BLOCK_ICON_KEYS), shown in dropdown panels. */
+    icon: text('icon'),
+    /** Optional one-line description, shown under the label in a dropdown panel. */
+    description: text('description'),
   },
-  (t) => [index('menu_location_idx').on(t.location, t.position)],
+  (t) => [
+    index('menu_location_idx').on(t.location, t.position),
+    index('menu_items_parent_idx').on(t.parentId, t.position),
+  ],
 );
 
 export const seoSettings = pgTable(
@@ -1452,10 +1470,35 @@ export const pageSections = pgTable(
     position: integer('position').notNull().default(0),
     isVisible: boolean('is_visible').notNull().default(true),
     config: jsonb('config').notNull().default(sql`'{}'::jsonb`),
+    /**
+     * The shared grid system — width, columns, background, vertical padding,
+     * responsive visibility. Deliberately its own column rather than part of
+     * `config`: layout is uniform across every block type, so a block added
+     * later inherits the whole system without touching its config shape.
+     * See src/lib/blocks/layout.ts.
+     */
+    layout: jsonb('layout').notNull().default(sql`'{}'::jsonb`),
+    /** Lazy-migration hatch — a block type can change its config shape and upgrade old rows on read. */
+    configVersion: integer('config_version').notNull().default(1),
+    /** One level of nesting only (a `columns` container holding children); enforced in the action, not just the UI. */
+    parentId: integer('parent_id').references((): AnyPgColumn => pageSections.id, { onDelete: 'cascade' }),
+    /**
+     * Owner. `page = 'home'` with both FKs null is the front page; otherwise
+     * exactly one of these points at the CMS page or blog post that owns the
+     * block. Real FKs with ON DELETE CASCADE rather than encoding the owner
+     * into `page` — deleting a page must not strand its blocks.
+     */
+    pageId: integer('page_id').references(() => pages.id, { onDelete: 'cascade' }),
+    postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('page_sections_page_idx').on(t.page, t.position)],
+  (t) => [
+    index('page_sections_page_idx').on(t.page, t.position),
+    index('page_sections_page_id_idx').on(t.pageId, t.position),
+    index('page_sections_post_id_idx').on(t.postId, t.position),
+    index('page_sections_parent_idx').on(t.parentId, t.position),
+  ],
 );
 
 export type PageSectionRow = typeof pageSections.$inferSelect;

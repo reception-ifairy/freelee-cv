@@ -1,16 +1,6 @@
-import { Bolt, MessageSquare, Users, Sparkles, Shield, Heart } from 'lucide-react';
 import { getFrontendT } from '@/lib/i18n/translate';
+import { BlockIcon } from '@/components/ui/block-icon';
 import type { HowItWorksConfig } from './types';
-
-/** Curated set, not an arbitrary icon-name string — same "fixed small set" trade-off used elsewhere (knowledge-source dot-paths, branding fonts). */
-const STEP_ICONS: Record<string, typeof Users> = {
-  users: Users,
-  'message-square': MessageSquare,
-  bolt: Bolt,
-  sparkles: Sparkles,
-  shield: Shield,
-  heart: Heart,
-};
 
 export async function HowItWorksSection({ config }: { config: HowItWorksConfig }) {
   if (config.steps.length === 0) return null;
@@ -28,11 +18,10 @@ export async function HowItWorksSection({ config }: { config: HowItWorksConfig }
 
         <div className="mt-14 grid gap-8 md:grid-cols-3">
           {config.steps.map((step, i) => {
-            const Icon = STEP_ICONS[step.icon] ?? Users;
             return (
               <div key={`${step.title}-${i}`} className="text-center">
                 <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
-                  <Icon className="size-6" />
+                  <BlockIcon name={step.icon} className="size-6" />
                 </div>
                 <h3 className="mt-5 text-lg font-semibold">{step.title}</h3>
                 <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500 dark:text-slate-400">{step.body}</p>

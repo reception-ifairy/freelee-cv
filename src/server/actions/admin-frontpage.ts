@@ -2,166 +2,278 @@
 
 // Named admin-frontpage.ts, not admin/frontpage.ts — src/server/actions/admin.ts
 // already exists as a file. Same collision workaround as admin-knowledge-sources.ts.
+//
+// Despite the name this now serves every block scope: the home page, a CMS page
+// and a blog post all use the same table and the same actions, keyed by
+// `BlockScope`. The file name is kept so links and imports elsewhere still
+// resolve; renaming it is cosmetic churn for no gain.
 
 import { z } from 'zod';
-import { eq, asc } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { pageSections } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { DEFAULT_CUSTOM_CONTENT_CONFIG, STEP_ICON_KEYS } from '@/components/site/sections/types';
+import { blockMeta, isBlockKey } from '@/lib/blocks/catalog';
+import { validateBlockConfig } from '@/lib/blocks/validate';
+import { resolveLayout } from '@/lib/blocks/layout';
 import type { ActionState } from './auth';
+
+/** Which collection of blocks an action is operating on. */
+const scopeSchema = z.object({
+  page: z.string().min(1).max(40).default('home'),
+  pageId: z.coerce.number().int().positive().optional(),
+  postId: z.coerce.number().int().positive().optional(),
+});
+export type BlockScope = z.infer<typeof scopeSchema>;
+
+function scopeFrom(formData: FormData): BlockScope {
+  return scopeSchema.parse({
+    page: formData.get('page') ?? 'home',
+    pageId: formData.get('pageId') || undefined,
+    postId: formData.get('postId') || undefined,
+  });
+}
+
+function scopeWhere(scope: BlockScope) {
+  if (scope.pageId) return eq(pageSections.pageId, scope.pageId);
+  if (scope.postId) return eq(pageSections.postId, scope.postId);
+  return and(eq(pageSections.page, scope.page), isNull(pageSections.pageId), isNull(pageSections.postId));
+}
+
+/** Repaint everything a block change could be visible on. Cheap, and avoids a stale home page after editing a shared block. */
+function revalidateScope(scope: BlockScope) {
+  revalidatePath('/', 'layout');
+  revalidatePath('/admin/frontpage');
+  if (scope.pageId) revalidatePath('/admin/pages');
+  if (scope.postId) revalidatePath('/admin/posts');
+}
 
 export async function toggleSectionAction(formData: FormData) {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
   const isVisible = formData.get('isVisible') === 'true';
   await db.update(pageSections).set({ isVisible: !isVisible, updatedAt: new Date() }).where(eq(pageSections.id, id));
-  revalidatePath('/');
-  revalidatePath('/admin/frontpage');
+  revalidateScope(scopeFrom(formData));
 }
 
-/** Swaps `position` with the section immediately above/below it — a plain integer swap, not a full renumber, since positions only need a consistent order, not to be contiguous. */
+/** Swaps `position` with the block immediately above/below. Kept alongside drag-and-drop as an unambiguous fallback that works with no JavaScript at all. */
 export async function moveSectionAction(formData: FormData) {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
   const direction = z.enum(['up', 'down']).parse(formData.get('direction'));
+  const scope = scopeFrom(formData);
 
-  const rows = await db.select().from(pageSections).where(eq(pageSections.page, 'home')).orderBy(asc(pageSections.position));
-  const index = rows.findIndex((r) => r.id === id);
-  if (index === -1) return;
+  const [target] = await db.select().from(pageSections).where(eq(pageSections.id, id)).limit(1);
+  if (!target) return;
+
+  // Siblings only — a block inside a container reorders within that container.
+  const siblings = await db
+    .select()
+    .from(pageSections)
+    .where(target.parentId === null ? and(scopeWhere(scope), isNull(pageSections.parentId)) : eq(pageSections.parentId, target.parentId))
+    .orderBy(asc(pageSections.position));
+
+  const index = siblings.findIndex((r) => r.id === id);
   const swapIndex = direction === 'up' ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= rows.length) return;
+  if (index === -1 || swapIndex < 0 || swapIndex >= siblings.length) return;
 
-  const a = rows[index];
-  const b = rows[swapIndex];
+  const a = siblings[index];
+  const b = siblings[swapIndex];
   await db.transaction(async (tx) => {
     await tx.update(pageSections).set({ position: b.position, updatedAt: new Date() }).where(eq(pageSections.id, a.id));
     await tx.update(pageSections).set({ position: a.position, updatedAt: new Date() }).where(eq(pageSections.id, b.id));
   });
 
-  revalidatePath('/');
-  revalidatePath('/admin/frontpage');
+  revalidateScope(scope);
 }
 
 /**
- * Typed per-section-type forms (not a single raw-JSON textarea) — matches
- * every other admin form in this app and can't produce a config shape the
- * renderer doesn't expect.
+ * Persists a whole ordering in one request — what drag-and-drop submits.
+ *
+ * Only ids already in the target scope are written. Without that check, a
+ * crafted payload could drag a block out of somebody else's page by id.
  */
-async function saveConfig(id: number, config: unknown): Promise<ActionState> {
-  await db.update(pageSections).set({ config, updatedAt: new Date() }).where(eq(pageSections.id, id));
-  revalidatePath('/');
-  revalidatePath('/admin/frontpage');
-  return { success: 'Section updated.' };
-}
-
-// titleLead is NOT trimmed — hero.tsx renders `{titleLead}{titleAccent}` back
-// to back with no separator, so a deliberate trailing space (e.g. "Your AI
-// agency, ") is load-bearing. Still rejects whitespace-only input via the
-// trimmed-length check.
-const heroSchema = z.object({
-  id: z.coerce.number().int(),
-  titleLead: z.string().max(120).refine((v) => v.trim().length > 0, 'Title (lead) is required.'),
-  titleAccent: z.string().trim().min(1).max(120),
-  subtitle: z.string().trim().min(1).max(300),
-  primaryLabel: z.string().trim().min(1).max(60),
-  secondaryLabel: z.string().trim().min(1).max(60),
-});
-
-export async function updateHeroConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function reorderSectionsAction(formData: FormData): Promise<ActionState> {
   await requireAdmin();
-  const parsed = heroSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
-  const { id, ...config } = parsed.data;
-  return saveConfig(id, config);
-}
+  const scope = scopeFrom(formData);
 
-const ctaSchema = z.object({
-  id: z.coerce.number().int(),
-  title: z.string().trim().min(1).max(120),
-  subtitle: z.string().trim().min(1).max(300),
-  buttonLabel: z.string().trim().min(1).max(60),
-});
+  const parsed = z.array(z.number().int().positive()).safeParse(JSON.parse(String(formData.get('order') ?? '[]')));
+  if (!parsed.success) return { error: 'That ordering could not be read.' };
+  const order = parsed.data;
+  if (order.length === 0) return { success: 'Nothing to reorder.' };
 
-export async function updateCtaConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const parsed = ctaSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
-  const { id, ...config } = parsed.data;
-  return saveConfig(id, config);
-}
+  const parentIdRaw = formData.get('parentId');
+  const parentId = parentIdRaw ? Number(parentIdRaw) : null;
 
-const howItWorksSchema = z.object({
-  id: z.coerce.number().int(),
-  icon: z.array(z.enum(STEP_ICON_KEYS)).length(3),
-  title: z.array(z.string().trim().min(1).max(80)).length(3),
-  body: z.array(z.string().trim().min(1).max(200)).length(3),
-});
+  const allowed = await db
+    .select({ id: pageSections.id })
+    .from(pageSections)
+    .where(parentId ? eq(pageSections.parentId, parentId) : and(scopeWhere(scope), isNull(pageSections.parentId)));
 
-export async function updateHowItWorksConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const parsed = howItWorksSchema.safeParse({
-    id: formData.get('id'),
-    icon: formData.getAll('icon'),
-    title: formData.getAll('title'),
-    body: formData.getAll('body'),
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
-  const { id, icon, title, body } = parsed.data;
-  const steps = icon.map((ic, i) => ({ icon: ic, title: title[i], body: body[i] }));
-  return saveConfig(id, { steps });
-}
+  const allowedIds = new Set(allowed.map((r) => r.id));
+  const clean = order.filter((id) => allowedIds.has(id));
+  if (clean.length !== order.length) return { error: 'Some of those blocks do not belong to this page.' };
 
-const customContentSchema = z.object({
-  id: z.coerce.number().int(),
-  heading: z.string().trim().min(1).max(120),
-  body: z.string().trim().min(1).max(4000),
-  imageUrl: z.string().trim().url().optional().or(z.literal('')),
-  ctaLabel: z.string().trim().max(60).optional().or(z.literal('')),
-  ctaHref: z.string().trim().max(300).optional().or(z.literal('')),
-});
-
-export async function updateCustomContentConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const parsed = customContentSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
-  const { id, imageUrl, ctaLabel, ctaHref, ...rest } = parsed.data;
-  return saveConfig(id, {
-    ...rest,
-    imageUrl: imageUrl || undefined,
-    ctaLabel: ctaLabel || undefined,
-    ctaHref: ctaHref || undefined,
-  });
-}
-
-export async function createCustomSectionAction() {
-  await requireAdmin();
-  const rows = await db.select({ position: pageSections.position }).from(pageSections).where(eq(pageSections.page, 'home'));
-  const nextPosition = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
-
-  await db.insert(pageSections).values({
-    page: 'home',
-    type: 'custom_content',
-    position: nextPosition,
-    isVisible: true,
-    config: DEFAULT_CUSTOM_CONTENT_CONFIG,
+  await db.transaction(async (tx) => {
+    for (const [index, id] of clean.entries()) {
+      await tx.update(pageSections).set({ position: index, updatedAt: new Date() }).where(eq(pageSections.id, id));
+    }
   });
 
-  revalidatePath('/');
-  revalidatePath('/admin/frontpage');
+  revalidateScope(scope);
+  return { success: 'Order saved.' };
 }
 
-export async function deleteCustomSectionAction(formData: FormData) {
+/**
+ * Saves a block's content and layout together, validated against the block's
+ * declared field schema rather than a per-type zod schema. The result is
+ * rebuilt from the declared fields, so unknown keys in the payload are dropped
+ * rather than written into the jsonb column.
+ */
+export async function saveBlockAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
 
-  // Only ever targets custom_content rows — enforced here, not just hidden in
-  // the UI, since a core section has nothing to re-add it with once deleted.
-  const [row] = await db.select({ type: pageSections.type }).from(pageSections).where(eq(pageSections.id, id)).limit(1);
-  if (!row || row.type !== 'custom_content') return;
+  const [row] = await db.select().from(pageSections).where(eq(pageSections.id, id)).limit(1);
+  if (!row) return { error: 'That block no longer exists.' };
 
+  let rawConfig: unknown = {};
+  let rawLayout: unknown = {};
+  try {
+    rawConfig = JSON.parse(String(formData.get('config') ?? '{}'));
+    rawLayout = JSON.parse(String(formData.get('layout') ?? '{}'));
+  } catch {
+    return { error: 'That block could not be read. Please reload and try again.' };
+  }
+
+  const result = validateBlockConfig(row.type, rawConfig);
+  if (!result.ok) return { error: result.error };
+
+  await db
+    .update(pageSections)
+    .set({ config: result.config, layout: resolveLayout(rawLayout), updatedAt: new Date() })
+    .where(eq(pageSections.id, id));
+
+  revalidateScope(scopeFrom(formData));
+  return { success: 'Block saved.' };
+}
+
+export async function createSectionAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const scope = scopeFrom(formData);
+  const type = String(formData.get('type') ?? 'custom_content');
+  const parentIdRaw = formData.get('parentId');
+  const parentId = parentIdRaw ? Number(parentIdRaw) : null;
+
+  const meta = blockMeta(type);
+  if (!meta || !isBlockKey(type)) return;
+
+  // Non-repeatable blocks are singletons. Enforced here rather than only hidden
+  // in the picker, so a replayed request cannot create a second hero.
+  if (!meta.repeatable) {
+    const [existing] = await db
+      .select({ id: pageSections.id })
+      .from(pageSections)
+      .where(and(scopeWhere(scope), eq(pageSections.type, type)))
+      .limit(1);
+    if (existing) return;
+  }
+
+  if (parentId !== null) {
+    const [parent] = await db.select().from(pageSections).where(eq(pageSections.id, parentId)).limit(1);
+    // One level of nesting only: the parent must be a container, and must not
+    // itself be nested. Enforced in the action, not just the UI — the same
+    // posture as the core-section delete guard below.
+    if (!parent || !blockMeta(parent.type)?.container || parent.parentId !== null) return;
+    if (meta.container) return;
+  }
+
+  const [{ max }] = await db
+    .select({ max: sql<number>`coalesce(max(${pageSections.position}), -1)` })
+    .from(pageSections)
+    .where(parentId ? eq(pageSections.parentId, parentId) : and(scopeWhere(scope), isNull(pageSections.parentId)));
+
+  await db.insert(pageSections).values({
+    page: scope.page,
+    pageId: scope.pageId ?? null,
+    postId: scope.postId ?? null,
+    parentId,
+    type,
+    position: Number(max) + 1,
+    isVisible: true,
+    config: meta.defaultConfig,
+    layout: meta.defaultLayout ?? {},
+  });
+
+  revalidateScope(scope);
+}
+
+export async function deleteSectionAction(formData: FormData) {
+  await requireAdmin();
+  const id = z.coerce.number().int().parse(formData.get('id'));
+
+  const [row] = await db.select({ type: pageSections.type }).from(pageSections).where(eq(pageSections.id, id)).limit(1);
+  if (!row) return;
+
+  // A non-repeatable block is seeded once by migration and has nothing to
+  // re-add it with, so deleting one would be unrecoverable through the UI.
+  // Enforced here, not just hidden.
+  if (!blockMeta(row.type)?.repeatable) return;
+
+  // Children go with the parent via ON DELETE CASCADE at the database level;
+  // this only removes the parent row.
   await db.delete(pageSections).where(eq(pageSections.id, id));
-  revalidatePath('/');
-  revalidatePath('/admin/frontpage');
+  revalidateScope(scopeFrom(formData));
+}
+
+/** Duplicates a block, including its children. Repeatable types only, for the same reason delete is. */
+export async function duplicateSectionAction(formData: FormData) {
+  await requireAdmin();
+  const id = z.coerce.number().int().parse(formData.get('id'));
+
+  const [row] = await db.select().from(pageSections).where(eq(pageSections.id, id)).limit(1);
+  if (!row || !blockMeta(row.type)?.repeatable) return;
+
+  await db.transaction(async (tx) => {
+    const [copy] = await tx
+      .insert(pageSections)
+      .values({
+        page: row.page,
+        pageId: row.pageId,
+        postId: row.postId,
+        parentId: row.parentId,
+        type: row.type,
+        position: row.position + 1,
+        isVisible: row.isVisible,
+        config: row.config,
+        layout: row.layout,
+      })
+      .returning({ id: pageSections.id });
+
+    const children = await tx.select().from(pageSections).where(eq(pageSections.parentId, row.id)).orderBy(asc(pageSections.position));
+    if (children.length > 0) {
+      await tx.insert(pageSections).values(
+        children.map((child) => ({
+          page: child.page,
+          pageId: child.pageId,
+          postId: child.postId,
+          parentId: copy.id,
+          type: child.type,
+          position: child.position,
+          isVisible: child.isVisible,
+          config: child.config,
+          layout: child.layout,
+        })),
+      );
+    }
+  });
+
+  revalidateScope(scopeFrom(formData));
+}
+
+/** Used by the pages/posts builders to clear a scope's blocks when switching back to markdown. */
+export async function deleteBlocksForScope(ids: number[]) {
+  if (ids.length === 0) return;
+  await db.delete(pageSections).where(inArray(pageSections.id, ids));
 }

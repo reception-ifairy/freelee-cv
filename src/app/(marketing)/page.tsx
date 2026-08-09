@@ -1,22 +1,19 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { pageSections } from '@/db/schema';
-import { renderSection } from '@/components/site/sections';
+import { BlockRenderer } from '@/components/site/block-renderer';
 
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const sections = await db
+  const rows = await db
     .select()
     .from(pageSections)
-    .where(eq(pageSections.page, 'home'))
+    .where(and(eq(pageSections.page, 'home'), isNull(pageSections.pageId), isNull(pageSections.parentId)))
     .orderBy(asc(pageSections.position));
 
-  const visible = sections.filter((s) => s.isVisible);
-  // Only the visible sections' own components run their DB queries — a real
-  // perf win over the old fixed page, which unconditionally fetched all
-  // seven every render regardless of what was actually shown.
-  const rendered = await Promise.all(visible.map((section) => renderSection(section.type, section.config)));
-
-  return <>{rendered}</>;
+  // `parentId is null` keeps children of a columns container out of the top
+  // level — the container renders its own children, so listing them here too
+  // would draw them twice.
+  return <BlockRenderer rows={rows} />;
 }

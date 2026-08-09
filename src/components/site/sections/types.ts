@@ -1,10 +1,13 @@
 /**
- * `config` shapes for the section types that actually carry admin-editable
- * content — `categories`/`featured_personas`/`pricing`/`blog` have none
- * (pure DB-driven display, their copy stays translation-driven via
- * `getFrontendT()` exactly as before this system existed — see
- * docs/19-frontpage-sections.md for why that boundary was drawn there).
+ * `config` shapes for the block types that carry admin-editable content.
+ *
+ * The **defaults** used to live here too; they now live in
+ * `src/lib/blocks/catalog.ts` beside the field declarations that drive the
+ * editing UI, so a block's default value and its form control cannot drift
+ * apart. They are re-exported here so existing imports keep working.
  */
+
+import { blockMeta } from '@/lib/blocks/catalog';
 
 export type HeroConfig = {
   titleLead: string;
@@ -20,9 +23,8 @@ export type CtaConfig = {
   buttonLabel: string;
 };
 
-/** Curated set, not an arbitrary icon-name string — same "fixed small set" trade-off as branding fonts. Resolved to a real icon in how-it-works.tsx's STEP_ICONS. */
-export const STEP_ICON_KEYS = ['users', 'message-square', 'bolt', 'sparkles', 'shield', 'heart'] as const;
-export type HowItWorksStep = { icon: (typeof STEP_ICON_KEYS)[number]; title: string; body: string };
+/** Curated set, not an arbitrary icon-name string — same "fixed small set" trade-off as branding fonts. Resolved to a real icon by `BlockIcon`. */
+export type HowItWorksStep = { icon: string; title: string; body: string };
 export type HowItWorksConfig = { steps: HowItWorksStep[] };
 
 export type CustomContentConfig = {
@@ -33,29 +35,12 @@ export type CustomContentConfig = {
   ctaHref?: string;
 };
 
-export const DEFAULT_HERO_CONFIG: HeroConfig = {
-  titleLead: 'Your AI agency, ',
-  titleAccent: 'staffed by personas',
-  subtitle: 'Hire a specialist for every task.',
-  primaryLabel: 'Browse personas',
-  secondaryLabel: 'See pricing',
-};
+const defaults = <T>(key: string): T => (blockMeta(key)?.defaultConfig ?? {}) as T;
 
-export const DEFAULT_CTA_CONFIG: CtaConfig = {
-  title: 'Start with free credits',
-  subtitle: 'Create an account and get {credits} credits to try every persona — no card required.',
-  buttonLabel: 'Create free account',
-};
+export const DEFAULT_HERO_CONFIG = defaults<HeroConfig>('hero');
+export const DEFAULT_CTA_CONFIG = defaults<CtaConfig>('cta');
+export const DEFAULT_HOW_IT_WORKS_CONFIG = defaults<HowItWorksConfig>('how_it_works');
+export const DEFAULT_CUSTOM_CONTENT_CONFIG = defaults<CustomContentConfig>('custom_content');
 
-export const DEFAULT_HOW_IT_WORKS_CONFIG: HowItWorksConfig = {
-  steps: [
-    { icon: 'users', title: 'Pick a persona', body: 'Each persona carries its own expertise and tone.' },
-    { icon: 'message-square', title: 'Talk naturally', body: 'Replies stream in as they are written.' },
-    { icon: 'bolt', title: 'Pay per use', body: 'Credits are deducted per message. No subscription.' },
-  ],
-};
-
-export const DEFAULT_CUSTOM_CONTENT_CONFIG: CustomContentConfig = {
-  heading: 'New section',
-  body: 'Write something here.',
-};
+/** @deprecated Use `BLOCK_ICON_KEYS` from `src/lib/blocks/catalog.ts` — kept so older imports resolve. */
+export { BLOCK_ICON_KEYS as STEP_ICON_KEYS } from '@/lib/blocks/catalog';
