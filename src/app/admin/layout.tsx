@@ -18,7 +18,6 @@ const SECTIONS = [
     heading: 'AI',
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
-      { href: '/admin/ai-models', label: 'AI models', icon: Cpu },
       { href: '/admin/knowledge-sources', label: 'Knowledge sources', icon: Search },
       { href: '/admin/categories', label: 'Categories', icon: Tags },
       { href: '/admin/sectors', label: 'Sectors', icon: Layers },
