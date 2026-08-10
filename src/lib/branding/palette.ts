@@ -122,6 +122,21 @@ export function wcagVerdict(ratio: number): ContrastVerdict {
   return 'Fail';
 }
 
+/**
+ * The bar for icons, borders and other **non-text** content is 3:1, not 4.5:1
+ * (WCAG 2.1, 1.4.11).
+ *
+ * Worth its own function because judging a colour by the wrong threshold cuts
+ * both ways: this project's accent is used for one small icon, and reporting it
+ * against the body-text bar made it look broken in a way that would have led to
+ * changing a colour for the wrong reason.
+ */
+export function wcagNonTextVerdict(ratio: number): ContrastVerdict {
+  if (ratio >= 4.5) return 'AAA';
+  if (ratio >= 3) return 'AA';
+  return 'Fail';
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Ramp generation                                                           */
 /* -------------------------------------------------------------------------- */
@@ -190,11 +205,53 @@ export function rampFromSeed(seed: string, prefix: string): Record<string, strin
   return out;
 }
 
-export type PaletteSeeds = { brand: string; accent: string };
+/**
+ * Surfaces are the greys: page background, cards, borders and body text.
+ *
+ * Optional, and empty by default. The site paints those from Tailwind's slate
+ * scale, and the theme mechanism overrides `--color-<key>` — so tinting them is
+ * a matter of writing `slate-*` tokens, with no component changes at all.
+ *
+ * Empty means "write nothing", which is why turning this on cannot regress a
+ * site that never used it: the compiled-in slate is left exactly as it was.
+ */
+export type PaletteSeeds = { brand: string; accent: string; surface?: string };
+
+export const SURFACE_STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
+
+/** Tailwind's slate lightness curve, so a neutral seed reproduces the shipped greys. */
+const SURFACE_LIGHTNESS: Record<(typeof SURFACE_STOPS)[number], number> = {
+  50: 0.98, 100: 0.96, 200: 0.91, 300: 0.84, 400: 0.65,
+  500: 0.47, 600: 0.35, 700: 0.28, 800: 0.17, 900: 0.11, 950: 0.05,
+};
+
+/**
+ * Tints every grey towards one hue.
+ *
+ * Saturation is deliberately tiny — a "warm paper" or "cool slate" look is a
+ * few percent, not a colour. Past about 12% the interface stops reading as
+ * neutral and starts competing with the brand.
+ */
+export function surfaceRamp(seed: string): Record<string, string> {
+  const rgb = hexToRgb(seed);
+  if (!rgb) return {};
+
+  const { h, s } = rgbToHsl(rgb);
+  const saturation = Math.min(s, 0.12);
+
+  const out: Record<string, string> = {};
+  for (const stop of SURFACE_STOPS) {
+    out[`slate-${stop}`] = rgbToHex(hslToRgb({ h, s: saturation, l: SURFACE_LIGHTNESS[stop] }));
+  }
+  return out;
+}
 
 /** The complete token set the root layout writes as `--color-<key>`. */
-export function tokensFromSeeds({ brand, accent }: PaletteSeeds): Record<string, string> {
+export function tokensFromSeeds({ brand, accent, surface }: PaletteSeeds): Record<string, string> {
   return {
+    // Only written when a surface tint was actually chosen; otherwise the
+    // compiled-in slate scale is left alone.
+    ...(surface ? surfaceRamp(surface) : {}),
     ...rampFromSeed(brand, 'brand'),
     // Only the three accent stops the UI actually uses today — writing ten
     // would be tokens nothing reads.
@@ -223,15 +280,15 @@ export type PalettePreset = {
  * from vizai.art's palette set.
  */
 export const PALETTE_PRESETS: PalettePreset[] = [
-  { id: 'indigo', name: 'Indigo (default)', description: 'The shipped look — confident and neutral.', seeds: { brand: '#4f46e5', accent: '#f59e0b' } },
-  { id: 'dark-luxury', name: 'Dark Luxury', description: 'Champagne on near-black. Quiet and expensive.', seeds: { brand: '#d4c5a0', accent: '#8c7851' } },
+  { id: 'indigo', name: 'Indigo (default)', description: 'The shipped look — confident and neutral.', seeds: { brand: '#4f46e5', accent: '#d97706' } },
+  { id: 'dark-luxury', name: 'Dark Luxury', description: 'Champagne on near-black. Quiet and expensive.', seeds: { brand: '#d4c5a0', accent: '#8c7851', surface: '#6b6357' } },
   { id: 'minimal-light', name: 'Minimal Light', description: 'Clean editorial blue with plenty of air.', seeds: { brand: '#2563eb', accent: '#0ea5e9' } },
   { id: 'cyberpunk', name: 'Neon Cyberpunk', description: 'Electric cyan against deep slate.', seeds: { brand: '#06b6d4', accent: '#a855f7' } },
   { id: 'crimson-sunset', name: 'Crimson Sunset', description: 'Warm reds fading into orange.', seeds: { brand: '#e11d48', accent: '#fb923c' } },
   { id: 'emerald-forest', name: 'Emerald Forest', description: 'Deep green, calm and natural.', seeds: { brand: '#059669', accent: '#a7f3d0' } },
   { id: 'amethyst', name: 'Amethyst Dream', description: 'Rich purple with a soft lilac accent.', seeds: { brand: '#9333ea', accent: '#c084fc' } },
   { id: 'aurora-mint', name: 'Aurora Mint', description: 'Cool teal with a bright mint highlight.', seeds: { brand: '#14b8a6', accent: '#5eead4' } },
-  { id: 'luminous-paper', name: 'Luminous Paper', description: 'Soft blue on warm white — very legible.', seeds: { brand: '#2f80ed', accent: '#8ac8ff' } },
+  { id: 'luminous-paper', name: 'Luminous Paper', description: 'Soft blue on warm white — very legible.', seeds: { brand: '#2f80ed', accent: '#8ac8ff', surface: '#6b7a8f' } },
   { id: 'pure-black', name: 'Pure Black', description: 'Stark red on black. High drama.', seeds: { brand: '#c1121f', accent: '#ff9c9c' } },
 ];
 
@@ -247,6 +304,7 @@ export function presetById(id: string): PalettePreset | undefined {
 export function seedsFromTokens(tokens: Record<string, string>): PaletteSeeds {
   return {
     brand: isHex(tokens['brand-600'] ?? '') ? tokens['brand-600'] : '#4f46e5',
-    accent: isHex(tokens['accent-500'] ?? '') ? tokens['accent-500'] : '#f59e0b',
+    accent: isHex(tokens['accent-500'] ?? '') ? tokens['accent-500'] : '#d97706',
+    surface: isHex(tokens['slate-500'] ?? '') ? tokens['slate-500'] : '',
   };
 }

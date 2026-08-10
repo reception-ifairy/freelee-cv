@@ -43,7 +43,7 @@ export async function updateThemeAction(_prev: ActionState, formData: FormData):
     if (!key.startsWith('token.') || typeof value !== 'string') continue;
 
     const name = key.slice('token.'.length);
-    if (!/^(brand|accent)-(50|100|200|300|400|500|600|700|800|900)$/.test(name)) continue;
+    if (!/^(brand|accent|slate)-(50|100|200|300|400|500|600|700|800|900|950)$/.test(name)) continue;
 
     const colour = value.trim();
     if (!isHex(colour)) continue;

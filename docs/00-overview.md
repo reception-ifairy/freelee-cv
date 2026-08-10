@@ -126,4 +126,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Site assistant** (a chat bubble on every public page that *is* a persona — free, rate-limited, and provably not spoofable into free chat with a paid persona) — `37-site-assistant.md`
 - **Showcase** (curated examples of real assistant work, promoted from conversations or added by hand, shown through a block with a lightbox) — `38-showcase.md`
 - **Theme composer** (palette presets, a scale generated from one colour, and live WCAG contrast checks — ported from vizai.art and extended; supersedes the three-colour form in `20`) — `39-theme-composer.md`
+- **Settings & models** (settings regrouped into a real hub, the model catalog moved in and rebuilt, and a provider health check that tells key-missing from key-broken from account-unfunded) — `40-settings-and-models.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

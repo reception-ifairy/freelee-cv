@@ -2,7 +2,7 @@
 
 import { Check, RotateCcw } from 'lucide-react';
 import {
-  PALETTE_PRESETS, RAMP_STOPS, contrastRatio, isHex, tokensFromSeeds, wcagVerdict,
+  PALETTE_PRESETS, RAMP_STOPS, SURFACE_STOPS, contrastRatio, isHex, tokensFromSeeds, wcagNonTextVerdict, wcagVerdict,
   type PaletteSeeds, type ContrastVerdict,
 } from '@/lib/branding/palette';
 import { Label } from '@/components/ui/field';
@@ -21,6 +21,14 @@ import { cn } from '@/lib/utils';
  * Presets are starting points, not a cage: picking one fills the seeds, and
  * every stop can still be overridden by hand.
  */
+/** A few honest options rather than a colour wheel — surfaces should be nearly neutral. */
+const SURFACE_TINTS = [
+  { hex: '#8f8378', label: 'Warm paper' },
+  { hex: '#6b7a8f', label: 'Cool slate' },
+  { hex: '#7a7a7a', label: 'True grey' },
+  { hex: '#6b7f75', label: 'Sage' },
+] as const;
+
 export function ThemeComposer({
   seeds,
   overrides,
@@ -112,6 +120,54 @@ export function ThemeComposer({
       </section>
 
       <section>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <Label className="mb-0">Surface tint</Label>
+          <HelpTip
+            title="Surface tint"
+            body="Nudges every grey — page background, cards, borders, body text — towards one hue. A few percent is the whole effect: warm paper, cool slate, true black. Leave it off and the greys stay exactly as shipped."
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSeeds({ ...seeds, surface: '' })}
+            aria-pressed={!seeds.surface}
+            className={cn(
+              'rounded-lg border px-3 py-2 text-xs font-semibold transition',
+              !seeds.surface ? 'border-brand-500 ring-2 ring-brand-500/25' : 'border-slate-200 dark:border-slate-700',
+            )}
+          >
+            Neutral (default)
+          </button>
+          {SURFACE_TINTS.map((tint) => (
+            <button
+              key={tint.hex}
+              type="button"
+              onClick={() => onSeeds({ ...seeds, surface: tint.hex })}
+              aria-pressed={seeds.surface?.toLowerCase() === tint.hex}
+              title={tint.label}
+              className={cn(
+                'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition',
+                seeds.surface?.toLowerCase() === tint.hex
+                  ? 'border-brand-500 ring-2 ring-brand-500/25'
+                  : 'border-slate-200 hover:border-brand-400 dark:border-slate-700',
+              )}
+            >
+              <span className="size-4 rounded-full border border-black/10" style={{ background: tint.hex }} />
+              {tint.label}
+            </button>
+          ))}
+        </div>
+        {seeds.surface ? (
+          <div className="mt-2 flex overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            {SURFACE_STOPS.map((stop) => (
+              <span key={stop} className="h-6 flex-1" title={`slate-${stop}`} style={{ background: tokens[`slate-${stop}`] }} />
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section>
         <div className="mb-2 flex items-center gap-2">
           <Label className="mb-0">The full scale</Label>
           {overriddenCount > 0 ? (
@@ -168,7 +224,9 @@ export function ThemeComposer({
           <ContrastCard label="Button text" foreground="#ffffff" background={tokens['brand-600']} />
           <ContrastCard label="Link on white" foreground={tokens['brand-600']} background="#ffffff" />
           <ContrastCard label="Link in dark mode" foreground={tokens['brand-400']} background="#0a0a0a" />
-          <ContrastCard label="Accent on white" foreground={tokens['accent-600']} background="#ffffff" />
+          {/* The accent is only ever an icon here, so it is judged against the
+              3:1 non-text bar rather than the 4.5:1 body-text one. */}
+          <ContrastCard label="Accent icon on white" foreground={tokens['accent-600']} background="#ffffff" nonText />
         </div>
       </section>
 
@@ -221,9 +279,13 @@ const VERDICT_TONE: Record<ContrastVerdict, string> = {
   Fail: 'text-rose-600 dark:text-rose-400',
 };
 
-function ContrastCard({ label, foreground, background }: { label: string; foreground: string; background: string }) {
+function ContrastCard({
+  label, foreground, background, nonText,
+}: {
+  label: string; foreground: string; background: string; nonText?: boolean;
+}) {
   const ratio = contrastRatio(foreground, background);
-  const verdict = wcagVerdict(ratio);
+  const verdict = nonText ? wcagNonTextVerdict(ratio) : wcagVerdict(ratio);
 
   return (
     <div className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700">

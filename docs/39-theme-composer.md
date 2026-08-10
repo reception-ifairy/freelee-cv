@@ -44,8 +44,15 @@ each with a ratio and an AAA/AA/AA-Large/Fail verdict.
 A composer that lets an admin pick unreadable text is worse than no composer, because the failure
 only appears for the people least able to work around it.
 
-**It immediately found something.** The shipped default accent (`#f59e0b` amber) scores
-**2.1:1 — Fail** on white. That has been the live theme all along and nobody could see it.
+**It immediately found something — and then corrected me.** The shipped default accent (`#f59e0b`)
+scores **2.1:1** on white, which the composer first reported as a body-text failure. Checking where
+the accent is actually used showed it appears on exactly **one small icon**, twice — never on text.
+The right bar for non-text content is **3:1** (WCAG 1.4.11), not 4.5:1.
+
+It still failed that lower bar, so the default accent moved to `#d97706`: 3.19:1 on white and 6.21:1
+on dark, both passing. `wcagNonTextVerdict()` now exists so the composer judges icons by the icon
+rule — reporting a colour against the wrong threshold would have led to changing it for the wrong
+reason, which is its own kind of wrong.
 
 ### Preview
 
@@ -56,7 +63,7 @@ badge, a link and an accent chip — the combinations that actually break when a
 
 `updateThemeAction` previously stored any non-empty string under any `token.*` key. Tokens are
 emitted straight into a `<style>` block as `--color-<key>: <value>`, so both halves are now checked:
-the key against `^(brand|accent)-(50|100|…|900)$`, the value as a hex colour. An unchecked key could
+the key against `^(brand|accent|slate)-(50|100|…|950)$`, the value as a hex colour. An unchecked key could
 otherwise close the declaration and write arbitrary CSS into every page.
 
 ## Two bugs the tests caught, not the reading
@@ -73,7 +80,7 @@ Both are why the seed is now pinned to 600.
 
 ## What was verified
 
-`scripts/verify-palette.ts` — **31/31**, wired into `npm run blocks:verify`:
+`scripts/verify-palette.ts` — **40/40**, wired into `npm run blocks:verify`:
 
 hex parsing and round-trips · every stop a valid hex · the ramp darkens monotonically 50→900 · hue
 survives · a grey seed still ramps · an invalid seed yields nothing · **the seed is exactly
@@ -99,11 +106,18 @@ persists that to `.next/cache`. Editing `themes` **directly in SQL** does not ch
 the tag is revalidated or the cache is cleared — the admin action does revalidate, so this only bites
 when poking the database by hand. It cost ten confused minutes here.
 
-## Still open
+## Surfaces
 
-- Only `brand` and `accent` are composable. Surfaces and text greys still come from Tailwind's slate
-  scale, so a "warm paper" or "true black" background is not yet a setting — that is the natural
-  next step, and it is what vizai's `bgPrimary/bgSurface/bgElevated` tokens do.
+Added after the first pass. The greys — page background, cards, borders, body text — come from
+Tailwind's slate scale, and the theme mechanism overrides `--color-<key>`. So tinting them needed no
+component changes at all: a surface seed writes `slate-50…950` and every surface follows.
+
+Four options (Warm paper, Cool slate, True grey, Sage) plus **Neutral**, which is the default and
+writes *nothing* — that is what makes the feature safe to add to a site that never had it. Saturation
+is capped at 12% however vivid the seed: past that the interface stops reading as neutral and starts
+competing with the brand. There is a test for exactly that.
+
+## Still open
 - No per-theme dark-mode override; dark mode derives from the same ramp.
 - The composer does not warn when a preset itself fails contrast — it shows the verdict and leaves
   the judgement to you.

@@ -5,7 +5,7 @@
  */
 import {
   contrastRatio, hexToRgb, isHex, rampFromSeed, rgbToHex, seedsFromTokens,
-  tokensFromSeeds, wcagVerdict, RAMP_STOPS,
+  tokensFromSeeds, wcagNonTextVerdict, wcagVerdict, RAMP_STOPS,
 } from '@/lib/branding/palette';
 
 const checks: [string, boolean][] = [];
@@ -54,10 +54,10 @@ check('a dark seed is brand-600', greenRamp['brand-600'], '#059669');
 check('a mid seed is brand-600', rampFromSeed('#4f46e5', 'brand')['brand-600'], '#4f46e5');
 check('a light seed is brand-600', rampFromSeed('#d4c5a0', 'brand')['brand-600'], '#d4c5a0');
 check('a very dark seed is brand-600', rampFromSeed('#0b1120', 'brand')['brand-600'], '#0b1120');
-check('the accent seed is accent-600', tokensFromSeeds({ brand: '#4f46e5', accent: '#f59e0b' })['accent-600'], '#f59e0b');
+check('the accent seed is accent-600', tokensFromSeeds({ brand: '#4f46e5', accent: '#d97706' })['accent-600'], '#d97706');
 
 // --- tokens ---
-const tokens = tokensFromSeeds({ brand: '#4f46e5', accent: '#f59e0b' });
+const tokens = tokensFromSeeds({ brand: '#4f46e5', accent: '#d97706' });
 truthy('writes the ten brand stops', RAMP_STOPS.every((s) => `brand-${s}` in tokens));
 check('writes only the three accent stops used', Object.keys(tokens).filter((k) => k.startsWith('accent')).sort(), ['accent-400', 'accent-500', 'accent-600']);
 
@@ -74,9 +74,29 @@ check('2:1 fails', wcagVerdict(2), 'Fail');
 truthy('white on brand-600 passes AA', contrastRatio('#ffffff', tokens['brand-600']) >= 4.5);
 
 // --- seed recovery ---
-check('recovers seeds from tokens', seedsFromTokens({ 'brand-600': '#059669', 'accent-500': '#a7f3d0' }), { brand: '#059669', accent: '#a7f3d0' });
-check('falls back when tokens are empty', seedsFromTokens({}), { brand: '#4f46e5', accent: '#f59e0b' });
-check('falls back when tokens are junk', seedsFromTokens({ 'brand-600': 'chartreuse' }), { brand: '#4f46e5', accent: '#f59e0b' });
+check('recovers seeds from tokens', seedsFromTokens({ 'brand-600': '#059669', 'accent-500': '#a7f3d0' }), { brand: '#059669', accent: '#a7f3d0', surface: '' });
+check('recovers a surface tint too', seedsFromTokens({ 'slate-500': '#6b7a8f' }).surface, '#6b7a8f');
+check('falls back when tokens are empty', seedsFromTokens({}), { brand: '#4f46e5', accent: '#d97706', surface: '' });
+check('falls back when tokens are junk', seedsFromTokens({ 'brand-600': 'chartreuse' }), { brand: '#4f46e5', accent: '#d97706', surface: '' });
+
+// Surfaces stay untouched unless a tint is chosen — that is what makes the
+// feature safe to add to a site that never had it.
+check('no surface tint writes no slate tokens', Object.keys(tokensFromSeeds({ brand: '#4f46e5', accent: '#d97706' })).filter((k) => k.startsWith('slate')).length, 0);
+truthy('a surface tint writes the slate scale', Object.keys(tokensFromSeeds({ brand: '#4f46e5', accent: '#d97706', surface: '#6b7a8f' })).filter((k) => k.startsWith('slate')).length === 11);
+truthy('a surface tint stays nearly neutral', (() => {
+  const t = tokensFromSeeds({ brand: '#4f46e5', accent: '#d97706', surface: '#1e90ff' })['slate-500'];
+  const { r, g, b } = hexToRgb(t)!;
+  // Even a vivid seed must come out desaturated, or the UI stops reading as grey.
+  return Math.max(r, g, b) - Math.min(r, g, b) < 45;
+})());
+
+// Non-text content (icons, borders) is judged at 3:1, not 4.5:1 — WCAG 1.4.11.
+check('4.5:1 is AAA for non-text', wcagNonTextVerdict(4.6), 'AAA');
+check('3.2:1 passes for non-text', wcagNonTextVerdict(3.2), 'AA');
+check('2.9:1 fails for non-text', wcagNonTextVerdict(2.9), 'Fail');
+// The shipped accent is used for one small icon; it must clear 3:1 on both grounds.
+truthy('the default accent clears 3:1 on white', contrastRatio('#d97706', '#ffffff') >= 3);
+truthy('the default accent clears 3:1 on dark', contrastRatio('#d97706', '#0a0a0a') >= 3);
 
 let pass = 0;
 for (const [name, ok] of checks) {
