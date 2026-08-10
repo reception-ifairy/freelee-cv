@@ -1,3 +1,8 @@
+> **Palette section superseded.** The three-colour form described here was replaced by a full theme
+> composer — presets, a scale generated from one colour, and live contrast checking. See
+> `docs/39-theme-composer.md`. Everything else on this page (saved themes, logo, favicon, fonts,
+> custom CSS) is unchanged.
+
 # Branding
 
 Shipped 2026-08-07. Rebuilds `/admin/theme` (relabelled "Branding" in the nav — URL kept

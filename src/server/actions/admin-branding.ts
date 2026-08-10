@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { themes } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
+import { isHex } from '@/lib/branding/palette';
 import { slugify } from '@/lib/utils';
 import { FONT_KEYS } from '@/lib/branding/fonts';
 import type { ActionState } from './auth';
@@ -29,11 +30,25 @@ const updateThemeSchema = z.object({
 export async function updateThemeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
 
+  /**
+   * Tokens are emitted straight into a `<style>` block as
+   * `--color-<key>: <value>`, so both halves are validated rather than
+   * trusted: the key against the known scale names, the value as a hex colour.
+   * An unchecked value would at best produce a CSS declaration the browser
+   * silently drops, and at worst let a crafted key close the declaration and
+   * write arbitrary CSS into every page on the site.
+   */
   const tokens: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
-    if (key.startsWith('token.') && typeof value === 'string' && value.trim()) {
-      tokens[key.slice('token.'.length)] = value.trim();
-    }
+    if (!key.startsWith('token.') || typeof value !== 'string') continue;
+
+    const name = key.slice('token.'.length);
+    if (!/^(brand|accent)-(50|100|200|300|400|500|600|700|800|900)$/.test(name)) continue;
+
+    const colour = value.trim();
+    if (!isHex(colour)) continue;
+
+    tokens[name] = colour;
   }
 
   const parsed = updateThemeSchema.safeParse(Object.fromEntries(formData));
