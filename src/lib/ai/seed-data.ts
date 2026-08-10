@@ -10,18 +10,26 @@ export const PROVIDER_SEED = [
     key: 'openai',
     label: 'OpenAI',
     supports: ['stream', 'vision', 'images'],
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-5.4-mini',
     apiKeyEnv: 'OPENAI_API_KEY',
     baseUrlEnv: 'OPENAI_BASE_URL',
     fallbackBaseUrl: null,
     sort: 0,
+    // Refreshed 2026-08-09 against the live catalog this account actually
+    // lists. The previous set (gpt-4o / gpt-4.1) was two generations behind.
+    //
+    // ⚠️ Registered but NOT verified end to end: the account authenticates and
+    // lists 200+ models, yet every completion returns "You have no credits
+    // remaining." Use "Test connection" in Settings → Models once it is funded.
     models: [
-      { modelId: 'gpt-4o-mini', label: 'GPT-4o mini', tier: 'fast', creditsPer1k: 2 },
-      { modelId: 'gpt-4o', label: 'GPT-4o', tier: 'balanced', creditsPer1k: 20 },
-      { modelId: 'gpt-4.1', label: 'GPT-4.1', tier: 'advanced', creditsPer1k: 25 },
-      // Reasoning model with different latency/temperature semantics —
+      { modelId: 'gpt-5.4-nano', label: 'GPT-5.4 nano', tier: null, creditsPer1k: 1 },
+      { modelId: 'gpt-5.4-mini', label: 'GPT-5.4 mini', tier: 'fast', creditsPer1k: 3 },
+      { modelId: 'gpt-5.5', label: 'GPT-5.5', tier: 'balanced', creditsPer1k: 18 },
+      { modelId: 'gpt-5.5-pro', label: 'GPT-5.5 Pro', tier: 'advanced', creditsPer1k: 60 },
+      // Reasoning models have different latency and temperature semantics —
       // deliberately no tier, reachable only via "advanced" in the persona form.
       { modelId: 'o4-mini', label: 'o4-mini (reasoning)', tier: null, creditsPer1k: 15 },
+      { modelId: 'o3', label: 'o3 (reasoning)', tier: null, creditsPer1k: 40 },
     ],
   },
   {
@@ -54,7 +62,7 @@ export const PROVIDER_SEED = [
     key: 'ollama',
     label: 'Ollama (local)',
     supports: ['stream'],
-    defaultModel: 'llama3.2',
+    defaultModel: 'llama3.2:1b',
     apiKeyEnv: 'OLLAMA_API_KEY',
     baseUrlEnv: 'OLLAMA_BASE_URL',
     fallbackBaseUrl: 'http://localhost:11434/v1',

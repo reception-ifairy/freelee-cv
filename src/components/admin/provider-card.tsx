@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { FlaskConical, Loader2, Plus } from 'lucide-react';
-import { updateAiProviderAction } from '@/server/actions/admin-ai-models';
+import { CircleAlert, CircleCheck, CircleX, FlaskConical, Loader2, Plus, Stethoscope } from 'lucide-react';
+import { testProviderAction, updateAiProviderAction } from '@/server/actions/admin-ai-models';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import { ModelRow, type ModelRowData } from './model-row';
 import { GridSelect } from '@/components/ui/grid-select';
@@ -49,6 +49,19 @@ export function ProviderCard({
   const [defaultModel, setDefaultModel] = useState(provider.defaultModel);
   const [, startTransition] = useTransition();
   const [saving, setSaving] = useState(false);
+  const [health, setHealth] = useState<{ state: string; message: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  function test() {
+    setTesting(true);
+    setHealth(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('providerId', String(provider.id));
+      setHealth(await testProviderAction(formData));
+      setTesting(false);
+    });
+  }
 
   const options = chatModels
     .filter((model) => model.status !== 'retired')
@@ -109,6 +122,8 @@ export function ProviderCard({
         ) : null}
       </div>
 
+      {health ? <HealthBanner state={health.state} message={health.message} /> : null}
+
       {provider.isLocal ? (
         <div className="border-b border-slate-100 bg-brand-50/40 p-4 text-xs leading-relaxed dark:border-slate-800 dark:bg-brand-500/5">
           <p className="font-semibold">For experiments, not for customers.</p>
@@ -147,6 +162,15 @@ export function ProviderCard({
           {fetchPanel}
           <button
             type="button"
+            onClick={test}
+            disabled={testing}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            {testing ? <Loader2 className="size-3.5 animate-spin" /> : <Stethoscope className="size-3.5" />}
+            {testing ? 'Testing…' : 'Test connection'}
+          </button>
+          <button
+            type="button"
             onClick={onAddModel}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
@@ -172,5 +196,30 @@ function Section({ title, empty, models }: { title: string; empty: string; model
         </div>
       )}
     </div>
+  );
+}
+
+const HEALTH_STYLES: Record<string, { tone: string; Icon: typeof CircleCheck }> = {
+  ok: { tone: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300', Icon: CircleCheck },
+  'no-credit': { tone: 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300', Icon: CircleAlert },
+  'no-key': { tone: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', Icon: CircleAlert },
+  'bad-key': { tone: 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300', Icon: CircleX },
+  error: { tone: 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300', Icon: CircleX },
+};
+
+/**
+ * The result of a real request to the provider.
+ *
+ * "no credit" gets its own state on purpose: the key is valid and the model
+ * list loads, so every other signal says the provider is fine while nothing
+ * can actually run.
+ */
+function HealthBanner({ state, message }: { state: string; message: string }) {
+  const style = HEALTH_STYLES[state] ?? HEALTH_STYLES.error;
+  return (
+    <p role="status" className={`flex items-start gap-2 border-b border-slate-100 px-4 py-2.5 text-xs dark:border-slate-800 ${style.tone}`}>
+      <style.Icon className="mt-px size-3.5 shrink-0" />
+      {message}
+    </p>
   );
 }

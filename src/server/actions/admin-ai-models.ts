@@ -13,6 +13,8 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { aiModels, aiProviders } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
+import { checkProviderHealth } from '@/lib/ai/health';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { fetchProviderModels, type FetchedModel } from '@/lib/ai/fetch-models';
 import type { ActionState } from './auth';
 
@@ -156,4 +158,24 @@ export async function updateAiProviderAction(formData: FormData) {
   await db.update(aiProviders).set(values).where(eq(aiProviders.id, id));
 
   revalidatePath('/admin/ai-models');
+}
+
+/**
+ * Asks a provider whether it can actually answer.
+ *
+ * Rate-limited because it makes a real (tiny) paid request, and an admin
+ * clicking repeatedly should not become a way to spend money.
+ */
+export async function testProviderAction(formData: FormData): Promise<{ state: string; message: string }> {
+  const admin = await requireAdmin();
+  const providerId = z.coerce.number().int().parse(formData.get('providerId'));
+
+  const gate = checkRateLimit({ name: 'provider-test', key: admin.id, limit: 20, windowMs: 60 * 1000 });
+  if (!gate.ok) return { state: 'error', message: 'Too many tests at once. Wait a moment.' };
+
+  const [provider] = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
+  if (!provider) return { state: 'error', message: 'Unknown provider.' };
+
+  const health = await checkProviderHealth(provider, provider.defaultModel);
+  return { state: health.state, message: health.message };
 }
