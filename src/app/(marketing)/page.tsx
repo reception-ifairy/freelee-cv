@@ -12,8 +12,13 @@ import type { EditableBlock } from '@/components/site/editor-types';
 // caching this page would be actively wrong.
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
-  const [rows, user] = await Promise.all([
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ preview?: string }>;
+}) {
+  const [{ preview }, rows, user] = await Promise.all([
+    searchParams,
     db
       .select()
       .from(pageSections)
@@ -22,7 +27,9 @@ export default async function HomePage() {
     currentUser(),
   ]);
 
-  const canEdit = user?.isAdmin === true;
+  // Inside the admin builder's preview frame the page is shown, not edited —
+  // otherwise an admin gets a builder panel inside a builder.
+  const canEdit = user?.isAdmin === true && preview !== '1';
   const scope = { page: 'home' };
 
   const editable: EditableBlock[] = rows

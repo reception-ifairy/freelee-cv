@@ -35,13 +35,18 @@ const config: NextConfig = {
         ],
       },
       {
-        // Everything else stays un-framable. The negative lookahead is what
-        // keeps DENY off /embed — a later, more specific rule would not
-        // override an earlier DENY, both headers would be sent.
+        // Everything else may only be framed by this site itself. The negative
+        // lookahead keeps this rule off /embed — a later, more specific rule
+        // would not override an earlier one, both headers would be sent.
+        //
+        // SAMEORIGIN rather than DENY since 2026-08-09: the admin page builder
+        // previews the real page in an iframe, and DENY blocks that even
+        // same-origin. Third-party framing — the thing clickjacking needs — is
+        // still refused outright.
         source: '/((?!embed/).*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },

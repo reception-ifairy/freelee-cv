@@ -135,8 +135,10 @@ export function BlockCard({
         </span>
 
         <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-baseline gap-2 text-left" aria-expanded={open}>
-          <span className="truncate text-sm font-semibold">{meta.label}</span>
-          <span className="hidden truncate text-xs text-slate-400 sm:inline">{meta.description}</span>
+          {/* The title never shrinks — beside a preview the column is narrow, and
+              a truncated "H…" for Hero is worse than a truncated description. */}
+          <span className="shrink-0 text-sm font-semibold">{meta.label}</span>
+          <span className="hidden min-w-0 truncate text-xs text-slate-400 sm:inline">{meta.description}</span>
         </button>
 
         {dirty ? <Badge tone="amber">unsaved</Badge> : null}
