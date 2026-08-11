@@ -93,7 +93,7 @@ export function BlockQuickEdit({
             type="button"
             onClick={() => (dirty ? save({ andClose: true }) : onClose())}
             disabled={pending}
-            className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700 disabled:opacity-50"
           >
             {dirty ? 'Save & close' : 'Close'}
           </button>

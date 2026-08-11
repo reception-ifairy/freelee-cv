@@ -120,7 +120,7 @@ function AddModelDialog({
             type="button"
             onClick={submit}
             disabled={pending || modelId.trim().length === 0}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700 disabled:opacity-50"
           >
             <Plus className="size-4" /> {pending ? 'Adding…' : 'Add model'}
           </button>

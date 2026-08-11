@@ -39,7 +39,7 @@ export default async function AdminCategoriesPage() {
         actions={
           <Link
             href="/admin/categories/new"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
           >
             <Plus className="size-4" /> New category
           </Link>

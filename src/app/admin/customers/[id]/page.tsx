@@ -169,7 +169,7 @@ export default async function AdminCustomerPage({ params }: { params: Promise<{ 
               </div>
               <button
                 type="submit"
-                className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"
+                className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-on-brand hover:bg-brand-700"
               >
                 Apply adjustment
               </button>

@@ -83,7 +83,7 @@ export default async function RoomsPage() {
 
             <button
               type="submit"
-              className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"
+              className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-on-brand hover:bg-brand-700"
             >
               Create room
             </button>

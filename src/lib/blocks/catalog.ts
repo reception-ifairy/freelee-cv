@@ -100,13 +100,38 @@ export const BLOCK_CATALOG: BlockMeta[] = [
     repeatable: false,
     defaultLayout: LEGACY_LAYOUT,
     fields: [
+      {
+        key: 'variant', label: 'Design', type: 'select', columns: 2,
+        options: [
+          { id: 'standard', label: 'Standard', meta: 'Centred, badge, gradient accent' },
+          { id: 'editorial', label: 'Editorial', meta: 'Large, quiet, side pillars' },
+        ],
+        help: 'Editorial is the restrained, large-type design adapted from SovereignAI — it looks its best under the Sovereign palette.',
+      },
+      { key: 'eyebrow', label: 'Eyebrow', type: 'text', maxLength: 60, help: 'The tiny spaced-out line above the headline. Editorial design only.' },
       { key: 'titleLead', label: 'Headline (plain part)', type: 'text', required: true, maxLength: 120, preserveWhitespace: true, help: 'The first half of the headline, in the normal text colour. A trailing space here is kept — it separates this from the accent part.' },
       { key: 'titleAccent', label: 'Headline (accent part)', type: 'text', maxLength: 120, help: 'The second half, painted in your brand colour. Leave blank for a single-colour headline.' },
       { key: 'subtitle', label: 'Subtitle', type: 'textarea', maxLength: 300 },
       { key: 'primaryLabel', label: 'Primary button', type: 'text', required: true, maxLength: 60 },
       { key: 'secondaryLabel', label: 'Secondary button', type: 'text', maxLength: 60 },
+      {
+        key: 'pillars', label: 'Side pillars', type: 'repeater', itemLabel: 'Pillar', max: 4,
+        help: 'The stacked cards beside the headline. Editorial design only — three reads best.',
+        fields: [
+          { key: 'label', label: 'Label', type: 'text', maxLength: 30 },
+          { key: 'title', label: 'Title', type: 'text', maxLength: 60 },
+          { key: 'body', label: 'Description', type: 'textarea', maxLength: 200 },
+        ],
+      },
     ],
     defaultConfig: {
+      variant: 'standard',
+      eyebrow: 'An AI specialist for every task',
+      pillars: [
+        { label: 'Range', title: 'Twenty industries', body: 'Specialists mapped to real UK sectors, not generic assistants.' },
+        { label: 'Control', title: 'Yours to shape', body: 'Tone, expertise and guardrails are configuration, not code.' },
+        { label: 'Pricing', title: 'Pay per message', body: 'Credits are deducted as you go. No subscription.' },
+      ],
       titleLead: 'Your AI agency, ',
       titleAccent: 'staffed by personas',
       subtitle: 'Hire a specialist for every task.',

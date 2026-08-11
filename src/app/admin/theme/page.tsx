@@ -37,7 +37,7 @@ export default async function AdminBrandingPage() {
                     {!theme.isActive ? (
                       <form action={activateThemeAction}>
                         <input type="hidden" name="id" value={theme.id} />
-                        <button type="submit" className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-brand-700">
+                        <button type="submit" className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700">
                           Set active
                         </button>
                       </form>

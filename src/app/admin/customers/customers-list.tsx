@@ -27,7 +27,7 @@ export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: Admin
     subtitle: row.email,
     href: `/admin/customers/${row.id}`,
     media: (
-      <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white">
+      <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-on-brand">
         {row.initials}
       </span>
     ),

@@ -15,6 +15,10 @@ export type HeroConfig = {
   subtitle: string;
   primaryLabel: string;
   secondaryLabel: string;
+  /** 'standard' | 'editorial' — the second is the Sovereign-style hero. */
+  variant?: string;
+  eyebrow?: string;
+  pillars?: { label: string; title: string; body: string }[];
 };
 
 export type CtaConfig = {

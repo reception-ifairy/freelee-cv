@@ -131,7 +131,7 @@ export default async function EmbedPage({ params, searchParams }: { params: Para
           <input type="hidden" name="embed" value="1" />
           <button
             type="submit"
-            className="h-11 rounded-xl bg-brand-600 px-6 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="h-11 rounded-xl bg-brand-600 px-6 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
           >
             Start chatting
           </button>

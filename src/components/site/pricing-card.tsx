@@ -27,7 +27,7 @@ export function PricingCard({ pack, gateways, isAuthenticated = false }: Props) 
       )}
     >
       {pack.badge || pack.isFeatured ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-on-brand">
           {pack.badge ?? 'Most popular'}
         </span>
       ) : null}
@@ -95,7 +95,7 @@ export function PricingCard({ pack, gateways, isAuthenticated = false }: Props) 
               className={cn(
                 'h-10 w-full rounded-xl text-sm font-semibold transition',
                 pack.isFeatured
-                  ? 'bg-brand-600 text-white hover:bg-brand-700'
+                  ? 'bg-brand-600 text-on-brand hover:bg-brand-700'
                   : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800',
               )}
             >
@@ -108,7 +108,7 @@ export function PricingCard({ pack, gateways, isAuthenticated = false }: Props) 
             className={cn(
               'flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold transition',
               pack.isFeatured
-                ? 'bg-brand-600 text-white hover:bg-brand-700'
+                ? 'bg-brand-600 text-on-brand hover:bg-brand-700'
                 : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800',
             )}
           >

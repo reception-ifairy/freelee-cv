@@ -206,7 +206,7 @@ export function MessageBubble({
             'rounded-2xl shadow-sm',
             DENSITY[layout.density],
             isUser
-              ? 'rounded-br-md bg-brand-600 text-white'
+              ? 'rounded-br-md bg-brand-600 text-on-brand'
               : cn('rounded-bl-md border bg-white dark:bg-slate-900', layout.accentClass),
           )}
         >

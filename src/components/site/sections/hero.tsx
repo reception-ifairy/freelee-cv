@@ -6,6 +6,7 @@ import { personas, categories } from '@/db/schema';
 import { Badge } from '@/components/ui/badge';
 import { formatCredits } from '@/lib/utils';
 import { getFrontendT } from '@/lib/i18n/translate';
+import { EditorialHero } from './hero-editorial';
 import type { HeroConfig } from './types';
 
 export async function HeroSection({ config }: { config: HeroConfig }) {
@@ -21,6 +22,18 @@ export async function HeroSection({ config }: { config: HeroConfig }) {
   ]);
 
   const totals = stats ?? { personas: 0, messages: 0 };
+
+  const statList = [
+    { label: t('home.stat_personas', 'Personas'), value: String(totals.personas) },
+    { label: t('home.stat_messages', 'Messages'), value: formatCredits(totals.messages) },
+    { label: t('home.stat_categories', 'Categories'), value: String(categoryCount?.count ?? 0) },
+  ];
+
+  // Two hero designs, chosen in the builder. The editorial one is adapted from
+  // the SovereignAI marketplace — see docs/41-sovereign-and-hub.md.
+  if ((config as { variant?: string }).variant === 'editorial') {
+    return <EditorialHero config={config} stats={statList} />;
+  }
 
   return (
     <section className="relative overflow-hidden">
@@ -50,7 +63,7 @@ export async function HeroSection({ config }: { config: HeroConfig }) {
           <div className="animate-in-up mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/personas"
-              className="glow-btn inline-flex h-12 items-center gap-2 rounded-xl bg-brand-600 px-6 text-base font-semibold text-white transition hover:bg-brand-700"
+              className="glow-btn inline-flex h-12 items-center gap-2 rounded-xl bg-brand-600 px-6 text-base font-semibold text-on-brand transition hover:bg-brand-700"
             >
               {config.primaryLabel}
               <ArrowRight className="size-4" />
@@ -64,11 +77,7 @@ export async function HeroSection({ config }: { config: HeroConfig }) {
           </div>
 
           <dl className="animate-in-up mx-auto mt-14 grid max-w-lg grid-cols-3 gap-6 text-center">
-            {[
-              { label: t('home.stat_personas', 'Personas'), value: String(totals.personas) },
-              { label: t('home.stat_messages', 'Messages'), value: formatCredits(totals.messages) },
-              { label: t('home.stat_categories', 'Categories'), value: String(categoryCount?.count ?? 0) },
-            ].map((stat) => (
+            {statList.map((stat) => (
               <div key={stat.label}>
                 <dt className="text-2xl font-bold tracking-tight sm:text-3xl">{stat.value}</dt>
                 <dd className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">

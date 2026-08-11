@@ -117,7 +117,7 @@ export default async function PersonaPage({ params }: { params: Params }) {
                   <input type="hidden" name="persona" value={persona.slug} />
                   <button
                     type="submit"
-                    className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand-600 px-6 text-base font-semibold text-white transition hover:bg-brand-700"
+                    className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand-600 px-6 text-base font-semibold text-on-brand transition hover:bg-brand-700"
                   >
                     <MessageSquare className="size-4" />
                     Start a conversation

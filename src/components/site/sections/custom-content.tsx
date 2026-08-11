@@ -13,7 +13,7 @@ export function CustomContentSection({ config }: { config: CustomContentConfig }
           {config.ctaLabel && config.ctaHref ? (
             <Link
               href={config.ctaHref}
-              className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700"
+              className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
             >
               {config.ctaLabel}
               <ArrowRight className="size-4" />

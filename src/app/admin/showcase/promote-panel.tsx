@@ -61,7 +61,7 @@ export function PromotePanel({ candidates }: { candidates: PromotableMessage[] }
               type="button"
               onClick={() => promote(candidate.id)}
               disabled={pending}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-brand-600 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-brand-600 text-xs font-semibold text-on-brand hover:bg-brand-700 disabled:opacity-50"
             >
               <Sparkles className="size-3.5" /> Add to showcase
             </button>

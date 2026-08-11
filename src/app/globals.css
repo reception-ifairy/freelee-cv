@@ -12,6 +12,12 @@
   /* Overridden per-theme by the root layout's injected :root block (src/lib/branding/fonts.ts) — falls back to body copy's font when no heading font is chosen. */
   --font-heading: var(--font-sans);
 
+  /* The readable label colour for anything painted brand-600. Overridden per
+     theme by the root layout — see readableOn() in lib/branding/palette.ts.
+     Hardcoding `text-white` assumed a dark brand, which stopped being true the
+     moment a light palette (Sovereign, Dark Luxury) could be chosen. */
+  --color-on-brand: #ffffff;
+
   --color-brand-50: #eef2ff;
   --color-brand-100: #e0e7ff;
   --color-brand-200: #c7d2fe;

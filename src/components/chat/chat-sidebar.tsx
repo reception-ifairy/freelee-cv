@@ -14,7 +14,7 @@ export function ChatSidebar({ chats, activeId }: { chats: Item[]; activeId?: str
       <div className="border-b border-slate-200 p-4 dark:border-slate-800">
         <Link
           href="/personas"
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-semibold text-white transition hover:bg-brand-700"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
         >
           <Plus className="size-4" />
           New conversation

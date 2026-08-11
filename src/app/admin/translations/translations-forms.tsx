@@ -13,7 +13,7 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
     <button
       type="submit"
       disabled={pending}
-      className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+      className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60"
     >
       {pending ? pendingLabel : label}
     </button>
@@ -108,7 +108,7 @@ export function ExportPanel({ locales }: { locales: { code: string; name: string
       </div>
       <a
         href={`/admin/translations/export?locale=${encodeURIComponent(locale)}&format=${format}`}
-        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
       >
         <Download className="size-4" />
         Export

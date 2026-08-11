@@ -66,7 +66,7 @@ export default async function CrewPage({ params }: { params: Promise<{ id: strin
               </Hint>
               <button
                 type="submit"
-                className="h-10 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700"
+                className="h-10 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-on-brand hover:bg-brand-700"
               >
                 Run crew
               </button>
@@ -104,7 +104,7 @@ export default async function CrewPage({ params }: { params: Promise<{ id: strin
           <div className="space-y-2">
             {members.map(({ member, persona }) => (
               <div key={member.id} className="flex items-center gap-2 text-sm">
-                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-brand-600 text-[10px] font-bold text-white">
+                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-brand-600 text-[10px] font-bold text-on-brand">
                   {member.position + 1}
                 </span>
                 <span className="truncate">{persona.name}</span>

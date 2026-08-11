@@ -13,7 +13,7 @@ function SubmitButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+      className="h-10 w-full rounded-xl bg-brand-600 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60"
     >
       {pending ? 'Saving…' : label}
     </button>

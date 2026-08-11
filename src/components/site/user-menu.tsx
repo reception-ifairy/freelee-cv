@@ -16,7 +16,7 @@ export function UserMenu({ name, email, isAdmin, roomsEnabled = false, crewsEnab
         type="button"
         onClick={() => setOpen((value) => !value)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="grid size-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white transition hover:ring-2 hover:ring-brand-200"
+        className="grid size-9 place-items-center rounded-full bg-brand-600 text-xs font-bold text-on-brand transition hover:ring-2 hover:ring-brand-200"
         aria-haspopup="menu"
         aria-expanded={open}
       >

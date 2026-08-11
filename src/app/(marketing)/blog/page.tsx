@@ -88,7 +88,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Se
               </div>
               <button
                 type="submit"
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
               >
                 <Filter className="size-4" />
                 {t('blog.filter_apply', 'Filter')}

@@ -28,7 +28,7 @@ function ImportButton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       disabled={pending || disabled}
-      className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+      className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700 disabled:opacity-50"
     >
       {pending ? 'Importing…' : 'Import selected'}
     </button>

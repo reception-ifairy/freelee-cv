@@ -107,7 +107,7 @@ export default async function KnowledgeSourcesPage() {
                     </Hint>
 
                     <div className="flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <button type="submit" className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-brand-700">
+                      <button type="submit" className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700">
                         Save
                       </button>
                     </div>

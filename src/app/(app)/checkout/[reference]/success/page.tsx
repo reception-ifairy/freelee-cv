@@ -76,7 +76,7 @@ export default async function CheckoutSuccessPage({
         <div className="mt-8 flex justify-center gap-3">
           <Link
             href="/chat"
-            className="inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+            className="inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
           >
             Start chatting
           </Link>

@@ -163,7 +163,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
 
             <button
               type="submit"
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
             >
               <Filter className="size-4" />
               {t('personas.filter_apply', 'Filter')}
@@ -211,7 +211,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
                       href={`/personas?${query.toString()}`}
                       className={
                         n === page
-                          ? 'grid size-10 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-white'
+                          ? 'grid size-10 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-on-brand'
                           : 'grid size-10 place-items-center rounded-lg border border-slate-200 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
                       }
                     >

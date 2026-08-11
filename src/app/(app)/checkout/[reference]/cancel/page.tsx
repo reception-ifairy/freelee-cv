@@ -42,7 +42,7 @@ export default async function CheckoutCancelPage({
         </p>
         <Link
           href="/pricing"
-          className="mt-8 inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+          className="mt-8 inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
         >
           Back to pricing
         </Link>

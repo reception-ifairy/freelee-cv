@@ -49,7 +49,7 @@ export function BlockChrome({
   return (
     <>
       <div className="block-chrome absolute left-3 top-3 z-40 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-on-brand shadow-lg">
           {pending ? <Loader2 className="size-3 animate-spin" /> : null}
           {meta.label}
           {!block.isVisible ? <span className="opacity-80">· hidden</span> : null}

@@ -137,6 +137,19 @@ export function wcagNonTextVerdict(ratio: number): ContrastVerdict {
   return 'Fail';
 }
 
+/**
+ * Black or white — whichever is readable on the given background.
+ *
+ * Primary buttons were hardcoded `text-white`, which silently assumes the brand
+ * is dark. It always had been, so nobody noticed; the moment a light brand is
+ * picked (Sovereign's near-white, Dark Luxury's champagne) the label vanishes
+ * into the button. Emitted as `--color-on-brand` so the components stop
+ * assuming.
+ */
+export function readableOn(background: string): '#000000' | '#ffffff' {
+  return contrastRatio('#000000', background) >= contrastRatio('#ffffff', background) ? '#000000' : '#ffffff';
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Ramp generation                                                           */
 /* -------------------------------------------------------------------------- */
@@ -253,6 +266,9 @@ export function tokensFromSeeds({ brand, accent, surface }: PaletteSeeds): Recor
     // compiled-in slate scale is left alone.
     ...(surface ? surfaceRamp(surface) : {}),
     ...rampFromSeed(brand, 'brand'),
+    // Not a scale — one derived value so a light brand still has a legible
+    // button label. See readableOn().
+    'on-brand': readableOn(rampFromSeed(brand, 'brand')['brand-600'] ?? brand),
     // Only the three accent stops the UI actually uses today — writing ten
     // would be tokens nothing reads.
     ...Object.fromEntries(
@@ -281,6 +297,12 @@ export type PalettePreset = {
  */
 export const PALETTE_PRESETS: PalettePreset[] = [
   { id: 'indigo', name: 'Indigo (default)', description: 'The shipped look — confident and neutral.', seeds: { brand: '#4f46e5', accent: '#d97706' } },
+  {
+    id: 'sovereign',
+    name: 'Sovereign',
+    description: 'Monochrome on true black. Editorial and severe — no colour at all.',
+    seeds: { brand: '#e4e4e7', accent: '#a1a1aa', surface: '#0a0a0a' },
+  },
   { id: 'dark-luxury', name: 'Dark Luxury', description: 'Champagne on near-black. Quiet and expensive.', seeds: { brand: '#d4c5a0', accent: '#8c7851', surface: '#6b6357' } },
   { id: 'minimal-light', name: 'Minimal Light', description: 'Clean editorial blue with plenty of air.', seeds: { brand: '#2563eb', accent: '#0ea5e9' } },
   { id: 'cyberpunk', name: 'Neon Cyberpunk', description: 'Electric cyan against deep slate.', seeds: { brand: '#06b6d4', accent: '#a855f7' } },

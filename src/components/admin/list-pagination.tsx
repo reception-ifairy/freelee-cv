@@ -51,7 +51,7 @@ export function ListPagination({
               className={cn(
                 'grid h-8 min-w-8 place-items-center rounded-lg px-2 text-xs font-medium transition',
                 page === params.page
-                  ? 'bg-brand-600 text-white'
+                  ? 'bg-brand-600 text-on-brand'
                   : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800',
               )}
             >

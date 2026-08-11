@@ -331,7 +331,7 @@ export function Composer({
         <button
           type="submit"
           disabled={value.trim().length === 0}
-          className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-50"
+          className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-600 text-on-brand transition hover:bg-brand-700 disabled:opacity-50"
           aria-label="Send message"
         >
           <Send className="size-4" />

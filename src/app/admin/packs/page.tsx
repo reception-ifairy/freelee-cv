@@ -57,7 +57,7 @@ export default async function AdminPacksPage() {
         actions={
           <Link
             href="/admin/packs/new"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
           >
             <Plus className="size-4" /> New pack
           </Link>

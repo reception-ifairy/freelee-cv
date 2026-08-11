@@ -122,7 +122,7 @@ export function EditorStudio({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-4 left-4 z-[150] inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-2xl hover:bg-brand-700"
+          className="fixed bottom-4 left-4 z-[150] inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-on-brand shadow-2xl hover:bg-brand-700"
         >
           <LayoutPanelTop className="size-4" /> Edit page
         </button>

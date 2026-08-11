@@ -83,7 +83,7 @@ export default async function CrewRunPage({ params }: { params: Promise<{ id: st
               <span
                 className={
                   isPersona
-                    ? 'grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-white'
+                    ? 'grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-on-brand'
                     : 'grid size-8 shrink-0 place-items-center rounded-full bg-slate-300 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                 }
               >

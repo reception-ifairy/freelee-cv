@@ -205,7 +205,7 @@ export function BlockCard({
                 type="button"
                 onClick={save}
                 disabled={pending || !dirty}
-                className="h-9 rounded-lg bg-brand-600 px-4 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                className="h-9 rounded-lg bg-brand-600 px-4 text-xs font-semibold text-on-brand hover:bg-brand-700 disabled:opacity-50"
               >
                 {pending ? 'Saving…' : 'Save block'}
               </button>

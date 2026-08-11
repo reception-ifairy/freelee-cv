@@ -101,7 +101,7 @@ export async function SiteHeader() {
               </Link>
               <Link
                 href="/register"
-                className="glow-btn inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+                className="glow-btn inline-flex h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
               >
                 {t('nav.get_started', 'Get started')}
               </Link>

@@ -39,7 +39,7 @@ function Cta({ label, href }: { label: unknown; href: unknown }) {
   return (
     <Link
       href={str(href)}
-      className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700"
+      className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-on-brand transition hover:bg-brand-700"
     >
       {str(label)}
       <ArrowRight className="size-4" />

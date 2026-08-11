@@ -16,7 +16,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         </p>
         <Link
           href="/forgot-password"
-          className="mt-6 inline-flex h-11 items-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700"
+          className="mt-6 inline-flex h-11 items-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-on-brand hover:bg-brand-700"
         >
           Request a new link
         </Link>

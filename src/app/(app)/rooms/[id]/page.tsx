@@ -94,7 +94,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
                       <span
                         className={
                           isPersona
-                            ? 'grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-white'
+                            ? 'grid size-8 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-on-brand'
                             : 'grid size-8 shrink-0 place-items-center rounded-full bg-slate-300 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                         }
                       >
@@ -142,7 +142,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
                 <Hint>Mentioned personas reply once each, in parallel — not token-streamed.</Hint>
                 <button
                   type="submit"
-                  className="h-9 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+                  className="h-9 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
                 >
                   Send
                 </button>
@@ -182,7 +182,7 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
                   <span
                     className={
                       p.participantType === 'persona'
-                        ? 'grid size-6 shrink-0 place-items-center rounded-md bg-brand-600 text-[10px] font-bold text-white'
+                        ? 'grid size-6 shrink-0 place-items-center rounded-md bg-brand-600 text-[10px] font-bold text-on-brand'
                         : 'grid size-6 shrink-0 place-items-center rounded-full bg-slate-300 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                     }
                   >
