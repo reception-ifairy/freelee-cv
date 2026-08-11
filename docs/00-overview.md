@@ -5,6 +5,10 @@ specialist AI personas, and an owner's admin console (`/admin`) built into the s
 no external control plane. This page is the front door of the documentation; use the sidebar to move
 between sections.
 
+> **Every update is recorded in [`CHANGELOG.md`](CHANGELOG.md)** — one entry per commit, newest
+> first, with the reason for the change, the doc that covers it and the migration it applied. If you
+> want to know what happened and when, start there rather than in `git log`.
+
 ## What this app is
 
 - **Public site**: landing page, persona directory, chat, pricing, blog, login/register, dashboard.
