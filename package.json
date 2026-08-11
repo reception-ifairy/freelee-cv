@@ -23,7 +23,7 @@
     "i18n:export": "tsx scripts/export-translations.ts",
     "i18n:import": "tsx scripts/import-translations.ts",
     "media:verify": "tsx scripts/verify-sigv4.ts && tsx scripts/verify-s3-store.ts",
-    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts"
+    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts && tsx scripts/verify-document-extract.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",

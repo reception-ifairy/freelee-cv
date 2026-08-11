@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Wand2 } from 'lucide-react';
 import { and, asc, desc, eq, exists, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
@@ -166,12 +166,20 @@ export default async function AdminPersonasPage({
         title="Personas"
         description="Every AI specialist available on the platform."
         actions={
+          <>
+          <Link
+            href="/admin/personas/convert"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-white/10"
+          >
+            <Wand2 className="size-4" /> Convert a bot
+          </Link>
           <Link
             href="/admin/personas/new"
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
           >
             <Plus className="size-4" /> New persona
           </Link>
+          </>
         }
       />
 

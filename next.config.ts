@@ -7,6 +7,14 @@ const config: NextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'ui-avatars.com' }],
   },
+  experimental: {
+    // Raised from the 1 MB default for the bot converter, which uploads a whole
+    // document (docs/42-bot-converter.md). The action enforces its own 8 MB cap
+    // on the file itself; this ceiling is that plus the multipart overhead, so
+    // an oversized upload is refused with a readable message rather than a
+    // framework-level 413 with no explanation.
+    serverActions: { bodySizeLimit: '10mb' },
+  },
   async headers() {
     return [
       {

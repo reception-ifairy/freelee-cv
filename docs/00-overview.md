@@ -128,4 +128,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Theme composer** (palette presets, a scale generated from one colour, and live WCAG contrast checks — ported from vizai.art and extended; supersedes the three-colour form in `20`) — `39-theme-composer.md`
 - **Settings & models** (settings regrouped into a real hub, the model catalog moved in and rebuilt, and a provider health check that tells key-missing from key-broken from account-unfunded) — `40-settings-and-models.md`
 - **Sovereign design & assistant hub** (a monochrome editorial theme and hero adopted from SovereignAI, plus BotVerse's lead-capture quick actions wired to a real leads table) — `41-sovereign-and-hub.md`
+- **Bot converter** (admin-only: a document describing a bot — .docx/.xlsx/.pdf/text — becomes a reviewable draft persona, created hidden) — `42-bot-converter.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

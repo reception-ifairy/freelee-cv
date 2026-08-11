@@ -14,6 +14,7 @@ import { requireAdmin } from '@/lib/auth';
 import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
 import { isGuardrailCode } from '@/lib/persona/guardrails';
 import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
+import { uniquePersonaSlug } from '@/lib/persona/slug';
 import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
 import { isChatProvider } from '@/lib/ai/registry';
@@ -73,24 +74,6 @@ function nextPatchVersion(version: string): string {
 /** HTML checkboxes submit "on" or nothing — never "false". */
 function checkbox(formData: FormData, name: string): boolean {
   return formData.get(name) === 'on';
-}
-
-async function uniquePersonaSlug(name: string, ignoreId?: number): Promise<string> {
-  const base = slugify(name) || `persona-${Date.now()}`;
-  let candidate = base;
-
-  for (let i = 2; i < 100; i++) {
-    const [existing] = await db
-      .select({ id: personas.id })
-      .from(personas)
-      .where(eq(personas.slug, candidate))
-      .limit(1);
-
-    if (!existing || existing.id === ignoreId) return candidate;
-    candidate = `${base}-${i}`;
-  }
-
-  return `${base}-${Date.now()}`;
 }
 
 export async function savePersonaAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

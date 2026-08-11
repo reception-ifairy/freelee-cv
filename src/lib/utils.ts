@@ -43,8 +43,26 @@ export function relativeTime(date: Date | string | null | undefined) {
   return rtf.format(seconds, 'second');
 }
 
+/**
+ * Letters NFKD cannot decompose, because they are not base + combining mark.
+ *
+ * `ą`, `ę`, `é` all decompose and lose their accent correctly. `ł` does not —
+ * a stroke is part of the glyph, so NFKD leaves it whole and the ASCII filter
+ * below turns it into a hyphen. On a site that also runs in Polish that is not
+ * cosmetic: "Biały Ząb" became "bia-y-zab". Same class of problem for Danish
+ * ø/æ, German ß and Icelandic þ/ð.
+ *
+ * Only affects slugs generated from here on — existing rows keep the slug they
+ * were saved with, because a slug is a URL.
+ */
+const UNDECOMPOSABLE: Record<string, string> = {
+  ł: 'l', Ł: 'l', ø: 'o', Ø: 'o', đ: 'd', Đ: 'd', ħ: 'h', Ħ: 'h',
+  ß: 'ss', æ: 'ae', Æ: 'ae', œ: 'oe', Œ: 'oe', þ: 'th', Þ: 'th', ð: 'd', Ð: 'd',
+};
+
 export function slugify(input: string) {
   return input
+    .replace(/[łŁøØđĐħĦßæÆœŒþÞðÐ]/g, (c) => UNDECOMPOSABLE[c])
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()

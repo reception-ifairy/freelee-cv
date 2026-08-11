@@ -364,6 +364,22 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Leads', href: '/admin/leads', group: 'admin', order: 20 }],
   },
+  {
+    key: 'bot-converter',
+    name: 'Bot converter',
+    version: '1.0.0',
+    description:
+      'Admin-only migration tool: a document describing a bot (.docx/.xlsx/.pdf/.md/.json/.csv/.txt) ' +
+      'is read — Office files parsed in-process with no dependencies, PDFs handed to the model — and ' +
+      'turned into a draft persona in this app\'s own shape, created hidden for review. See ' +
+      'docs/42-bot-converter.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning'] },
+    provides: { capabilities: ['personas.convert'] },
+    permissions: [],
+    navigation: [],
+  },
   groupChat,
   crews,
 ];
