@@ -34,7 +34,16 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #40 · `pending` — Number the changelog entries so updates are readable
+### #41 · `pending` — Fill in #40's hash
+
+Housekeeping, and the cycle `changelog:verify` enforces made visible: an entry
+is written with `` `pending` `` in the same commit as the change it describes,
+because the hash does not exist yet — then filled in on the next update, which
+the check requires rather than trusts.
+
+📄 `CHANGELOG.md`
+
+### #40 · `628d6d1` — Number the changelog entries so updates are readable
 
 Seven hex characters are unreadable and unorderable by eye. "What changed in #37" is a question a
 person can hold; "what changed in a4f361d" is not, and neither hash tells you which came first — so
