@@ -59,6 +59,10 @@ export const SETTINGS_SCHEMA = {
       help: 'How many messages a signed-out visitor may send to the assistant per conversation. Separate from the free persona messages, so asking for help does not use up someone\'s trial. Default 10.',
     },
     { key: 'site_assistant_label', label: 'Bubble label', type: 'string', help: 'Shown on the launcher. Default "Ask us anything".' },
+    {
+      key: 'site_assistant_tools', label: 'Show quick actions', type: 'bool',
+      help: 'Adds Claim a free trial, Request a callback, Get updates and similar inside the chat. Each one captures a lead in Admin → Leads.',
+    },
   ],
   email: [
     { key: 'resend_api_key', label: 'Resend API key', type: 'secret' },

@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation';
 import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, ExternalLink, Cpu,
-  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images
-} from 'lucide-react';
+  RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images, Inbox} from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { logoutAction } from '@/server/actions/auth';
 import { Logo } from '@/components/site/logo';
@@ -33,6 +32,7 @@ const SECTIONS = [
       { href: '/admin/marketplace', label: 'Marketplace', icon: Store },
       { href: '/admin/sales', label: 'Sales', icon: Receipt },
       { href: '/admin/customers', label: 'Customers', icon: Users },
+      { href: '/admin/leads', label: 'Leads', icon: Inbox },
     ],
   },
   {

@@ -1541,6 +1541,40 @@ export const showcaseItems = pgTable(
 
 export type ShowcaseItemRow = typeof showcaseItems.$inferSelect;
 
+
+/**
+ * Leads captured by the assistant's conversational tools — a free trial, a
+ * callback request, a newsletter sign-up.
+ *
+ * The BotVerse design this is adapted from keeps these in a module-level array
+ * that empties on restart. A lead is a person waiting for a reply; losing one
+ * is worse than never offering the button. See docs/41-assistant-hub.md.
+ */
+export const leads = pgTable(
+  'leads',
+  {
+    id: serial('id').primaryKey(),
+    /** 'free_trial' | 'callback' | 'subscribe' | 'info_pack' | 'discount' */
+    kind: text('kind').notNull(),
+    name: text('name'),
+    email: text('email'),
+    phone: text('phone'),
+    note: text('note'),
+    /** Anything else the tool collected, so a new tool needs no migration. */
+    meta: jsonb('meta').$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+    chatId: text('chat_id').references(() => chats.id, { onDelete: 'set null' }),
+    personaId: integer('persona_id').references(() => personas.id, { onDelete: 'set null' }),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    /** 'new' | 'contacted' | 'closed' */
+    status: text('status').notNull().default('new'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('leads_status_idx').on(t.status, t.createdAt), index('leads_kind_idx').on(t.kind, t.createdAt)],
+);
+
+export type LeadRow = typeof leads.$inferSelect;
+
 export const activityLog = pgTable(
   'activity_log',
   {

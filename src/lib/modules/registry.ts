@@ -348,6 +348,22 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Showcase', href: '/admin/showcase', group: 'admin', order: 19 }],
   },
+  {
+    key: 'leads',
+    name: 'Leads',
+    version: '1.0.0',
+    description:
+      'Quick actions inside the site assistant — claim a trial, request a callback, subscribe — each ' +
+      'capturing a lead to a real table rather than the in-memory array the source design used. The ' +
+      'capture endpoint is public, so the tool is validated against the catalog, only declared fields ' +
+      'are stored, and it is rate limited. Adapted from BotVerse; see docs/41-sovereign-and-hub.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['site-assistant'] },
+    provides: { capabilities: ['leads.capture', 'leads.admin'] },
+    permissions: [],
+    navigation: [{ label: 'Leads', href: '/admin/leads', group: 'admin', order: 20 }],
+  },
   groupChat,
   crews,
 ];

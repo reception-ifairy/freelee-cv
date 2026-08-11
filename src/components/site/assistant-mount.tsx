@@ -37,6 +37,7 @@ export async function AssistantMount() {
       capabilities={assistant.capabilities}
       layoutKey={layoutKey}
       serverTranscription={await isTranscriptionConfigured()}
+      showTools={assistant.showTools}
     />
   );
 }

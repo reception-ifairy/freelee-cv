@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import type { UIMessage } from 'ai';
 import { Loader2, MessageCircle, Minus, X } from 'lucide-react';
 import { ChatWindow, type ChatCapabilities } from '@/components/chat/chat-window';
+import { AssistantTools } from './assistant-tools';
 import { startAssistantChatAction } from '@/server/actions/chat';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,8 @@ export type AssistantBubbleProps = {
   capabilities: ChatCapabilities;
   layoutKey: string | null;
   serverTranscription: boolean;
+  /** Quick actions that capture a lead — off unless enabled in settings. */
+  showTools: boolean;
 };
 
 /**
@@ -36,7 +39,7 @@ export type AssistantBubbleProps = {
  */
 export function AssistantBubble({
   name, label, initials, accentColor, avatar, tagline,
-  welcome, suggestions, capabilities, layoutKey, serverTranscription,
+  welcome, suggestions, capabilities, layoutKey, serverTranscription, showTools,
 }: AssistantBubbleProps) {
   const [open, setOpen] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
@@ -146,16 +149,19 @@ export function AssistantBubble({
           ) : null}
 
           {chatId ? (
-            <div className="flex-1 overflow-hidden [&>section]:h-full [&>section]:rounded-none [&>section]:border-0 [&>section]:shadow-none">
-              <ChatWindow
-                chatId={chatId}
-                initialMessages={initialMessages}
-                suggestions={suggestions}
-                personaName={name}
-                layoutKey={layoutKey}
-                capabilities={capabilities}
-                serverTranscription={serverTranscription}
-              />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-hidden [&>section]:h-full [&>section]:rounded-none [&>section]:border-0 [&>section]:shadow-none">
+                <ChatWindow
+                  chatId={chatId}
+                  initialMessages={initialMessages}
+                  suggestions={suggestions}
+                  personaName={name}
+                  layoutKey={layoutKey}
+                  capabilities={capabilities}
+                  serverTranscription={serverTranscription}
+                />
+              </div>
+              {showTools ? <AssistantTools chatId={chatId} accentColor={accentColor} /> : null}
             </div>
           ) : (
             <div className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto p-4">
@@ -188,6 +194,10 @@ export function AssistantBubble({
                 {starting ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />}
                 {starting ? 'Starting…' : 'Start the conversation'}
               </button>
+
+              {/* Offered before the conversation starts too: somebody who only
+                  wants a callback should not have to chat first. */}
+              {showTools ? <AssistantTools chatId={null} accentColor={accentColor} /> : null}
             </div>
           )}
         </div>

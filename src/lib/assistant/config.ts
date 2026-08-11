@@ -37,6 +37,8 @@ export type SiteAssistant = {
   audienceSegments: string[];
   label: string;
   guestMessages: number;
+  /** Quick actions (free trial, callback, …) that capture a lead. */
+  showTools: boolean;
 };
 
 /**
@@ -80,6 +82,7 @@ export const getSiteAssistant = cache(async (): Promise<SiteAssistant | null> =>
     audienceSegments: Array.isArray(version.audienceSegments) ? version.audienceSegments : [],
     label: (await getSettingString('site_assistant_label')).trim() || 'Ask us anything',
     guestMessages: (await getSettingInt('site_assistant_guest_messages', DEFAULT_ASSISTANT_GUEST_MESSAGES)) || DEFAULT_ASSISTANT_GUEST_MESSAGES,
+    showTools: await getSettingBool('site_assistant_tools'),
   };
 });
 
