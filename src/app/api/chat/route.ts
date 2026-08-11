@@ -7,7 +7,7 @@ import { currentUser } from '@/lib/auth';
 import { isAssistantPersona, DEFAULT_ASSISTANT_GUEST_MESSAGES } from '@/lib/assistant/config';
 import { checkRateLimit, callerIp } from '@/lib/rate-limit';
 import { assertChatAccess } from '@/server/actions/chat';
-import { getModel, resolveProviderId, resolveTierModel, providerIsConfigured, getProviderRegistry } from '@/lib/ai/registry';
+import { getModel, resolveProviderId, resolveProviderKeys, resolveTierModel, providerIsConfigured, getProviderRegistry } from '@/lib/ai/registry';
 import { searchMany } from '@/lib/knowledge/registry';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { narrativePromptFragment } from '@/lib/chat/layouts';
@@ -88,10 +88,9 @@ export async function POST(request: Request) {
   // The settings table wins over the environment, so a key (or, for a
   // self-hosted endpoint like Ollama, a base URL) can be rotated from the
   // admin panel without a redeploy.
-  const apiKeyFromSettings = await getSettingString(`${providerId}_api_key`);
-  const baseUrlFromSettings = await getSettingString(`${providerId}_base_url`);
+  const providerKeys = await resolveProviderKeys(providerId);
 
-  if (!providerIsConfigured(registry, providerId, apiKeyFromSettings || null)) {
+  if (!providerIsConfigured(registry, providerId, providerKeys.apiKey ?? null)) {
     return fail('No AI provider is configured yet. Add an API key in the admin settings.', 503);
   }
 
@@ -273,10 +272,7 @@ export async function POST(request: Request) {
     : undefined;
 
   const result = streamText({
-    model: getModel(registry, providerId, modelId, {
-      apiKey: apiKeyFromSettings || undefined,
-      baseUrl: baseUrlFromSettings || undefined,
-    }),
+    model: getModel(registry, providerId, modelId, providerKeys),
     system,
     tools: toolSet,
     // Without this the model calls a tool and the turn ends there — the user

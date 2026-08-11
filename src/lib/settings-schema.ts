@@ -24,6 +24,14 @@ export const SETTINGS_SCHEMA = {
     { key: 'ai_default_provider', label: 'Default provider', type: 'string', help: 'openai, anthropic, openrouter, ollama' },
     { key: 'openai_api_key', label: 'OpenAI API key', type: 'secret' },
     { key: 'openai_default_model', label: 'OpenAI default model', type: 'string' },
+    {
+      key: 'openai_organization', label: 'OpenAI organization ID', type: 'string',
+      help: 'Optional — e.g. org-xxxx. A sk-proj-… key already knows its org, so leave this blank unless you use a legacy sk-… key that belongs to more than one organisation and needs the usage billed to a specific one.',
+    },
+    {
+      key: 'openai_project', label: 'OpenAI project ID', type: 'string',
+      help: 'Optional — e.g. proj_xxxx. Same rule as the organization ID above.',
+    },
     { key: 'anthropic_api_key', label: 'Anthropic API key', type: 'secret' },
     { key: 'anthropic_default_model', label: 'Anthropic default model', type: 'string' },
     { key: 'google_api_key', label: 'Google (Gemini) API key', type: 'secret' },

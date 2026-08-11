@@ -1,6 +1,7 @@
 import 'server-only';
 import type { AiProviderRow } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
+import { openAiScopeHeaders } from './fetch-models';
 
 /**
  * "Can this provider actually answer right now?"
@@ -64,7 +65,7 @@ export async function checkProviderHealth(provider: AiProviderRow, model: string
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
   try {
-    const { endpoint, headers, body } = requestFor(provider, model, key);
+    const { endpoint, headers, body } = await requestFor(provider, model, key);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -82,11 +83,11 @@ export async function checkProviderHealth(provider: AiProviderRow, model: string
 }
 
 /** Each provider's minimal "say ok" request. */
-function requestFor(provider: AiProviderRow, model: string, key: string | null): {
+async function requestFor(provider: AiProviderRow, model: string, key: string | null): Promise<{
   endpoint: string;
   headers: Record<string, string>;
   body: Record<string, unknown>;
-} {
+}> {
   const prompt = 'Reply with the single word: ok';
 
   if (provider.key === 'anthropic') {
@@ -114,7 +115,15 @@ function requestFor(provider: AiProviderRow, model: string, key: string | null):
 
   return {
     endpoint: `${base.replace(/\/$/, '')}/chat/completions`,
-    headers: { authorization: `Bearer ${key ?? 'ollama'}`, 'content-type': 'application/json' },
+    headers: {
+      authorization: `Bearer ${key ?? 'ollama'}`,
+      'content-type': 'application/json',
+      // Only for OpenAI proper. An OpenAI-compatible endpoint (OpenRouter,
+      // Ollama) has no notion of an OpenAI organisation, and this test must
+      // send exactly what a real chat turn sends — otherwise "Test connection"
+      // can pass while the thing it is testing fails.
+      ...(provider.key === 'openai' ? await openAiScopeHeaders() : {}),
+    },
     // `max_completion_tokens` rather than `max_tokens`: the newer OpenAI
     // models reject the old field outright.
     body: { model, messages: [{ role: 'user', content: prompt }], max_completion_tokens: 8 },

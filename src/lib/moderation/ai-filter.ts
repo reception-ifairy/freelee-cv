@@ -1,6 +1,6 @@
 import 'server-only';
 import { generateText } from 'ai';
-import { getProviderRegistry, getModel, resolveProviderId } from '@/lib/ai/registry';
+import { getProviderRegistry, getModel, resolveProviderId, resolveProviderKeys } from '@/lib/ai/registry';
 import { getSettingString } from '@/lib/settings';
 
 /**
@@ -57,8 +57,7 @@ async function classifierModel() {
   if (!config) return null;
 
   const modelId = config.tiers?.fast ?? config.defaultModel;
-  const apiKey = (await getSettingString(`${providerId}_api_key`)) || undefined;
-  return getModel(registry, providerId, modelId, { apiKey });
+  return getModel(registry, providerId, modelId, await resolveProviderKeys(providerId));
 }
 
 export async function classifyInput(text: string): Promise<AiVerdict> {

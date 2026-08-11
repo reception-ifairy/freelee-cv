@@ -11,7 +11,7 @@ import { generateText } from 'ai';
 import { db } from '@/db';
 import { locales, translations, settings } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { getProviderRegistry, getModel, resolveProviderId } from '@/lib/ai/registry';
+import { getProviderRegistry, getModel, resolveProviderId, resolveProviderKeys } from '@/lib/ai/registry';
 import { getSettingString } from '@/lib/settings';
 import { ALL_NAMESPACES, NAMESPACE_LABELS, bankPath, isNamespace } from '@/lib/i18n/namespaces';
 import type { Namespace } from '@/lib/i18n/namespaces';
@@ -21,8 +21,7 @@ async function getChatModel() {
   const registry = await getProviderRegistry();
   const providerId = resolveProviderId(await getSettingString('ai_default_provider', 'openai'));
   const modelId = registry[providerId].defaultModel;
-  const apiKey = (await getSettingString(`${providerId}_api_key`)) || undefined;
-  return getModel(registry, providerId, modelId, { apiKey });
+  return getModel(registry, providerId, modelId, await resolveProviderKeys(providerId));
 }
 
 function stripCodeFence(text: string): string {

@@ -7,6 +7,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { LanguageModel } from 'ai';
 import { db } from '@/db';
 import { aiProviders, aiModels } from '@/db/schema';
+import { getSettingString } from '@/lib/settings';
 import { isChatProvider, isProviderId, isModelTier } from './provider-ids';
 import type { ProviderId, ModelTier } from './provider-ids';
 
@@ -115,7 +116,45 @@ export function resolveTierModel(
   return registry[providerId]?.tiers?.[tier] ?? null;
 }
 
-export type ResolvedKeys = { apiKey?: string; baseUrl?: string };
+export type ResolvedKeys = {
+  apiKey?: string;
+  baseUrl?: string;
+  /**
+   * OpenAI only. A `sk-proj-…` key already encodes its org and project, so
+   * these are usually unnecessary — they matter for a legacy `sk-…` user key
+   * that belongs to more than one organisation, where OpenAI bills whichever
+   * org it feels like unless you say. Sent as `OpenAI-Organization` /
+   * `OpenAI-Project`; both are ignored by every other provider.
+   */
+  organization?: string;
+  project?: string;
+};
+
+/**
+ * Everything `getModel()` needs, resolved from the settings table with the
+ * environment as fallback.
+ *
+ * Exists because five call sites were each doing this by hand with slightly
+ * different fallbacks — so adding the org/project headers in one place would
+ * otherwise have reached exactly one of them. Settings win over the
+ * environment, which is what makes a key rotatable from the admin panel
+ * without a redeploy.
+ */
+export async function resolveProviderKeys(providerId: ProviderId): Promise<ResolvedKeys> {
+  const [apiKey, baseUrl, organization, project] = await Promise.all([
+    getSettingString(`${providerId}_api_key`),
+    getSettingString(`${providerId}_base_url`),
+    providerId === 'openai' ? getSettingString('openai_organization') : Promise.resolve(''),
+    providerId === 'openai' ? getSettingString('openai_project') : Promise.resolve(''),
+  ]);
+
+  return {
+    apiKey: apiKey || undefined,
+    baseUrl: baseUrl || undefined,
+    organization: organization || undefined,
+    project: project || undefined,
+  };
+}
 
 /**
  * Builds a language model handle. Keys are passed in rather than read here, so
@@ -150,8 +189,16 @@ export function getModel(
     return createGoogleGenerativeAI({ apiKey })(modelId);
   }
 
-  // OpenAI and every OpenAI-compatible endpoint share one factory.
-  return createOpenAI({ apiKey: apiKey ?? 'not-set', baseURL })(modelId);
+  // OpenAI and every OpenAI-compatible endpoint share one factory. The org and
+  // project are passed only for OpenAI itself — an OpenAI-compatible endpoint
+  // (OpenRouter, Ollama) would receive headers it has no meaning for.
+  return createOpenAI({
+    apiKey: apiKey ?? 'not-set',
+    baseURL,
+    ...(providerId === 'openai'
+      ? { organization: keys.organization, project: keys.project }
+      : {}),
+  })(modelId);
 }
 
 export function creditsPer1k(registry: ProviderRegistry, providerId: ProviderId, modelId: string): number {

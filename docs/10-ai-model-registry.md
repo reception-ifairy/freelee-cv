@@ -101,3 +101,58 @@ runtime errors.
 
 Phase 4 (persona versioning) is next — `personaVersions.aiModelId` becomes a real FK into `ai_models`,
 which is why the model registry had to land first.
+
+## Key resolution, and the OpenAI organization (2026-08-11)
+
+`getModel()` takes its key from the caller rather than reading one, so that a key can be rotated
+from the admin panel without a redeploy. The cost of that was **five call sites each resolving it by
+hand** — the chat route, the translator, the moderation filter, the bot converter and
+`admin-translations` — with slightly different fallbacks.
+
+That only mattered once there was a second thing to resolve. Adding the OpenAI organization header
+to that arrangement would have reached exactly one call site. So there is now one
+`resolveProviderKeys(providerId)`, and every caller uses it:
+
+```ts
+const model = getModel(registry, providerId, modelId, await resolveProviderKeys(providerId));
+```
+
+Settings still win over the environment, unchanged.
+
+### `openai_organization` / `openai_project`
+
+Two new optional settings, sent as `OpenAI-Organization` / `OpenAI-Project`.
+
+**Usually unnecessary.** A `sk-proj-…` key already encodes its organisation and project. They matter
+for a legacy `sk-…` user key that belongs to more than one organisation, where OpenAI picks which
+one to bill unless told.
+
+Two details that are easy to get wrong:
+
+- **Omitted entirely when unset**, never sent empty. OpenAI rejects a blank organization header,
+  which would turn "not configured" into a 401 that reads exactly like a bad key.
+- **Only for OpenAI itself.** OpenRouter and Ollama speak the OpenAI wire format but have no notion
+  of an OpenAI organisation, so the headers are not sent to them.
+
+The health check sends them too. "Test connection" that passes while a real chat turn fails is worse
+than no test at all, so it must send exactly what a chat turn sends.
+
+> **Footgun worth knowing:** if the organization is set and you later rotate to a key belonging to a
+> *different* org, OpenAI returns 401 and the admin will report "the provider rejected this key".
+> The key is fine; the stale org is not. Clear the field or update it.
+
+### Account state, verified 2026-08-11
+
+iFairy Studios (`org-uDjOWQdhAruE1cR5BF6XiwGR`), project key configured:
+
+| Check | Result |
+|---|---|
+| `GET /v1/models` | 200 |
+| `GET /v1/models` with the organization header | 200 — the org matches the key |
+| `POST /v1/chat/completions` | `credit_balance_exhausted` — **the account has no credit** |
+| All nine catalogued OpenAI models exist on the account | ✅ including `gpt-5.4-mini`, `gpt-5.5`, `gpt-5.5-pro`, `o3`, `o4-mini` |
+
+This is precisely the case `checkProviderHealth()` was written for: the key authenticates and lists
+200 models while every completion fails. It classifies as `no-credit`, not `bad-key`. Nothing that
+calls OpenAI will run until the account is topped up — the site's default provider is Google, so
+nothing is currently broken by that.

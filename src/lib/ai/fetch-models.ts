@@ -52,6 +52,24 @@ function classifyOpenAiModel(id: string): 'text' | 'image' | null {
   return null; // embeddings/whisper/tts/moderation/etc — not a chat or image model, excluded
 }
 
+/**
+ * The optional `OpenAI-Organization` / `OpenAI-Project` headers.
+ *
+ * Omitted entirely when unset rather than sent empty — OpenAI rejects a blank
+ * organization header outright, which would turn "not configured" into a hard
+ * 401 that reads like a bad key.
+ */
+export async function openAiScopeHeaders(): Promise<Record<string, string>> {
+  const [organization, project] = await Promise.all([
+    getSettingString('openai_organization'),
+    getSettingString('openai_project'),
+  ]);
+  return {
+    ...(organization ? { 'OpenAI-Organization': organization } : {}),
+    ...(project ? { 'OpenAI-Project': project } : {}),
+  };
+}
+
 async function fetchOpenAiModels(provider: AiProviderRow): Promise<FetchModelsResult> {
   const apiKey = await resolveApiKey(provider.key, provider.apiKeyEnv);
   if (!apiKey) return { error: 'No OpenAI API key configured (Settings → AI, or OPENAI_API_KEY).' };
@@ -59,6 +77,7 @@ async function fetchOpenAiModels(provider: AiProviderRow): Promise<FetchModelsRe
   try {
     const body = (await fetchJson('https://api.openai.com/v1/models', {
       Authorization: `Bearer ${apiKey}`,
+      ...(await openAiScopeHeaders()),
     })) as { data?: { id: string }[] };
 
     const models = (body.data ?? [])

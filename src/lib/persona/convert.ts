@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { generateText } from 'ai';
 import type { ModelMessage } from 'ai';
 import { PERSONALITY_TRAITS } from '@/db/schema';
-import { getProviderRegistry, getModel, resolveProviderId } from '@/lib/ai/registry';
+import { getProviderRegistry, getModel, resolveProviderId, resolveProviderKeys } from '@/lib/ai/registry';
 import { getSettingString } from '@/lib/settings';
 import type { ExtractedDocument } from '@/lib/documents/extract';
 
@@ -271,8 +271,7 @@ export async function convertDocumentToPersona(
   const modelId = registry[providerId]?.defaultModel;
   if (!modelId) return { ok: false, error: `No default model is configured for ${providerId}.` };
 
-  const apiKey = (await getSettingString(`${providerId}_api_key`)) || undefined;
-  const model = getModel(registry, providerId, modelId, { apiKey });
+  const model = getModel(registry, providerId, modelId, await resolveProviderKeys(providerId));
 
   const preamble =
     `Source document: ${filename}` +

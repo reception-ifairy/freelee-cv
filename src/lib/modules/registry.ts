@@ -48,7 +48,7 @@ export const MODULES: ModuleManifest[] = [
   {
     key: 'ai-model-registry',
     name: 'AI Model Registry',
-    version: '1.1.0',
+    version: '1.2.0',
     description:
       'DB-backed model catalog (ai_providers/ai_models) replacing the old static PROVIDERS config. ' +
       'New model = INSERT, zero deploy. Providers stay code (drivers); models are pure data. Since ' +
@@ -56,11 +56,13 @@ export const MODULES: ModuleManifest[] = [
       'UI (CardRadioGroup/GridSelect) replacing one-per-line <select> lists, and the first ' +
       'image-generation engines (OpenAI images, Stability AI) — catalog/admin config only, no ' +
       'generation execution yet. Google (Gemini) added as a full chat provider 2026-08-08. ' +
-      'See docs/10-ai-model-registry.md, docs/21-image-engines.md and docs/25-google-provider.md.',
+      'Since 1.2.0: one shared resolveProviderKeys() instead of five hand-rolled resolutions, ' +
+      'carrying the optional OpenAI organization/project headers everywhere including the health ' +
+      'check. See docs/10-ai-model-registry.md, docs/21-image-engines.md and docs/25-google-provider.md.',
     type: 'core',
     isCore: true,
     requires: {},
-    provides: { capabilities: ['ai.model_catalog', 'ai.tier_resolution', 'ai.live_model_fetch', 'ai.image_engines', 'ai.google_provider'] },
+    provides: { capabilities: ['ai.model_catalog', 'ai.tier_resolution', 'ai.live_model_fetch', 'ai.image_engines', 'ai.google_provider', 'ai.key_resolution'] },
     permissions: [],
     navigation: [{ label: 'AI models', href: '/admin/ai-models', group: 'admin', order: 15 }],
   },
