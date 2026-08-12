@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition ' +
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-sm font-semibold transition ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ' +
     'disabled:pointer-events-none disabled:opacity-60 dark:focus-visible:ring-offset-black ' +
     '[&_svg]:size-4 [&_svg]:shrink-0',
@@ -28,10 +29,33 @@ const buttonVariants = cva(
   },
 );
 
-export type ButtonProps = React.ComponentProps<'button'> & VariantProps<typeof buttonVariants>;
+export type ButtonProps = React.ComponentProps<'button'> & VariantProps<typeof buttonVariants> & {
+  /**
+   * Shows a spinner and disables the button.
+   *
+   * Thirteen admin forms were each hand-wiring `useFormStatus` + `Loader2` +
+   * a swapped label, which is thirteen chances to forget the `disabled` and
+   * let someone submit twice.
+   */
+  loading?: boolean;
+  /** Replaces the label while loading. Without it the label stays put and only the spinner appears — usually the better choice, since a shifting label makes the button resize mid-click. */
+  loadingLabel?: string;
+};
 
-export function Button({ className, variant, size, ...props }: ButtonProps) {
-  return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+export function Button({ className, variant, size, loading, loadingLabel, children, disabled, ...props }: ButtonProps) {
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size }), className)}
+      // `aria-busy` rather than only `disabled`: a screen reader should hear
+      // "busy", not silence, and disabling alone announces nothing.
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? <Loader2 className="animate-spin" aria-hidden /> : null}
+      {loading && loadingLabel ? loadingLabel : children}
+    </button>
+  );
 }
 
 export { buttonVariants };

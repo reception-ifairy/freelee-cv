@@ -28,10 +28,34 @@
   --color-brand-700: #4338ca;
   --color-brand-800: #3730a3;
   --color-brand-900: #312e81;
+  /* Must be declared here, not only in .admin-console below. Tailwind
+     generates a utility from the @theme namespace — with no --color-brand-950
+     in @theme, `bg-brand-950/50` was never emitted at all, so the admin
+     header's logo tile has been transparent rather than merely mis-coloured.
+     .admin-console then re-points the same token at its sky ramp. */
+  --color-brand-950: #1e1b4b;
 
   --color-accent-400: #fbbf24;
   --color-accent-500: #f59e0b;
   --color-accent-600: #d97706;
+
+  /* ---- Shape and motion -------------------------------------------------
+     Until now every radius and every timing in the app was a hardcoded
+     Tailwind default, which is why `rounded-xl` (74 uses) and `rounded-2xl`
+     (23) drifted apart with no rule distinguishing them. Naming them makes
+     the choice reviewable and lets a future theme change the feel of the
+     whole UI the way it already changes the colour of it.
+
+     Two durations and one easing cover almost everything. The scale is
+     deliberately short: a long menu of timings is a long menu of ways for
+     two components to disagree. */
+  --radius-card: 1rem;      /* panels, cards, modals — the big surfaces */
+  --radius-control: 0.75rem; /* inputs, buttons, menu items */
+
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --duration-fast: 120ms;   /* menus, tooltips — must feel instant */
+  --duration-base: 160ms;   /* modals, panels */
+  --duration-slow: 220ms;   /* route transitions, the only thing allowed to be noticed */
 }
 
 @layer base {
@@ -48,6 +72,27 @@
   h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); }
 
   ::selection { @apply bg-brand-500/25; }
+
+  /* ---- Motion is a preference, not a decision we get to make --------------
+     For some people motion is not decoration but nausea and migraine, and the
+     OS-level setting is how they say so. One global rule is the honest way to
+     honour it: a per-component opt-out is a per-component thing to forget, and
+     this file is about to gain page transitions, menu animations and shimmer.
+
+     Durations go to ~0 rather than `animation: none` deliberately — an
+     animation that never runs also never fires `animationend`, which would
+     leave any component that waits for it stuck mid-unmount.
+
+     This also fixes `scroll-behavior: smooth` above, which has been
+     unconditional since it was added. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -77,6 +122,11 @@
     --color-brand-700: #0369a1;
     --color-brand-800: #075985;
     --color-brand-900: #0c4a6e;
+    /* The public @theme ramp stops at 900, but the admin header uses
+       bg-brand-950 — so until now those two rules painted nothing at all.
+       Defining it here rather than in @theme keeps the public palette
+       exactly as it was. */
+    --color-brand-950: #082f49;
     --color-slate-950: #000000;
     --color-slate-900: #0a0a0a;
     --color-slate-800: #141414;
@@ -121,6 +171,49 @@
     50%      { opacity: 1;   transform: scale(1); }
   }
 
+  /* ---- Admin motion vocabulary -------------------------------------------
+     Four movements, used everywhere, so the panel moves one way rather than
+     nine. All of them are opacity plus a small translate or scale: nothing
+     travels far, nothing overshoots, and nothing delays a click.
+
+     `both` on the fill mode matters — without it an element flashes at its
+     final state for one frame before the animation starts. */
+  .animate-fade-in   { animation: fade-in var(--duration-base) var(--ease-out) both; }
+  .animate-scale-in  { animation: scale-in var(--duration-base) var(--ease-out) both; }
+  .animate-slide-up  { animation: slide-up var(--duration-base) var(--ease-out) both; }
+  .animate-fade-out  { animation: fade-in var(--duration-fast) var(--ease-out) reverse both; }
+  .animate-scale-out { animation: scale-in var(--duration-fast) var(--ease-out) reverse both; }
+
+  @keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes scale-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+  @keyframes slide-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Skeleton shimmer. A moving highlight rather than a pulsing block: a pulse
+     reads as "broken", a sweep reads as "loading". */
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--color-slate-500) 14%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+
+  /* Staggered list entrance. The delay is set per item with a CSS variable so
+     one class serves any list; callers cap the index so a 200-row table does
+     not end up with a four-second cascade. */
+  .animate-stagger {
+    animation: slide-up var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--stagger-index, 0) * 20ms);
+  }
+
   /* Developer-dark highlight accents: glowing text and glowing edges on a black field. */
   .dark .glow-text {
     text-shadow:
@@ -134,8 +227,13 @@
       0 0 30px -6px color-mix(in oklab, var(--color-brand-500) 55%, transparent);
   }
 
+  /* `transition` is declared here, not left to the utility class on Button:
+     .glow-btn:hover changes box-shadow, and Button's blanket `transition` was
+     the only reason that ever appeared to animate. Anything else using
+     .glow-btn — Badge's brand tone, CardRadioGroup's selected state — snapped. */
   .dark .glow-btn {
     box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-brand-400) 30%, transparent), 0 0 24px -4px color-mix(in oklab, var(--color-brand-500) 65%, transparent);
+    transition: box-shadow var(--duration-base) var(--ease-out);
   }
 
   .dark .glow-btn:hover {
@@ -172,4 +270,38 @@
 
 [data-layout-mode='on'] [data-block-id]:hover {
   outline-style: solid;
+}
+
+/* ---------------------------------------------------------------------------
+   Route transitions (admin only)
+
+   Uses the View Transitions API rather than a library: the browser snapshots
+   the old page and cross-fades it to the new one, which costs no JavaScript,
+   no wrapper component and no bundle. Browsers without it get today's instant
+   swap, so this is purely additive.
+
+   Scoped to .admin-console because a cross-fade suits a tool you navigate
+   dozens of times an hour; the public site's pages are content, and a fade
+   there would sit between a visitor and what they came to read.
+
+   The reduced-motion block above cannot reach ::view-transition (it is not a
+   descendant of anything), so it is disabled explicitly here.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .admin-console::view-transition-group(root) {
+    animation-duration: var(--duration-slow);
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
 }

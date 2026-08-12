@@ -382,6 +382,22 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [],
   },
+  {
+    key: 'admin-visual-system',
+    name: 'Admin visual system',
+    version: '1.0.0',
+    description:
+      'Design tokens for shape and motion, one surface recipe replacing four, a motion vocabulary ' +
+      '(fade/scale/slide/shimmer/stagger) with View Transitions route changes and a global ' +
+      'prefers-reduced-motion guard, plus the primitives the panel lacked: Meter, Sparkline, ' +
+      'Skeleton, EmptyState, StatTile and a loading state on Button. See docs/43-admin-visual-system.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['ui.design_tokens', 'ui.motion', 'ui.data_display', 'ui.loading_states'] },
+    permissions: [],
+    navigation: [],
+  },
   groupChat,
   crews,
 ];

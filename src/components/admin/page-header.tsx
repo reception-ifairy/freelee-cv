@@ -20,14 +20,10 @@ export function PageHeader({
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:backdrop-blur-md">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p> : null}
-    </div>
-  );
-}
+/**
+ * @deprecated Use `StatTile` from `@/components/ui/stat-tile` — it takes the
+ * same props plus `trend`, `spark` and `icon`. Kept as a re-export so the two
+ * existing callers (the dashboard and sales) did not have to change in the
+ * same commit that introduced the tile.
+ */
+export { StatTile as Stat } from '@/components/ui/stat-tile';

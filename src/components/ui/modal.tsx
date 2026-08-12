@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMountTransition } from './use-mount-transition';
 
 /**
  * A focus-trapping dialog, hand-written like the rest of the UI primitives here.
@@ -38,6 +39,7 @@ export function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const returnFocusTo = useRef<HTMLElement | null>(null);
+  const { mounted, closing } = useMountTransition(open);
 
   function requestClose() {
     if (dirty && !window.confirm('You have unsaved changes. Close without saving?')) return;
@@ -88,10 +90,18 @@ export function Modal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- requestClose closes over `dirty`, which is read at call time
   }, [open, dirty]);
 
-  if (!open) return null;
+  // Stays mounted through the exit animation — see useMountTransition. The
+  // dialog used to vanish in the frame the state flipped, so it faded in and
+  // then disappeared, which reads as a glitch rather than a close.
+  if (!mounted) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm sm:p-8">
+    <div
+      className={cn(
+        'fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm sm:p-8',
+        closing ? 'animate-fade-out' : 'animate-fade-in',
+      )}
+    >
       {/* A sibling, not a wrapper: a backdrop that contains the panel swallows
           clicks meant for the panel unless every one is stopped. */}
       <button type="button" aria-label="Close" tabIndex={-1} onClick={requestClose} className="fixed inset-0 cursor-default" />
@@ -103,7 +113,8 @@ export function Modal({
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          'relative w-full rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900',
+          'relative w-full rounded-card border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900',
+          closing ? 'animate-scale-out' : 'animate-scale-in',
           width === 'md' && 'max-w-lg',
           width === 'lg' && 'max-w-2xl',
           width === 'xl' && 'max-w-4xl',

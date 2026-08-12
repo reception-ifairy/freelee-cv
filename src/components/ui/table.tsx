@@ -26,7 +26,9 @@ export function TBody({ className, ...props }: React.ComponentProps<'tbody'>) {
 }
 
 export function TR({ className, ...props }: React.ComponentProps<'tr'>) {
-  return <tr className={cn('hover:bg-slate-50 dark:hover:bg-slate-800/40', className)} {...props} />;
+  // `transition` was missing, so row hover snapped on a surface where every
+  // other hover in the app eases.
+  return <tr className={cn('transition-colors duration-[--duration-fast] hover:bg-slate-50 dark:hover:bg-white/[0.04]', className)} {...props} />;
 }
 
 export function TH({ className, ...props }: React.ComponentProps<'th'>) {

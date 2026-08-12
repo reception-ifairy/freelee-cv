@@ -122,7 +122,7 @@ export function ActionMenu({ items, label = 'Actions', align = 'right' }: { item
           role="menu"
           onKeyDown={onPanelKeyDown}
           className={cn(
-            'absolute top-full z-50 mt-1 min-w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900',
+            'animate-slide-up absolute top-full z-50 mt-1 min-w-48 rounded-control border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900',
             align === 'right' ? 'right-0' : 'left-0',
           )}
         >

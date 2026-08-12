@@ -74,7 +74,7 @@ export function GridSelect({
       </button>
 
       {open ? (
-        <div className="absolute z-30 mt-2 w-full min-w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="animate-slide-up absolute z-30 mt-2 w-full min-w-72 rounded-card border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
           <div className={cn('grid gap-2', cols)}>
             {options.length === 0 ? (
               <p className="col-span-full py-2 text-center text-xs text-slate-400">No options.</p>

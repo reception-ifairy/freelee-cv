@@ -34,7 +34,28 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #41 · `pending` — Fill in #40's hash
+### #42 · `pending` — Give the admin a visual foundation: tokens, one surface, and motion
+
+Stage 1 of the admin visual pass. An audit of all 35 routes found the problems
+were structural rather than decorative — the panel was missing whole categories
+of UI vocabulary. No radius or motion tokens, four competing surface recipes,
+two keyframes in the codebase neither of which was used in admin, no
+`prefers-reduced-motion` anywhere, and zero `loading.tsx` files app-wide.
+
+Two live bugs fell out. The header's logo tile was **transparent**, not
+mis-coloured: Tailwind emits a utility from the `@theme` namespace, and with no
+`--color-brand-950` there, `bg-brand-950/50` was never generated. Only a
+browser check caught it — defining the token in `.admin-console` made it
+resolve while the tile stayed `rgba(0,0,0,0)`. And `.glow-btn:hover` changed
+`box-shadow` with no transition on it, appearing to animate only because
+`Button` carries a blanket `transition`.
+
+New: `Meter`, `Sparkline`, `Skeleton*`, `EmptyState`, `StatTile`,
+`useMountTransition`, `Button loading`, and `loading.tsx` on 15 routes.
+
+📄 `43-admin-visual-system.md`
+
+### #41 · `9d83c70` — Fill in #40's hash
 
 Housekeeping, and the cycle `changelog:verify` enforces made visible: an entry
 is written with `` `pending` `` in the same commit as the change it describes,

@@ -61,7 +61,7 @@ export function HelpTip({
         <span
           role="dialog"
           className={cn(
-            'absolute top-6 z-40 block w-72 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xl dark:border-slate-700 dark:bg-slate-900',
+            'animate-slide-up absolute top-6 z-40 block w-72 rounded-card border border-slate-200 bg-white p-4 text-left shadow-xl dark:border-slate-700 dark:bg-slate-900',
             side === 'right' ? 'left-0' : 'right-0',
           )}
         >
