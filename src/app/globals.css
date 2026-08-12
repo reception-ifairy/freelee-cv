@@ -111,7 +111,10 @@
      utilities) re-skins automatically with zero JSX changes, because CSS
      custom properties resolve from the nearest ancestor that declares them. */
   .admin-console {
-    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    /* `--font-mono-admin` is supplied by next/font in admin/layout.tsx, which
+       self-hosts the face. The literal name stays as a fallback so the console
+       still looks right if the font fails to load. */
+    --font-mono: var(--font-mono-admin), 'JetBrains Mono', ui-monospace, monospace;
     --color-brand-50: #f0f9ff;
     --color-brand-100: #e0f2fe;
     --color-brand-200: #bae6fd;
@@ -204,6 +207,16 @@
   @keyframes shimmer {
     from { background-position: 200% 0; }
     to   { background-position: -200% 0; }
+  }
+
+  /* The mobile nav drawer slides from the edge it is anchored to — a fade
+     alone leaves no sense of where it came from or where it goes back to. */
+  .animate-drawer-in  { animation: drawer-in var(--duration-base) var(--ease-out) both; }
+  .animate-drawer-out { animation: drawer-in var(--duration-fast) var(--ease-out) reverse both; }
+
+  @keyframes drawer-in {
+    from { opacity: 0; transform: translateX(-100%); }
+    to   { opacity: 1; transform: none; }
   }
 
   /* Staggered list entrance. The delay is set per item with a CSS variable so

@@ -34,7 +34,32 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #42 · `pending` — Give the admin a visual foundation: tokens, one surface, and motion
+### #43 · `pending` — Make the admin sidebar say where you are, and work on a phone
+
+Stage 2. The sidebar was the weakest surface in the panel and the one every
+session starts at. It could not tell you which page you were on — the layout
+was a Server Component that never read usePathname, so all 23 links rendered
+identically — and below 1024px there was no navigation whatsoever, just a text
+link back to the dashboard.
+
+Active state is now three signals at once (rail, tinted row, full-strength
+icon), matched longest-prefix so a detail route still highlights its section.
+Icons take one hue per group, carried as data so a new page inherits its
+group's colour; deliberately not brand tokens, since .admin-console re-binds
+those to one sky ramp and would produce 23 identical blue icons.
+
+The drawer initially opened 63px tall with its links clipped away. The header
+carries backdrop-blur, and a backdrop-filter makes an element a containing
+block for fixed descendants — so `fixed inset-0` resolved against the 64px
+header rather than the viewport. Only measuring the geometry found it; every
+functional assertion passed while the thing was unusable. Fixed with a portal.
+
+Also: breadcrumbs, next/font replacing three render-blocking link tags, a
+max-width on main, and an icon on Sign out.
+
+📄 `43-admin-visual-system.md`
+
+### #42 · `90b1fda` — Give the admin a visual foundation: tokens, one surface, and motion
 
 Stage 1 of the admin visual pass. An audit of all 35 routes found the problems
 were structural rather than decorative — the panel was missing whole categories

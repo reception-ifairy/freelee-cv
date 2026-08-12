@@ -106,3 +106,79 @@ rather than a slow one.
 
 Stage 2 (sidebar: active route, group-coloured icons, mobile drawer), Stage 3 (all 16 lists),
 Stage 4 (dashboard and detail screens). Stages 2–4 are independent of each other.
+
+---
+
+# Stage 2 — the sidebar
+
+The weakest surface in the panel, and the one every session starts at.
+
+## You could not see where you were
+
+`admin/layout.tsx` was an async Server Component that never read `usePathname`, so all 23 links
+rendered identically — no `aria-current`, no highlight, nothing. `settings-nav.tsx` already did this
+correctly; the main nav simply never caught up.
+
+Fixed by splitting the nav into data (`lib/admin/nav.ts`) and rendering (`admin-nav.tsx`, a client
+component). Matching is **longest-prefix**, so `/admin/personas/769` and `/admin/personas/convert`
+both highlight *Personas* — a detail page is still that section — with an `exact` flag on the
+Dashboard so `/admin` does not claim every route.
+
+The active treatment is **three signals at once**, because one is fragile: a left rail (position), a
+tinted row (area), and a full-strength icon (colour). Colour alone would fail anyone who cannot
+distinguish it.
+
+## Icons, coloured by group
+
+One hue per section — AI violet, Commerce emerald, Content amber, System slate, Dashboard sky —
+carried as a `tone` field on the data rather than a class, so a page added later inherits its
+group's colour for free.
+
+Deliberately **not** brand tokens: `.admin-console` re-binds `--color-brand-*` to a single sky ramp,
+so anything built on brand would render 23 identical blue icons, which is the problem being fixed.
+
+Four hues you learn once beat 23 you never learn at all.
+
+## There was no mobile navigation. At all.
+
+The sidebar is `hidden lg:block` and nothing else rendered the nav, so below 1024px the entire admin
+console had one text link and no way to reach any other screen. `AdminDrawer` is new capability, not
+a restyle: all 23 links, closing on navigate and on Escape, with focus return and scroll lock.
+
+### The bug that cost the most time
+
+The drawer opened at **63px tall** — just its own header — with the nav links present in the DOM but
+clipped to nothing.
+
+The cause is subtle and worth writing down: the trigger sits inside the sticky admin header, which
+carries `backdrop-blur`. **A `backdrop-filter` makes an element a containing block for
+fixed-position descendants**, so the drawer's `fixed inset-0` resolved against the 64px header
+instead of the viewport. Only measuring the real geometry found it — it renders, animates and
+reports `visible`, so every functional assertion passed while the thing was unusable.
+
+Fixed with `createPortal` to `document.body`, which is the right answer regardless: an overlay
+belongs at the top of the stacking context, not nested inside whatever happened to trigger it.
+
+## Also
+
+- **Breadcrumbs** in the header, which previously held one mobile-only link and the user's name.
+  Deliberately shallow — section, then leaf — since a full path would repeat the sidebar. Ids
+  resolve to "Details" rather than costing a query per header render.
+- **`next/font`** replaces three raw Google Fonts `<link>` tags that were render-blocking and
+  re-shipped on every admin navigation.
+- **`max-w-[1600px]`** on `<main>` — the panel's two- and three-column layouts stretched to
+  unreadable line lengths on an ultrawide display.
+- **Sign out gained an icon.** It was the one nav row without one, so its label sat an icon-width
+  left of everything above it.
+
+## Verified
+
+| Check | Result |
+|---|---|
+| Exactly one link active, on 8 routes incl. nested | ✅ `/admin/personas/convert` → *Personas* |
+| Breadcrumbs | ✅ `Personas › Convert` |
+| Group hues resolve | ✅ four distinct, active at full strength |
+| Sidebar hidden at 390px | ✅ |
+| Drawer: 23 links, full height | ✅ 844px after the portal fix |
+| Closes on navigate / Escape; scroll lock restores | ✅ |
+| No client errors | ✅ |
