@@ -15,6 +15,7 @@ import { CHAT_LAYOUTS, layoutsForSurface } from '@/lib/chat/layouts';
 import { TOOL_CATALOG } from '@/lib/tools/catalog';
 import type { ChatLayoutKey } from '@/lib/chat/layouts';
 import { GridSelect } from '@/components/ui/grid-select';
+import { Cpu, FileText, IdCard, Rocket, Smile, ToggleRight } from 'lucide-react';
 import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
 import type { ProviderRegistry } from '@/lib/ai/registry';
 import { AUDIENCE_TYPES, APPROACH_TO_UNKNOWN, INTERACTION_STYLES, PROMPT_TECHNIQUES } from '@/lib/persona/prompt';
@@ -22,7 +23,45 @@ import { GUARDRAILS } from '@/lib/persona/guardrails';
 import { segmentsForAudienceType } from '@/lib/persona/audience-segments';
 import { cn, initialsOf } from '@/lib/utils';
 
-const TABS = ['basics', 'prompt', 'model', 'personality', 'capabilities', 'publishing'] as const;
+/**
+ * The tabs, with real labels and icons.
+ *
+ * The bar used to render the raw array values — `basics`, `prompt`, `model` —
+ * so the form's navigation was six lowercase words with no visual anchor. It
+ * also carries `required`, which is what lets the bar point at the tab holding
+ * a validation error: panels are hidden rather than unmounted (so a hidden
+ * field still submits), which means an empty required input on tab 1 blocks
+ * the submit while you sit on tab 5 with nothing telling you where to look.
+ */
+/**
+ * What each end of a trait slider actually means.
+ *
+ * The value compiles into the system prompt, so these are not decoration —
+ * they are the difference between "formality: 20" and "writes like a friend".
+ */
+const TRAIT_POLES: Record<string, [string, string]> = {
+  warmth: ['detached', 'warm'],
+  humor: ['serious', 'playful'],
+  formality: ['casual', 'formal'],
+  curiosity: ['answers only', 'asks back'],
+  patience: ['brisk', 'patient'],
+  directness: ['diplomatic', 'blunt'],
+  creativity: ['literal', 'inventive'],
+  rigor: ['approximate', 'exacting'],
+  encouragement: ['neutral', 'encouraging'],
+  storytelling: ['plain', 'narrative'],
+};
+
+const TAB_META = [
+  { id: 'basics', label: 'Basics', icon: IdCard, required: ['name'] },
+  { id: 'prompt', label: 'Prompt', icon: FileText, required: ['systemPrompt'] },
+  { id: 'model', label: 'Model', icon: Cpu, required: [] },
+  { id: 'personality', label: 'Personality', icon: Smile, required: [] },
+  { id: 'capabilities', label: 'Capabilities', icon: ToggleRight, required: [] },
+  { id: 'publishing', label: 'Publishing', icon: Rocket, required: [] },
+] as const;
+
+const TABS = TAB_META.map((t) => t.id) as unknown as readonly ['basics', 'prompt', 'model', 'personality', 'capabilities', 'publishing'];
 type Tab = (typeof TABS)[number];
 
 const MODEL_TIERS = [
@@ -83,6 +122,9 @@ export function PersonaForm({
   const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
   const [name, setName] = useState(persona?.name ?? '');
+  // Controlled purely so the tab bar can show whether this tab is complete —
+  // the required marker has to read the live value, not the initial one.
+  const [systemPrompt, setSystemPrompt] = useState(version?.systemPrompt ?? '');
   const [accent, setAccent] = useState(persona?.accentColor ?? '#6366f1');
   const [provider, setProvider] = useState(version?.aiProvider ?? 'openai');
   const [modelTier, setModelTier] = useState(version?.modelTier ?? (persona ? '' : 'fast'));
@@ -106,6 +148,8 @@ export function PersonaForm({
     for (const trait of PERSONALITY_TRAITS) initial[trait] = version?.personality[trait] ?? 50;
     return initial;
   });
+
+  const requiredValues: Record<string, string> = { name, systemPrompt };
 
   const suggestions = [0, 1, 2, 3].map((i) => version?.suggestions[i] ?? '');
   const providerKey = provider in providers ? (provider as keyof typeof providers) : 'openai';
@@ -132,22 +176,37 @@ export function PersonaForm({
 
       <FormMessage state={state} />
 
-      <div className="my-4 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1 dark:bg-white/[0.03]">
-        {TABS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={cn(
-              'rounded-lg px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition',
-              tab === item
-                ? 'glow-ring bg-white text-slate-900 shadow-sm dark:bg-brand-500/10 dark:text-brand-300'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white',
-            )}
-          >
-            {item}
-          </button>
-        ))}
+      <div className="my-4 flex flex-wrap gap-1 rounded-control bg-slate-100 p-1 dark:bg-white/[0.03]">
+        {TAB_META.map((item) => {
+          // Only flagged once the field is genuinely empty — marking a tab
+          // "incomplete" before anyone has typed would be nagging, not helping.
+          const missing = item.required.some((field) => !requiredValues[field]?.trim());
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              aria-current={tab === item.id ? 'true' : undefined}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition',
+                tab === item.id
+                  ? 'glow-ring bg-white text-slate-900 shadow-sm dark:bg-brand-500/10 dark:text-brand-300'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white',
+              )}
+            >
+              <item.icon className="size-3.5 shrink-0" />
+              {item.label}
+              {missing ? (
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-amber-400"
+                  title="A required field on this tab is still empty"
+                  aria-label="incomplete"
+                />
+              ) : null}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -211,7 +270,8 @@ export function PersonaForm({
                 rows={14}
                 required
                 className="font-mono text-xs"
-                defaultValue={version?.systemPrompt}
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
               />
               <Hint>
                 Personality, curriculum level and any selected modifiers are appended automatically at runtime.
@@ -578,22 +638,43 @@ export function PersonaForm({
 
             <div>
               <Label>Personality traits</Label>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <Hint className="mb-3">
+                50 is neutral. These are compiled into the system prompt, so a slider at either
+                extreme changes how the persona actually writes.
+              </Hint>
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                 {PERSONALITY_TRAITS.map((trait) => (
                   <div key={trait}>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex items-baseline justify-between text-xs">
                       <span className="font-medium capitalize">{trait}</span>
-                      <span className="text-slate-400">{traits[trait]}</span>
+                      <span className="font-mono tabular-nums text-slate-400">{traits[trait]}</span>
                     </div>
-                    <input
-                      type="range"
-                      name={`personality.${trait}`}
-                      min={0}
-                      max={100}
-                      value={traits[trait]}
-                      onChange={(e) => setTraits({ ...traits, [trait]: Number(e.target.value) })}
-                      className="mt-1 w-full accent-brand-600"
-                    />
+                    <div className="relative mt-1">
+                      {/* The midpoint. Without it there is no way to see at a
+                          glance whether a trait is dialled up or down — every
+                          track looked the same at 20 as at 80. */}
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute left-1/2 top-1/2 h-2.5 w-px -translate-y-1/2 bg-slate-500/40"
+                      />
+                      <input
+                        type="range"
+                        name={`personality.${trait}`}
+                        min={0}
+                        max={100}
+                        value={traits[trait]}
+                        onChange={(e) => setTraits({ ...traits, [trait]: Number(e.target.value) })}
+                        className="w-full accent-brand-500"
+                        aria-describedby={`trait-poles-${trait}`}
+                      />
+                    </div>
+                    {/* "Low formality" is meaningless without knowing what the
+                        other end is. Naming both poles turns an abstract 0-100
+                        into a choice between two ways of writing. */}
+                    <p id={`trait-poles-${trait}`} className="mt-0.5 flex justify-between text-[10px] text-slate-500">
+                      <span>{TRAIT_POLES[trait][0]}</span>
+                      <span>{TRAIT_POLES[trait][1]}</span>
+                    </p>
                   </div>
                 ))}
               </div>

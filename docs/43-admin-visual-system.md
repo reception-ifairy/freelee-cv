@@ -248,3 +248,67 @@ a visual fix, so the lists carry a comment saying why rather than a link that go
 | Empty states fire on genuinely empty lists | ✅ plans, passes, leads, sales, showcase |
 | Card stagger | ✅ capped at 8 so a long list does not cascade for seconds |
 | All suites | ✅ 103 assertions + changelog |
+
+---
+
+# Stage 4 — the dashboard and detail screens
+
+## Dashboard
+
+The bar chart was the only visualization in the entire panel, and the tiles beside it were naked
+numbers — "Revenue £4,210" told you the figure and never whether that was a good month.
+
+- **Trends** against the previous 30 days. That needed a real query, not a guess: one extra
+  aggregate over the window *before* the one on screen. Growth from zero returns `null` rather than
+  "+∞%", so the trend line disappears instead of printing something untrue.
+- **A sparkline under Messages**, built from `perDay` — which was already fetched for the chart and
+  used nowhere else.
+- **Gridlines and a hover readout** on the chart. Bars filled their box with nothing saying what
+  full height meant, so a quiet month and a busy one drew identically; the peak is now labelled.
+  The readout replaces the browser's `title` tooltip, which takes a second to appear and cannot be
+  positioned.
+- **Top personas got bars** on the scale already computed for the chart. A ranked list with no bars
+  asks the reader to compare numbers that are *already sorted* — the one job a bar does for free.
+- **Activity rows got an icon and colour per action type.** `activityLog.action` was being fetched
+  and used only as a fallback when `description` was null, so ten entries were a grey paragraph you
+  could not skim for "did anything get deleted" — the main reason to open an audit log.
+
+The action→icon match is by **keyword, not an exhaustive map**: actions are free-text strings
+written at each call site, so a fixed list would silently fall through to grey the first time
+somebody logged a new verb.
+
+## Customer detail
+
+- **A spent-vs-purchased meter.** `lifetimeGranted` and `lifetimeSpent` sat as two numbers side by
+  side, leaving the reader to divide one by the other. The ratio is the actual question — is this
+  customer about to run out — and it colours amber past 70% and red past 90%.
+- **Debits are coloured.** Credits were emerald and debits plain slate, so *spend* — the thing you
+  scan a ledger for — was the harder half to find.
+- **Suspended status is shown.** `isActive` was rendered nowhere on this screen while the list
+  beside it badges it clearly, so you could read a locked-out customer's ledger wondering why they
+  had stopped using the product.
+
+## Persona form
+
+The tab bar rendered the **raw lowercase array values** — `basics`, `prompt`, `model` — so the
+form's navigation was six unstyled words.
+
+The important fix is subtler. Panels are hidden rather than unmounted, because a hidden field must
+still submit. That means an empty `required` input on tab 1 blocks the submit **while you are
+standing on tab 5, with nothing telling you where to look**. Each tab now carries an amber dot when
+one of its required fields is empty.
+
+The ten personality sliders were identical grey tracks. They now have a **midpoint marker** and
+**named poles** — "casual ↔ formal", "diplomatic ↔ blunt" — because "formality: 20" is meaningless
+until you know what the other end is, and the value compiles straight into the system prompt.
+
+## Verified
+
+| Check | Result |
+|---|---|
+| Trend maths | ✅ seeded 302 vs 178 → +69%, matching by hand |
+| Trend with no previous period | ✅ hidden, not "+∞%" |
+| Sparkline, chart readout, ranked bars | ✅ |
+| Tab completeness dots track live input | ✅ 2 on a blank form → 1 after filling the name |
+| Trait poles | ✅ 10 pairs |
+| All suites | ✅ 103 assertions + changelog |

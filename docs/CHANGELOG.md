@@ -34,7 +34,35 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #44 · `pending` — Give the admin lists shape: meters, real empty states, and the data they already had
+### #45 · `pending` — Give the dashboard trends and the persona form a way to show where the error is
+
+Stage 4. The dashboard's bar chart was the only visualization in the panel and
+every tile beside it was a naked number — the figure, never whether it was a
+good month. Trends now compare against the previous 30 days, which needed a
+real query rather than a guess; growth from zero returns null instead of
+"+∞%", so the line disappears rather than printing something untrue. Messages
+gets a sparkline from perDay, already fetched for the chart and used nowhere
+else. The chart gets gridlines, a labelled peak and a hover readout. Top
+personas get bars on the scale already computed above them.
+
+Activity rows get an icon and colour per action type — activityLog.action was
+being fetched and used only as a fallback when description was null, so the
+feed was a grey paragraph you could not skim for "did anything get deleted".
+
+Customer detail: a spent-vs-purchased meter (two numbers left the reader to
+divide one by the other), coloured debits (spend was the harder half to find),
+and the suspended banner — isActive was rendered nowhere on that screen.
+
+Persona form: real tab labels with icons instead of raw lowercase array values,
+and an amber dot on any tab holding an empty required field. Panels are hidden
+rather than unmounted so a hidden field still submits, which meant an empty
+input on tab 1 blocked the submit while you stood on tab 5 with no pointer.
+The ten personality sliders get a midpoint and named poles — "formality: 20"
+is meaningless until you know what the other end is.
+
+📄 `43-admin-visual-system.md`
+
+### #44 · `5b586b6` — Give the admin lists shape: meters, real empty states, and the data they already had
 
 Stage 3, across all sixteen lists at once. ResourceItem.meta.value was already
 typed React.ReactNode and every list passed a plain string, so meters needed no
