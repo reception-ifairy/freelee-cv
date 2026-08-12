@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { knowledgeSources } from '@/db/schema';
+import { Search } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { InlineForm } from '@/components/admin/inline-form';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +33,12 @@ export default async function KnowledgeSourcesPage() {
         <div className="space-y-4 lg:col-span-2">
           {sources.length === 0 ? (
             <Card className="p-6">
-              <p className="text-sm text-slate-400">No knowledge sources configured yet.</p>
+              <EmptyState
+                  icon={Search}
+                  title="No knowledge sources"
+                  description="A knowledge source is an external search API a persona can cite from. Add one with the form beside this list — the response mapping is dot-paths, so most simple REST search APIs work without code."
+                  className="border-0 py-8"
+                />
             </Card>
           ) : (
             sources.map((source) => (
@@ -50,7 +57,15 @@ export default async function KnowledgeSourcesPage() {
                       <Badge tone={source.isActive ? 'green' : 'slate'}>{source.isActive ? 'active' : 'inactive'}</Badge>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Two fieldsets, because these are two unrelated jobs:
+                        reaching the API, and reading what it sends back. The
+                        card used to be ten inputs in two anonymous grids, and
+                        the only thing distinguishing them was that one had four
+                        columns and the other two. */}
+                    <fieldset className="grid gap-3 sm:grid-cols-2">
+                      <legend className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                        Connection
+                      </legend>
                       <div>
                         <Label htmlFor={`baseUrl-${source.id}`}>Base URL</Label>
                         <Input id={`baseUrl-${source.id}`} name="baseUrl" defaultValue={source.baseUrl} className="text-xs" />
@@ -81,9 +96,12 @@ export default async function KnowledgeSourcesPage() {
                         <Checkbox name="isActive" value="true" defaultChecked={source.isActive} />
                         Active (selectable on personas)
                       </label>
-                    </div>
+                    </fieldset>
 
-                    <div className="grid gap-3 sm:grid-cols-4">
+                    <fieldset className="grid gap-3 sm:grid-cols-4">
+                      <legend className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                        Response mapping
+                      </legend>
                       <div>
                         <Label htmlFor={`resultsPath-${source.id}`}>Results path</Label>
                         <Input id={`resultsPath-${source.id}`} name="resultsPath" defaultValue={source.resultsPath} className="font-mono text-xs" />
@@ -100,7 +118,7 @@ export default async function KnowledgeSourcesPage() {
                         <Label htmlFor={`citationPath-${source.id}`}>Citation path</Label>
                         <Input id={`citationPath-${source.id}`} name="citationPath" defaultValue={source.citationPath} className="font-mono text-xs" />
                       </div>
-                    </div>
+                    </fieldset>
                     <Hint>
                       Dot-paths into each hit in the response, e.g. a hit shaped <code className="font-mono">{'{ chunk: { text, title } }'}</code> needs
                       text path <code className="font-mono">chunk.text</code>.

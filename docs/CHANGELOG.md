@@ -34,7 +34,26 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #45 · `pending` — Give the dashboard trends and the persona form a way to show where the error is
+### #46 · `pending` — Finish the visual pass: translations, providers, branding, marketplace, docs
+
+Stage 4d, the remaining screens.
+
+The translations matrix put its colour on the text, so a module at 2/40 and one
+at 39/40 both read as amber; cells get a track and each locale a headline
+percentage, computed from figures already in hand. Providers rendered isActive
+nowhere despite submitting it on every save, and model-row's status badge
+shared its slot with the save spinner — so a model's status vanished during
+every edit. Branding showed no colours on a branding screen. Marketplace was
+the one screen with a raw h1 instead of PageHeader, printed raw cents as
+"{n}¢" while formatMoney was used everywhere else, and put a neutral install
+count in a green badge. Knowledge sources had ten inputs in two anonymous
+grids, now two fieldsets for two genuinely different jobs. And the docs nav
+stripped the file numbers the list is ordered by, making a deliberate sequence
+read as an alphabetical pile.
+
+📄 `43-admin-visual-system.md`
+
+### #45 · `8ea33e2` — Give the dashboard trends and the persona form a way to show where the error is
 
 Stage 4. The dashboard's bar chart was the only visualization in the panel and
 every tile beside it was a naked number — the figure, never whether it was a

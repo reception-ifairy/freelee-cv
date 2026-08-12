@@ -72,7 +72,10 @@ export default async function HandbookPage({ params }: { params: Params }) {
                           'block rounded-lg px-2.5 py-1.5 text-sm transition',
                           item.slug === slug
                             ? 'bg-brand-500/10 font-semibold text-brand-300'
-                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+                            // Was `hover:bg-white/5 hover:text-slate-200` unprefixed —
+                            // dark-mode values applied in both modes, so hover was
+                            // nearly invisible on a light ground.
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200',
                         )}
                       >
                         {item.title}

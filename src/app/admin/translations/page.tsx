@@ -10,6 +10,7 @@ import type { Namespace } from '@/lib/i18n/namespaces';
 import { getAdminT } from '@/lib/i18n/translate';
 import { helpTopics } from '@/lib/help/topics';
 import { HelpTip } from '@/components/ui/help-tip';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/admin/page-header';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -149,14 +150,31 @@ export default async function AdminTranslationsPage() {
                       <th className="pb-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                         English
                       </th>
-                      {translatable.map((l) => (
-                        <th
-                          key={l.code}
-                          className="pb-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400"
-                        >
-                          {l.code}
-                        </th>
-                      ))}
+                      {translatable.map((l) => {
+                        // Every number needed for this was already computed and
+                        // only ever shown per-module — so the one question a
+                        // reader actually has, "how far along is Polish", could
+                        // only be answered by adding up a column by eye.
+                        const done = modules.reduce((sum, m) => sum + countOf(l.code, m.namespace), 0);
+                        const percent = bankTotal > 0 ? Math.round((done / bankTotal) * 100) : 0;
+
+                        return (
+                          <th
+                            key={l.code}
+                            className="pb-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                          >
+                            {l.code}
+                            <span
+                              className={cn(
+                                'ml-1.5 font-semibold',
+                                percent === 100 ? 'text-emerald-400' : percent === 0 ? 'text-slate-600' : 'text-amber-400',
+                              )}
+                            >
+                              {percent}%
+                            </span>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -169,17 +187,33 @@ export default async function AdminTranslationsPage() {
                           {translatable.map((l) => {
                             const done = countOf(l.code, m.namespace);
                             return (
-                              <td key={l.code} className="py-2 text-right font-mono text-xs">
-                                <span
-                                  className={
-                                    done >= m.total
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : done === 0
-                                        ? 'text-slate-300 dark:text-slate-600'
-                                        : 'text-amber-600 dark:text-amber-400'
-                                  }
-                                >
-                                  {done}/{m.total}
+                              <td key={l.code} className="py-2 pl-3">
+                                {/* Colour was on the text alone, so a module at
+                                    2/40 and one at 39/40 were both just "amber".
+                                    A track behind the number shows the distance
+                                    without reading either figure. */}
+                                <span className="flex items-center justify-end gap-2">
+                                  <span className="h-1 w-10 overflow-hidden rounded-full bg-white/10">
+                                    <span
+                                      className={cn(
+                                        'block h-full rounded-full',
+                                        done >= m.total ? 'bg-emerald-500' : 'bg-amber-500',
+                                      )}
+                                      style={{ width: `${m.total > 0 ? (done / m.total) * 100 : 0}%` }}
+                                    />
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'font-mono text-xs tabular-nums',
+                                      done >= m.total
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : done === 0
+                                          ? 'text-slate-300 dark:text-slate-600'
+                                          : 'text-amber-600 dark:text-amber-400',
+                                    )}
+                                  >
+                                    {done}/{m.total}
+                                  </span>
                                 </span>
                               </td>
                             );

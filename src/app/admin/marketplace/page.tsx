@@ -6,7 +6,10 @@ import { requireAdmin } from '@/lib/auth';
 import { approveListingAction, rejectListingAction, suspendListingAction } from '@/server/actions/admin-marketplace';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { relativeTime } from '@/lib/utils';
+import { formatMoney, relativeTime } from '@/lib/utils';
+import { Store } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/admin/page-header';
 import { PayoutForm } from './payout-form';
 
 export const dynamic = 'force-dynamic';
@@ -35,9 +38,14 @@ export default async function AdminMarketplacePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold tracking-tight">Marketplace moderation</h1>
+      {/* Was a raw <h1>, the only admin screen not using PageHeader — so it had
+          no description slot and sat at a different height from every other page. */}
+      <PageHeader
+        title="Marketplace moderation"
+        description="Review what external vendors want to publish, and track what is already live. See docs/16-marketplace.md."
+      />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Pending review ({pending.length})</CardTitle>
@@ -90,7 +98,15 @@ export default async function AdminMarketplacePage() {
                 {recentPayouts.map(({ payout, vendor }) => (
                   <div key={payout.id} className="flex items-center justify-between text-xs">
                     <span>{vendor.displayName}</span>
-                    <span className="text-slate-400">{payout.netAmountCents}¢ · {payout.status}</span>
+                    {/* Printed as a raw integer with a ¢ glued on — "249900¢"
+                        rather than £2,499.00 — while formatMoney existed and was
+                        used on every other money surface in the panel. */}
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium tabular-nums">{formatMoney(payout.netAmountCents)}</span>
+                      <Badge tone={payout.status === 'paid' ? 'green' : payout.status === 'pending' ? 'amber' : 'slate'}>
+                        {payout.status}
+                      </Badge>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -103,11 +119,20 @@ export default async function AdminMarketplacePage() {
             <CardTitle>Live listings ({approved.length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
+            {approved.length === 0 ? (
+              <EmptyState
+                icon={Store}
+                title="Nothing live yet"
+                description="Approved vendor listings appear here, and can be suspended from this screen."
+                className="border-0 py-8"
+              />
+            ) : null}
             {approved.map(({ listing, vendor }) => (
               <div key={listing.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span className="truncate text-sm">{listing.title} <span className="text-xs text-slate-400">by {vendor.displayName}</span></span>
                 <div className="flex items-center gap-2">
-                  <Badge tone="green">{listing.installCount} installs</Badge>
+                  {/* Was green, which reads as "healthy" for what is a neutral count. */}
+                  <Badge tone="slate">{listing.installCount} installs</Badge>
                   <form action={suspendListingAction}>
                     <input type="hidden" name="listingId" value={listing.id} />
                     <button type="submit" className="text-xs font-medium text-rose-500 hover:underline">Suspend</button>

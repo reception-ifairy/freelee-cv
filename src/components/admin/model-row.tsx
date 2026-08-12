@@ -117,10 +117,14 @@ export function ModelRow({ model, disabled }: { model: ModelRowData; disabled?: 
         <span className="whitespace-nowrap text-[10px] text-slate-400">/1k</span>
       </label>
 
-      <span className="flex w-16 items-center justify-end gap-1.5">
-        {pending ? <Loader2 className="size-4 animate-spin text-slate-400" /> : null}
-        {saved && !pending ? <Check className="size-4 text-emerald-500" /> : null}
-        {!pending && !saved ? <Badge tone={STATUS_TONE[status]}>{status}</Badge> : null}
+      {/* The badge used to share this slot with the spinner and the tick, so a
+          model's status vanished during and shortly after every edit — exactly
+          when you are most likely to be checking it. The save indicator now
+          sits beside the status rather than replacing it. */}
+      <span className="flex w-24 items-center justify-end gap-1.5">
+        {pending ? <Loader2 className="size-3.5 animate-spin text-slate-400" /> : null}
+        {saved && !pending ? <Check className="size-3.5 text-emerald-500" /> : null}
+        <Badge tone={STATUS_TONE[status]}>{status}</Badge>
       </span>
     </div>
   );

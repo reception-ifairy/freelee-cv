@@ -86,7 +86,15 @@ export function ProviderCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-bold">{provider.label}</h3>
-            {provider.hasKey ? <Badge tone="green">key set</Badge> : <Badge tone="amber">no key</Badge>}
+            {/* "key set" is the least informative always-visible signal there
+                is — a key that authenticates is not an account that can pay,
+                which is exactly what the no-credit health state exists to
+                catch. Phrased as "key present" so it stops implying "working". */}
+            {provider.hasKey ? <Badge tone="green">key present</Badge> : <Badge tone="amber">no key</Badge>}
+            {/* isActive was in the data and submitted back on every save, but
+                rendered nowhere — a disabled provider looked identical to a
+                live one. */}
+            {!provider.isActive ? <Badge tone="slate">disabled</Badge> : null}
             {provider.isLocal ? (
               <Badge tone="brand">
                 <FlaskConical className="size-3" /> R&amp;D only

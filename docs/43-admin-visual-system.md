@@ -312,3 +312,49 @@ until you know what the other end is, and the value compiles straight into the s
 | Tab completeness dots track live input | ✅ 2 on a blank form → 1 after filling the name |
 | Trait poles | ✅ 10 pairs |
 | All suites | ✅ 103 assertions + changelog |
+
+## The remaining screens
+
+**Translations** — the completion matrix was the best data density in the panel and entirely
+text-only. Colour was on the *text*, so a module at 2/40 and one at 39/40 both read as "amber". Each
+cell now has a track behind the number, and each locale column carries a headline percentage — every
+figure for which was already being computed and shown only per-module, so "how far along is Polish"
+could only be answered by adding up a column by eye.
+
+**Providers** — `isActive` was in the data and submitted back on every save but rendered nowhere, so
+a disabled provider looked identical to a live one. The `key set` badge became `key present`,
+because a key that authenticates is not an account that can pay — precisely what the `no-credit`
+health state exists to catch. And in `model-row`, the status badge shared its slot with the save
+spinner, so a model's status **disappeared during and after every edit** — exactly when you are most
+likely to be checking it.
+
+**Branding** — a branding screen that showed no colours. Each theme now leads with a swatch read
+straight from its `tokens` map, so it cannot drift from what the theme actually renders. Zero themes
+rendered a blank column (`allThemes.map` was unguarded); it now has an empty state.
+
+**Marketplace** — the one admin screen with a raw `<h1>` instead of `PageHeader`. Payouts printed
+`{netAmountCents}¢` — a raw integer — while `formatMoney` was used on every other money surface in
+the panel. `approved.map` was unguarded. And `installCount` sat in a **green** badge, which reads as
+"healthy" for what is a neutral count.
+
+**Knowledge sources** — the worst wall of inputs: ten fields per card in two anonymous grids, the
+only thing distinguishing them being that one had four columns and the other two. They are two
+genuinely different jobs — reaching the API, and reading what it sends back — so they are now two
+`<fieldset>`s with legends.
+
+**Docs and handbook** were near-duplicate screens of diverging quality. The docs files are numbered
+(`00-overview`, `33-block-builder`) and the list is ordered by that number, but the number was
+stripped along with the filename — so a deliberately ordered reference read as an arbitrary
+alphabetical pile. Handbook's nav hover used unprefixed dark-mode colours, making it nearly
+invisible on a light ground.
+
+## Verified
+
+| Check | Result |
+|---|---|
+| All 7 screens | ✅ 200, no client errors |
+| Per-locale completion | ✅ headline % in the column header |
+| Theme swatch | ✅ reads from `tokens` |
+| Knowledge-source fieldsets | ✅ Connection / Response mapping, checked with a real source then removed |
+| Docs numbering | ✅ 00, 01, 02, 03, 04 |
+| All suites | ✅ 103 assertions + changelog |

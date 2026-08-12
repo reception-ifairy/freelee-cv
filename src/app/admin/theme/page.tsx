@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { themes } from '@/db/schema';
+import { Palette } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { InlineForm } from '@/components/admin/inline-form';
 import { ThemeForm } from '@/components/admin/theme-form';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +14,31 @@ import { createThemeAction, activateThemeAction, duplicateThemeAction, deleteThe
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Branding' };
+
+/**
+ * The first few brand stops of a saved theme, as a stack of chips.
+ *
+ * Reads straight from `tokens` — the same map the root layout injects — so it
+ * cannot drift from what the theme actually renders. Falls back to a neutral
+ * placeholder for a theme that has not been given a palette yet, rather than
+ * inventing a colour.
+ */
+function ThemeSwatch({ tokens }: { tokens: Record<string, string> | null }) {
+  const stops = ['brand-500', 'brand-700', 'accent-500'];
+  const colours = stops.map((stop) => tokens?.[stop]).filter(Boolean) as string[];
+
+  if (colours.length === 0) {
+    return <span className="size-6 shrink-0 rounded-lg border border-dashed border-white/20" aria-hidden />;
+  }
+
+  return (
+    <span className="flex shrink-0 overflow-hidden rounded-lg border border-white/10" aria-hidden>
+      {colours.map((colour, i) => (
+        <span key={i} className="size-6" style={{ background: colour }} />
+      ))}
+    </span>
+  );
+}
 
 export default async function AdminBrandingPage() {
   const allThemes = await db.select().from(themes).orderBy(asc(themes.name));
@@ -25,11 +52,23 @@ export default async function AdminBrandingPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          {allThemes.length === 0 ? (
+            <EmptyState
+              icon={Palette}
+              title="No themes saved"
+              description="A theme holds the palette, logo, favicon and fonts for the public site. Create one with the form beside this list — the composer generates a full colour ramp from a seed."
+            />
+          ) : null}
           {allThemes.map((theme) => (
             <Card key={theme.id}>
               <CardContent className="space-y-4 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
+                    {/* A branding screen that showed no colours. The palette is
+                        the thing that distinguishes one saved theme from
+                        another, and it was only visible by expanding the form
+                        and reading hex codes. */}
+                    <ThemeSwatch tokens={theme.tokens} />
                     <p className="font-semibold">{theme.name}</p>
                     <Badge tone={theme.isActive ? 'green' : 'slate'}>{theme.isActive ? 'active' : 'inactive'}</Badge>
                   </div>
