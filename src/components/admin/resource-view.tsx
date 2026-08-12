@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LayoutGrid, List } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { EmptyState, type EmptyStateProps } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD, EmptyRow } from '@/components/ui/table';
 import { ActionMenu, type ActionItem } from '@/components/ui/action-menu';
@@ -41,13 +42,25 @@ export function ResourceView({
   empty = 'Nothing here yet.',
   columns = 3,
   showCount = true,
+  badgeHeader,
 }: {
   /** Cookie key for the grid/list preference. */
   module: string;
   view: AdminView;
   items: ResourceItem[];
-  empty?: string;
+  /**
+   * What to say when there is nothing here. A plain string keeps the old
+   * behaviour; the object form gets the full `EmptyState` — icon, explanation
+   * and the action that fills the screen.
+   *
+   * An empty list is almost always somebody's first visit to that screen, and
+   * the one question they have is "so what do I do here" — which one line of
+   * grey text was never going to answer.
+   */
+  empty?: string | EmptyStateProps;
   columns?: 2 | 3 | 4;
+  /** Header for the badges column in table view. */
+  badgeHeader?: string;
   /** Off when a ListToolbar above already reports the total, which is the real one when filters are applied. */
   showCount?: boolean;
 }) {
@@ -65,13 +78,11 @@ export function ResourceView({
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700">
-          {empty}
-        </p>
+        typeof empty === 'string' ? <EmptyState title={empty} /> : <EmptyState {...empty} />
       ) : view === 'grid' ? (
         <ResourceGrid items={items} columns={columns} />
       ) : (
-        <ResourceTable items={items} />
+        <ResourceTable items={items} badgeHeader={badgeHeader} />
       )}
     </div>
   );
@@ -86,8 +97,17 @@ const GRID_COLUMNS: Record<2 | 3 | 4, string> = {
 function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 3 | 4 }) {
   return (
     <div className={cn('grid gap-3', GRID_COLUMNS[columns])}>
-      {items.map((item) => (
-        <Card key={item.id} className="group relative flex flex-col gap-3 p-4 transition hover:border-brand-400">
+      {items.map((item, index) => (
+        <Card
+          key={item.id}
+          padding="sm"
+          interactive={Boolean(item.href)}
+          // Capped at 8: past that the cascade stops reading as "arriving" and
+          // starts reading as "slow", and a 200-row list would take four
+          // seconds to finish appearing.
+          style={{ '--stagger-index': Math.min(index, 8) } as React.CSSProperties}
+          className="animate-stagger group relative flex flex-col gap-3"
+        >
           <div className="flex items-start gap-3">
             {item.media ? <div className="shrink-0">{item.media}</div> : null}
 
@@ -95,7 +115,7 @@ function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 
               {/* The title is the link, not the whole card: a card-wide anchor
                   would swallow the ⋯ menu and make text unselectable. */}
               {item.href ? (
-                <Link href={item.href} className="block truncate font-semibold hover:text-brand-600 focus:outline-none focus-visible:underline">
+                <Link href={item.href} className="block truncate font-semibold transition-colors group-hover:text-brand-500 focus:outline-none focus-visible:underline">
                   {item.title}
                 </Link>
               ) : (
@@ -133,7 +153,7 @@ function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 
   );
 }
 
-function ResourceTable({ items }: { items: ResourceItem[] }) {
+function ResourceTable({ items, badgeHeader = 'Status' }: { items: ResourceItem[]; badgeHeader?: string }) {
   // Columns come from the first item, so every item must describe the same
   // `meta` keys — which is a property of how a page builds its items, not
   // something this component can enforce.
@@ -148,7 +168,10 @@ function ResourceTable({ items }: { items: ResourceItem[] }) {
             {columns.map((label) => (
               <TH key={label}>{label}</TH>
             ))}
-            <TH>Status</TH>
+            {/* Not always "Status": menus put a visibility scope here, sales
+                the payment gateway. Naming the column after whatever the badges
+                actually are beats one label that is wrong on half the lists. */}
+            <TH>{badgeHeader}</TH>
             <TH />
           </tr>
         </THead>

@@ -182,3 +182,69 @@ belongs at the top of the stacking context, not nested inside whatever happened 
 | Drawer: 23 links, full height | ✅ 844px after the portal fix |
 | Closes on navigate / Escape; scroll lock restores | ✅ |
 | No client errors | ✅ |
+
+---
+
+# Stage 3 — the lists
+
+Sixteen list screens, upgraded through `ResourceView` so most of the work lands once.
+
+## Numbers became shapes
+
+`ResourceItem.meta.value` was **already typed `React.ReactNode`** and every list passed a plain
+string, so meters needed no change to the list contract at all.
+
+The clearest case was sectors, which rendered three 0–100 scores as the string `"70 / 40 / 20"`.
+Those numbers exist *only* to be compared with each other, and a reader cannot rank them by eye. As
+three bars on a shared scale you can now read a sector's audience across 103 rows without decoding a
+single digit — "Technical Writing is B2B-heavy, Editing and Proofreading serves everyone".
+
+Also metered: customer credits and chats, pack orders, post views, personas per category. Each
+scales against **the largest value on the page**, so a bar answers "more than that one" rather than
+filling its own row. The formatted number stays beside it, because a bar is bad at "how many
+exactly" and admin work needs both.
+
+## Data that was fetched and thrown away
+
+Three lists were querying data, mapping it through their row type, and never rendering it:
+
+- **leads** — `personaName`, joined in the query. Which persona produced a lead is how you tell a
+  pricing enquiry from a support one.
+- **posts** — `authorName`, selected and mapped.
+- **categories** — the colour was a `size-3` dot, technically media and visually negligible beside
+  the `size-9` avatars every other list uses.
+
+## Redundant columns removed
+
+- `pages` — "Built from" restated the `Blocks` badge two lines above it.
+- `menus` — "Link" printed the same string as the subtitle whenever there was no description.
+- `sales` — "Customer" restated the subtitle.
+
+## Raw database values were being printed as labels
+
+`leads` showed `new` / `contacted` / `closed` and `sales` showed `paid` / `pending` — column values,
+not labels — directly beside `LEAD_KIND_LABELS`, which does exactly this translation for the badge
+next to it. Now *Waiting* / *Contacted* / *Closed*.
+
+## Empty states
+
+Every list had the same line of grey text in a dashed box. An empty list is almost always somebody's
+**first** visit to that screen, and the one question they have is "so what do I do here" — which
+"No plans yet." was never going to answer. Each now names the thing, says what it is for, and offers
+the action that fills it where one exists.
+
+## What I did not do
+
+`plans` and `passes` have **no Edit action and no detail route**. The audit read that as a missing
+link; it is a missing *screen* — there is no `[id]` route to link to. Building one is a feature, not
+a visual fix, so the lists carry a comment saying why rather than a link that goes nowhere.
+
+## Verified
+
+| Check | Result |
+|---|---|
+| All 14 list routes | ✅ 200, no client errors |
+| Meters render in grid **and** table view | ✅ 72 on sectors, 6 on customers' table |
+| Empty states fire on genuinely empty lists | ✅ plans, passes, leads, sales, showcase |
+| Card stagger | ✅ capped at 8 so a long list does not cascade for seconds |
+| All suites | ✅ 103 assertions + changelog |

@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, LayoutGrid, Trash2 } from 'lucide-react';
+import { ExternalLink, FileText, LayoutGrid, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -31,10 +31,9 @@ export function PagesList({ rows, view }: { rows: PageRow[]; view: AdminView }) 
       ...(row.noindex ? [{ label: 'Hidden from search', tone: 'amber' as const }] : []),
       ...(row.isLocked ? [{ label: 'Locked', tone: 'slate' as const }] : []),
     ],
-    meta: [
-      { label: 'Built from', value: row.useBuilder ? 'Blocks' : 'Text' },
-      { label: 'Updated', value: row.updatedLabel },
-    ],
+    // "Built from" used to sit here restating the `Blocks` badge two lines
+    // above it, spending a column on information already on the card.
+    meta: [{ label: 'Updated', value: row.updatedLabel }],
     actions: [
       { label: 'Open block builder', href: `/admin/pages/${row.id}/builder`, icon: <LayoutGrid className="size-4" /> },
       { label: 'View on the site', href: `/${row.slug}`, icon: <ExternalLink className="size-4" /> },
@@ -51,5 +50,5 @@ export function PagesList({ rows, view }: { rows: PageRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="pages" view={view} items={items} empty="No pages yet." columns={3} />;
+  return <ResourceView module="pages" view={view} items={items} empty={{ icon: FileText, title: 'No pages yet', description: 'Static pages — about, terms, contact — built with the same block builder as the frontpage.' }} columns={3} />;
 }

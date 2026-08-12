@@ -1,7 +1,8 @@
 'use client';
 
-import { Pencil, Trash2 } from 'lucide-react';
+import { Package, Pencil, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePackAction } from '@/server/actions/admin';
@@ -19,6 +20,8 @@ export type PackRow = {
 export function PacksList({ rows, view }: { rows: PackRow[]; view: AdminView }) {
   const { run } = useAdminAction();
 
+  const topOrders = Math.max(1, ...rows.map((r) => r.orderCount));
+
   const items: ResourceItem[] = rows.map((row) => ({
     id: row.id,
     title: row.name,
@@ -28,7 +31,9 @@ export function PacksList({ rows, view }: { rows: PackRow[]; view: AdminView }) 
     meta: [
       { label: 'Price', value: row.price },
       { label: 'Credits', value: row.credits },
-      { label: 'Orders', value: row.orderCount },
+      // Which pack actually sells is the question this screen answers, and it
+      // was an integer indistinguishable from the price beside it.
+      { label: 'Orders', value: <Meter value={row.orderCount} max={topOrders} tone="emerald" display={row.orderCount.toLocaleString('en-GB')} label="Orders" /> },
     ],
     actions: [
       { label: 'Edit', href: `/admin/packs/${row.id}`, icon: <Pencil className="size-4" /> },
@@ -36,5 +41,5 @@ export function PacksList({ rows, view }: { rows: PackRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="packs" view={view} items={items} empty="No credit packs yet." columns={3} />;
+  return <ResourceView module="packs" view={view} items={items} empty={{ icon: Package, title: 'No credit packs', description: 'Packs are the one-off credit bundles customers buy. Create one with the form beside this list.' }} columns={3} />;
 }

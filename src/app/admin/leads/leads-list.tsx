@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleCheck, Mail, Phone, Trash2, UserRoundCheck } from 'lucide-react';
+import { CircleCheck, Inbox, Mail, Phone, Trash2, UserRoundCheck } from 'lucide-react';
 import { ResourceView, type ResourceItem, type BadgeTone } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -20,6 +20,7 @@ export type LeadRowData = {
 };
 
 const STATUS_TONE: Record<string, BadgeTone> = { new: 'brand', contacted: 'amber', closed: 'slate' };
+const STATUS_LABELS: Record<string, string> = { new: 'Waiting', contacted: 'Contacted', closed: 'Closed' };
 
 export function LeadsList({ rows, view }: { rows: LeadRowData[]; view: AdminView }) {
   const { run } = useAdminAction();
@@ -29,12 +30,20 @@ export function LeadsList({ rows, view }: { rows: LeadRowData[]; view: AdminView
     title: row.name || row.email || row.phone || 'Someone',
     subtitle: row.note,
     badges: [
-      { label: row.status, tone: STATUS_TONE[row.status] ?? 'slate' },
+      // Title-cased. The raw column values are `new`/`contacted`/`closed`, and
+      // printing a database enum straight into the UI was the one place this
+      // list showed its plumbing — right beside LEAD_KIND_LABELS, which does
+      // exactly this translation for the other badge.
+      { label: STATUS_LABELS[row.status] ?? row.status, tone: STATUS_TONE[row.status] ?? 'slate' },
       { label: LEAD_KIND_LABELS[row.kind] ?? row.kind, tone: 'slate' as const },
     ],
     meta: [
       { label: 'Contact', value: row.email ?? row.phone ?? '—' },
       { label: 'Asked', value: row.created },
+      // Joined in the query and mapped all the way into the row, then never
+      // rendered. Which persona produced a lead is how you tell a trial
+      // request from the pricing bot apart from one from the support bot.
+      ...(row.personaName ? [{ label: 'From', value: row.personaName }] : []),
     ],
     actions: [
       // A lead is a person waiting; the reply route comes first.
@@ -62,7 +71,7 @@ export function LeadsList({ rows, view }: { rows: LeadRowData[]; view: AdminView
       module="leads"
       view={view}
       items={items}
-      empty="No one has used the quick actions yet. Turn them on in Settings → Site assistant."
+      empty={{ icon: Inbox, title: 'No leads yet', description: 'When somebody uses a quick action in the site assistant — a trial, a callback, a pricing question — they land here.' }}
       columns={3}
     />
   );

@@ -106,6 +106,7 @@ export default async function AdminCustomersPage({
     email: user.email ?? '',
     initials: initialsOf(user.name),
     credits: user.credits.toLocaleString('en-GB'),
+    creditsValue: user.credits,
     chatCount: user.chatCount,
     isActive: user.isActive,
     isAdmin: user.isAdmin,

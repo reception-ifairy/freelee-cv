@@ -1,7 +1,8 @@
 'use client';
 
-import { LayoutGrid, Pencil, Trash2 } from 'lucide-react';
+import { LayoutGrid, Pencil, PenLine, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePostAction } from '@/server/actions/admin';
@@ -20,6 +21,9 @@ export type PostRow = {
 
 export function PostsList({ rows, view }: { rows: PostRow[]; view: AdminView }) {
   const { run } = useAdminAction();
+  // One shared scale for every bar in this list — comparing rows against each
+  // other is the whole point, and a per-row max would make them all full.
+  const topViews = Math.max(1, ...rows.map((r) => r.views));
 
   const items: ResourceItem[] = rows.map((row) => ({
     id: row.id,
@@ -36,7 +40,14 @@ export function PostsList({ rows, view }: { rows: PostRow[]; view: AdminView }) 
     ],
     meta: [
       { label: 'Published', value: row.publishedLabel },
-      { label: 'Views', value: row.views.toLocaleString('en-GB') },
+      // Selected, mapped into PostRow, and then never rendered.
+      ...(row.authorName ? [{ label: 'Author', value: row.authorName }] : []),
+      {
+        label: 'Views',
+        // Scaled against the best-performing post on the page, so "34 views"
+        // stops being a number in isolation and becomes a position.
+        value: <Meter value={row.views} max={topViews} display={row.views.toLocaleString('en-GB')} label="Views" />,
+      },
     ],
     actions: [
       { label: 'Open block builder', href: `/admin/posts/${row.id}/builder`, icon: <LayoutGrid className="size-4" /> },
@@ -45,5 +56,5 @@ export function PostsList({ rows, view }: { rows: PostRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="posts" view={view} items={items} empty="No posts yet." columns={3} />;
+  return <ResourceView module="posts" view={view} items={items} empty={{ icon: PenLine, title: 'No posts yet', description: 'Blog posts are written in the block builder and appear on the public /blog page once published.', action: { label: 'Write the first post', href: '/admin/posts' } }} columns={3} />;
 }

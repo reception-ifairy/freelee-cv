@@ -1,6 +1,6 @@
 'use client';
 
-import { CornerDownRight, Trash2 } from 'lucide-react';
+import { CornerDownRight, Menu, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -42,8 +42,10 @@ export function MenusList({ rows, view }: { rows: MenuItemRow[]; view: AdminView
       { label: row.visibleTo, tone: 'slate' as const },
       ...(row.depth === 1 && row.parentLabel ? [{ label: `under ${row.parentLabel}`, tone: 'brand' as const }] : []),
     ],
+    // `Link` is only new information when a description pushed the href out of
+    // the subtitle; otherwise it printed the same string twice.
     meta: [
-      { label: 'Link', value: row.href },
+      ...(row.description ? [{ label: 'Link', value: row.href }] : []),
       { label: 'Level', value: row.depth === 0 ? 'Top level' : 'In a dropdown' },
     ],
     actions: [
@@ -51,5 +53,5 @@ export function MenusList({ rows, view }: { rows: MenuItemRow[]; view: AdminView
     ],
   }));
 
-  return <ResourceView module="menus" view={view} items={items} empty="No items in this location." columns={3} />;
+  return <ResourceView module="menus" view={view} items={items} empty={{ icon: Menu, title: 'No menu items', description: 'Menu items build the public site\'s navigation, including nested dropdowns.' }} columns={3} />;
 }

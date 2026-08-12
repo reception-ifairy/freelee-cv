@@ -1,7 +1,8 @@
 'use client';
 
-import { Pencil, Trash2 } from 'lucide-react';
+import { Layers, Pencil, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { MeterGroup } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
 import { deleteSectorAction } from '@/server/actions/admin';
@@ -30,10 +31,25 @@ export function SectorsList({ rows, view }: { rows: SectorRow[]; view: AdminView
       ...(row.categoryName ? [{ label: row.categoryName, tone: 'slate' as const }] : []),
     ],
     // Category is already a badge; repeating it as a truncated field just wastes
-    // the row. The three suitability scores read as one field rather than three
-    // columns — they are only ever compared with each other.
+    // the row.
+    //
+    // The three suitability scores were one string — `"70 / 40 / 20"`. They are
+    // 0–100 values that exist *only* to be compared with each other, and three
+    // bars on a shared scale answer "which audience is this sector for" without
+    // reading a single digit.
     meta: [
-      { label: 'Suitability B2C / B2B / B2G', value: `${row.b2cSuitability} / ${row.b2bSuitability} / ${row.b2gSuitability}` },
+      {
+        label: 'Suitability',
+        value: (
+          <MeterGroup
+            items={[
+              { label: 'B2C', value: row.b2cSuitability },
+              { label: 'B2B', value: row.b2bSuitability, tone: 'emerald' },
+              { label: 'B2G', value: row.b2gSuitability, tone: 'amber' },
+            ]}
+          />
+        ),
+      },
     ],
     actions: [
       { label: 'Edit', href: `/admin/sectors/${row.id}`, icon: <Pencil className="size-4" /> },
@@ -41,5 +57,5 @@ export function SectorsList({ rows, view }: { rows: SectorRow[]; view: AdminView
     ],
   }));
 
-  return <ResourceView module="sectors" view={view} items={items} empty="No sectors match those filters." columns={4} showCount={false} />;
+  return <ResourceView module="sectors" view={view} items={items} empty={{ icon: Layers, title: 'No sectors here', description: 'Sectors group personas by the industry they serve, and drive the B2C/B2B/B2G suitability scores. Clear the filters, or add one.', action: { label: 'New sector', href: '/admin/sectors/new' } }} columns={4} showCount={false} />;
 }

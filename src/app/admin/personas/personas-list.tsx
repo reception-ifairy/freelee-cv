@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Pencil, Star, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Copy, Eye, EyeOff, Pencil, Sparkles, Star, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -72,5 +72,5 @@ export function PersonasList({ rows, view }: { rows: PersonaRow[]; view: AdminVi
     ],
   }));
 
-  return <ResourceView module="personas" view={view} items={items} empty="No personas match those filters." columns={4} showCount={false} />;
+  return <ResourceView module="personas" view={view} items={items} empty={{ icon: Sparkles, title: 'No personas match', description: 'Personas are the AI specialists visitors chat with. Clear the filters, or create one — you can also convert an existing bot from a document.', action: { label: 'New persona', href: '/admin/personas/new' } }} columns={4} showCount={false} />;
 }

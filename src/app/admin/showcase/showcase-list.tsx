@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, Images, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -50,5 +50,5 @@ export function ShowcaseList({ rows, view }: { rows: ShowcaseRow[]; view: AdminV
     ],
   }));
 
-  return <ResourceView module="showcase" view={view} items={items} empty="Nothing in the showcase yet. Add a piece below." columns={4} />;
+  return <ResourceView module="showcase" view={view} items={items} empty={{ icon: Images, title: 'Nothing in the showcase', description: 'Curated images your personas produced, shown on the public site. Promote one from a conversation, or add it by hand.' }} columns={4} />;
 }

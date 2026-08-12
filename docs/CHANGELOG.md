@@ -34,7 +34,34 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #43 · `pending` — Make the admin sidebar say where you are, and work on a phone
+### #44 · `pending` — Give the admin lists shape: meters, real empty states, and the data they already had
+
+Stage 3, across all sixteen lists at once. ResourceItem.meta.value was already
+typed React.ReactNode and every list passed a plain string, so meters needed no
+change to the list contract.
+
+Sectors is the clearest case: three 0-100 suitability scores rendered as the
+string "70 / 40 / 20". They exist only to be compared with each other and a
+reader cannot rank them by eye; as bars on a shared scale you can read a
+sector's audience across 103 rows without decoding a digit. Also metered:
+customer credits and chats, pack orders, post views, personas per category —
+each scaled against the largest value on the page rather than its own row.
+
+Three lists were fetching data, mapping it through their row type and never
+rendering it: leads' personaName, posts' authorName, and categories' colour
+(a size-3 dot beside everyone else's size-9 avatars). Three others printed
+redundant columns restating a badge or the subtitle. leads and sales printed
+raw database enums as badge labels — `new`, `paid` — directly beside
+LEAD_KIND_LABELS, which does exactly that translation for the badge next to it.
+
+Empty states now name the thing, say what it is for, and offer the action that
+fills it. Not done: plans and passes still have no Edit action, because they
+have no [id] route to link to — a missing screen, not a missing link, and
+building one is a feature rather than a visual fix.
+
+📄 `43-admin-visual-system.md`
+
+### #43 · `89af04e` — Make the admin sidebar say where you are, and work on a phone
 
 Stage 2. The sidebar was the weakest surface in the panel and the one every
 session starts at. It could not tell you which page you were on — the layout

@@ -1,7 +1,8 @@
 'use client';
 
-import { Ban, CircleCheck, User } from 'lucide-react';
+import { Ban, CircleCheck, User, Users } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
 import { toggleUserActiveAction } from '@/server/actions/admin';
@@ -11,7 +12,9 @@ export type CustomerRow = {
   name: string;
   email: string;
   initials: string;
+  /** Formatted for display. `creditsValue` carries the raw number the meter scales against. */
   credits: string;
+  creditsValue: number;
   chatCount: number;
   isActive: boolean;
   isAdmin: boolean;
@@ -20,6 +23,11 @@ export type CustomerRow = {
 
 export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: AdminView }) {
   const { run } = useAdminAction();
+
+  // Shared scales, so the bars rank customers against each other rather than
+  // each filling its own row.
+  const topCredits = Math.max(1, ...rows.map((r) => r.creditsValue));
+  const topChats = Math.max(1, ...rows.map((r) => r.chatCount));
 
   const items: ResourceItem[] = rows.map((row) => ({
     id: row.id,
@@ -36,8 +44,11 @@ export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: Admin
       ...(row.isAdmin ? [{ label: 'Admin', tone: 'brand' as const }] : []),
     ],
     meta: [
-      { label: 'Credits', value: row.credits },
-      { label: 'Chats', value: row.chatCount },
+      // Credits and chats are the two figures this screen exists to compare —
+      // who is running out, who is actually using the product — and both were
+      // bare text at the same weight as the join date.
+      { label: 'Credits', value: <Meter value={row.creditsValue} max={topCredits} tone="emerald" display={row.credits} label="Credits" /> },
+      { label: 'Chats', value: <Meter value={row.chatCount} max={topChats} display={row.chatCount.toLocaleString('en-GB')} label="Chats" /> },
       { label: 'Joined', value: row.joined },
     ],
     actions: [
@@ -52,5 +63,5 @@ export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: Admin
     ],
   }));
 
-  return <ResourceView module="customers" view={view} items={items} empty="No customers match those filters." columns={3} showCount={false} />;
+  return <ResourceView module="customers" view={view} items={items} empty={{ icon: Users, title: 'No customers yet', description: 'Anyone who signs up appears here with their credit balance and conversation count.' }} columns={3} showCount={false} />;
 }

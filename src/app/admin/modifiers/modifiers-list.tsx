@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
+import { SlidersHorizontal, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
@@ -32,5 +32,5 @@ export function ModifiersList({ rows, view, kind }: { rows: ModifierRow[]; view:
 
   // The whole point of a modifier is its instruction text, so the card shows it
   // as the subtitle rather than hiding it behind a click.
-  return <ResourceView module={`modifiers-${kind}`} view={view} items={items} empty={`No ${kind} modifiers yet.`} columns={2} />;
+  return <ResourceView module={`modifiers-${kind}`} view={view} items={items} empty={{ icon: SlidersHorizontal, title: `No ${kind} modifiers`, description: 'Modifiers are reusable instruction fragments layered onto a persona\'s system prompt — a tone, a format, a constraint.' }} columns={2} />;
 }
