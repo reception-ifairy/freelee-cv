@@ -398,6 +398,23 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [],
   },
+  {
+    key: 'public-navigation',
+    name: 'Public navigation',
+    version: '1.0.0',
+    description:
+      'Audience-split site navigation: a mega menu for visitors (catalogue, proof, price) and a flat ' +
+      'workspace nav for members, plus the mobile drawer the public site never had. Shared surface ' +
+      'tokens (.surface, .surface-overlay, .eyebrow, .focus-ring) give every frontend section one ' +
+      'theme, including /bionic which previously used no brand tokens at all. Admin-managed ' +
+      'menu_items rows still render through the same components. See docs/44-public-navigation.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['navigation'] },
+    provides: { capabilities: ['nav.audience_split', 'nav.mega_menu', 'nav.mobile', 'ui.public_theme'] },
+    permissions: [],
+    navigation: [],
+  },
   groupChat,
   crews,
 ];

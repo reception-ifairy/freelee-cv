@@ -136,6 +136,61 @@
     --color-slate-700: #1f1f1f;
   }
 
+  /* ---- The public site's shared surface vocabulary --------------------
+     Every marketing section used to invent its own card: the editorial hero
+     had hairline panels, the bionic page had cyan-bordered glass, the blocks
+     had `rounded-2xl border-slate-200`. Three languages on one site reads as
+     three products.
+
+     These are the shared parts. They are built from `--color-brand-*` and
+     neutral alpha rather than fixed hues, so a palette change in the theme
+     composer moves the whole frontend at once — which is what "one global
+     theme" has to mean to be worth anything.
+
+     `.surface` is the default panel; `.surface-raised` is for the one thing on
+     a section that should come forward. Nothing else.
+  */
+  .surface {
+    @apply rounded-card border border-slate-200/80 bg-white/70 backdrop-blur-sm
+           dark:border-white/10 dark:bg-white/[0.03];
+  }
+
+  .surface-raised {
+    @apply rounded-card border border-slate-200 bg-white shadow-lg
+           dark:border-white/15 dark:bg-white/[0.06];
+  }
+
+  /* An overlay is not a raised surface.
+     `.surface` and `.surface-raised` sit *in the page flow*, on a known
+     background, so translucency reads as depth. An overlay has arbitrary
+     content behind it — a menu panel over a hero showed the headline straight
+     through itself — so it needs a real ground. The tint over it keeps the
+     family resemblance without giving up opacity. */
+  .surface-overlay {
+    @apply rounded-card border border-slate-200 bg-white shadow-2xl
+           dark:border-white/15 dark:bg-[#0b0b0d];
+  }
+
+  /* Hairline separators that read on both grounds — a plain border-slate-200
+     disappears on black and a white/10 disappears on white. */
+  .hairline { @apply border-slate-200/80 dark:border-white/10; }
+
+  /* The site's small-caps label. It appeared by hand in the editorial hero,
+     the bionic page, the admin and the block sections with four different
+     letter-spacings. */
+  .eyebrow {
+    @apply font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500
+           dark:text-slate-400;
+  }
+
+  /* A focus ring that is visible on both grounds and never removed. The public
+     site had focus styles on some controls and none on others. */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
+           focus-visible:ring-offset-2 focus-visible:ring-offset-white
+           dark:focus-visible:ring-offset-black;
+  }
+
   /* Aurora backdrop used behind hero sections and auth screens. */
   .aurora {
     background-image:
@@ -209,6 +264,15 @@
     to   { background-position: -200% 0; }
   }
 
+  /* The mega panel. A touch more travel than a menu because it is a large
+     surface — a big panel that only fades reads as a flash. */
+  .animate-mega-in { animation: mega-in var(--duration-base) var(--ease-out) both; }
+
+  @keyframes mega-in {
+    from { opacity: 0; transform: translateY(-6px) scale(.99); }
+    to   { opacity: 1; transform: none; }
+  }
+
   /* The mobile nav drawer slides from the edge it is anchored to — a fade
      alone leaves no sense of where it came from or where it goes back to. */
   .animate-drawer-in  { animation: drawer-in var(--duration-base) var(--ease-out) both; }
@@ -216,6 +280,15 @@
 
   @keyframes drawer-in {
     from { opacity: 0; transform: translateX(-100%); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* The site menu comes from the right, where its trigger is. */
+  .animate-drawer-right-in  { animation: drawer-right-in var(--duration-base) var(--ease-out) both; }
+  .animate-drawer-right-out { animation: drawer-right-in var(--duration-fast) var(--ease-out) reverse both; }
+
+  @keyframes drawer-right-in {
+    from { opacity: 0; transform: translateX(100%); }
     to   { opacity: 1; transform: none; }
   }
 

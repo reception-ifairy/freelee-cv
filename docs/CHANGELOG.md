@@ -34,7 +34,32 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #46 · `pending` — Finish the visual pass: translations, providers, branding, marketplace, docs
+### #47 · `pending` — Give visitors their own navigation, and make /bionic part of the same site
+
+Every menu_items row was visibleTo 'all', so a first-time visitor and a paying
+customer saw an identical five-link bar — opposite jobs. Visitors now get a
+four-section mega menu (Personas, Platform, Pricing, Resources) with described
+links and a promoted rail; members get a flat workspace nav that marks the
+current section. The catalogue is a logged-out experience, which is what the
+marketplace UX research consistently says.
+
+There was no mobile navigation at all below 1024px — the same gap the admin
+sidebar had. It is accordions rather than a shrunk mega menu, portalled for the
+backdrop-filter containing-block reason, with the visitor CTAs pinned.
+
+/bionic used zero brand tokens — hardcoded cyan and purple on a fixed
+bg-gray-950 — so the theme composer never reached it, and it had \u2014 and
+\u2019 escapes rendering literally in the copy. Both fixed. The re-tune
+exposed the text-white trap again: a gradient button whose right half is now
+brand-600 had an invisible white label under Sovereign.
+
+New shared surface classes, including .surface-overlay — an overlay is not a
+raised surface, and the mega panel initially showed the hero headline straight
+through itself.
+
+📄 `44-public-navigation.md`
+
+### #46 · `e86314a` — Finish the visual pass: translations, providers, branding, marketplace, docs
 
 Stage 4d, the remaining screens.
 
