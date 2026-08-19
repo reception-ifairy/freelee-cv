@@ -2,6 +2,7 @@
 
 import { Copy, Eye, EyeOff, Pencil, Sparkles, Star, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { PersonaMark } from '@/components/site/persona-mark';
 import { useAdminAction } from '@/components/admin/use-admin-action';
 import type { AdminView } from '@/lib/admin/view-preference';
 import {
@@ -10,10 +11,15 @@ import {
 
 export type PersonaRow = {
   id: number;
+  slug: string;
   name: string;
   expertise: string | null;
   accentColor: string;
-  initials: string;
+  /** Taxonomy, for the mark. Null is normal — an unfiled persona still gets one. */
+  categoryId: number | null;
+  categorySlug: string | null;
+  categoryColor: string | null;
+  sectorSlug: string | null;
   model: string;
   messages: string;
   isActive: boolean;
@@ -29,12 +35,17 @@ export function PersonasList({ rows, view }: { rows: PersonaRow[]; view: AdminVi
     subtitle: row.expertise,
     href: `/admin/personas/${row.id}`,
     media: (
-      <span
-        className="grid size-9 place-items-center rounded-lg text-xs font-bold text-white"
-        style={{ background: row.accentColor }}
-      >
-        {row.initials}
-      </span>
+      // The same generated mark the public card uses. An admin looking at a
+      // list of specialists should see the same identities the catalogue does,
+      // not a second scheme that drifts from it.
+      <PersonaMark
+        personaKey={row.slug}
+        categoryKey={row.categorySlug}
+        sectorKey={row.sectorSlug}
+        categoryIndex={row.categoryId}
+        accent={row.categoryColor ?? row.accentColor}
+        className="size-9"
+      />
     ),
     badges: [
       { label: row.isActive ? 'Published' : 'Draft', tone: row.isActive ? ('green' as const) : ('slate' as const) },

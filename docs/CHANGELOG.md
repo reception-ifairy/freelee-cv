@@ -34,7 +34,37 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #51 · `pending` — Document the teamwork work properly: handbook, docs and README
+### #52 · `pending` — Give AI personas a generated identity, never a face
+
+A milestone: a persona is never represented by a human face. The audit found
+there were none to remove — every persona visual was initials on a colour, and
+personas.avatar has never been written or rendered on a card — so this is a
+mandate not to introduce them plus something better than two letters.
+
+The mark is pure deterministic SVG from category (colour + geometry), sector
+(density) and the persona (which cells fill), mirrored about the vertical axis.
+Property tests caught three things eyes would not: hash-derived shape gave 9
+squares and 1 circle across the real 20 categories (now from the category id,
+5/5/5/5); the empty-mark fallback could never satisfy its own condition; and
+aria-controls pointed at an id attached to nothing.
+
+The card flips to access and depth. Three layout bugs found by measuring: a
+grid item's min-width:auto widened its column past the viewport, an implicit
+auto column made a card 602px inside a 289px slot, and a JSX comment written
+with // rendered as visible text.
+
+Cross-container drag-to-assign is new — pool cards were outside any
+SortableContext (renders fine, cannot be picked up) and closestCorners never
+resolved across two columns; pointerWithin does.
+
+Sectors were write-only: 103 curated rows read by nothing, because no persona
+pointed at one. personas.sector_id fixes that, /admin/taxonomy merges the two
+screens, and category slugs stopped regenerating on rename — they are a
+behaviour contract that CATEGORY_LAYOUT and tool suggestions key off.
+
+📄 `47-persona-cards.md` · 🗄 `0033_persona_sectors`
+
+### #51 · `f7b4b7b` — Document the teamwork work properly: handbook, docs and README
 
 The handbook gained a Teamwork part — Projects and Bot teams, written for the
 person running the site rather than the person maintaining the code — and its

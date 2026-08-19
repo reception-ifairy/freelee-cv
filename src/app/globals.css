@@ -300,6 +300,40 @@
     animation-delay: calc(var(--stagger-index, 0) * 20ms);
   }
 
+  /* ---- The card flip -----------------------------------------------------
+     The first 3D transform in this codebase. Three things it has to respect:
+
+     1. `prefers-reduced-motion` is enforced globally above, which collapses the
+        transition to ~0 — so the flip degrades to an instant swap on its own.
+        That is the correct behaviour and it is verified, not assumed.
+     2. The faces must not carry a backdrop-filter. `backdrop-blur` and
+        `transform-style: preserve-3d` interact badly, and the shared `Card`
+        surface has one — which is why a flip card builds its own face rather
+        than nesting a Card inside.
+     3. `backface-visibility: hidden` is what makes the reverse invisible
+        mid-turn; without it both faces render through each other and the
+        whole effect reads as a glitch.
+  */
+  .flip-scene { perspective: 1400px; }
+
+  .flip-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform var(--duration-slow) var(--ease-out);
+  }
+
+  .flip-scene[data-flipped='true'] .flip-inner { transform: rotateY(180deg); }
+
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* The back sits on top of the front in the same grid cell, pre-rotated so it
+     faces outward once the container turns. Absolute positioning would collapse
+     the card's height; a single-cell grid lets the taller face set it. */
+  .flip-back { transform: rotateY(180deg); }
+
   /* Developer-dark highlight accents: glowing text and glowing edges on a black field. */
   .dark .glow-text {
     text-shadow:

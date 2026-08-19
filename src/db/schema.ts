@@ -552,7 +552,19 @@ export const personas = pgTable(
     tagline: text('tagline'),
     description: text('description'),
     expertise: text('expertise'),
+    /**
+     * Never rendered on a card. The one live consumer is the site-assistant
+     * bubble, where a brand avatar is legitimate; a persona card is
+     * deliberately incapable of showing an uploaded image, because a persona
+     * is not a person. See docs/47-persona-cards.md.
+     */
     avatar: text('avatar'),
+    /**
+     * The specialism, one level below its category. Nullable — an unfiled
+     * persona is a normal state — and `set null` so deleting a sector never
+     * deletes the specialists filed under it.
+     */
+    sectorId: integer('sector_id').references(() => sectors.id, { onDelete: 'set null' }),
     accentColor: text('accent_color').notNull().default('#6366f1'),
 
     // Nullable, not the usual "backfill then NOT NULL" (see drizzle/0006) —

@@ -422,7 +422,8 @@ export async function saveCategoryAction(_prev: ActionState, formData: FormData)
   const data = parsed.data;
   const values = {
     name: data.name,
-    slug: slugify(data.name),
+    // Slug is deliberately absent from the update path — see below. Only a new
+    // category gets one derived from its name.
     description: data.description ?? null,
     color: data.color,
     position: data.position,
@@ -435,18 +436,27 @@ export async function saveCategoryAction(_prev: ActionState, formData: FormData)
     narrativePotential: data.narrativePotential || null,
   };
 
-  if (data.id) await db.update(categories).set(values).where(eq(categories.id, data.id));
-  else await db.insert(categories).values(values);
+  if (data.id) {
+    // The slug is NOT updated. It is a behaviour contract, not a label:
+    // `CATEGORY_LAYOUT` (src/lib/chat/layouts.ts) and `suggestedToolsFor`
+    // (src/lib/tools/catalog.ts) both key off it, so regenerating it from the
+    // name — which this action used to do — silently changed the chat layout
+    // and the suggested toolset for every persona in the category, the moment
+    // somebody fixed a typo in its title.
+    await db.update(categories).set(values).where(eq(categories.id, data.id));
+  } else {
+    await db.insert(categories).values({ ...values, slug: slugify(data.name) });
+  }
 
-  revalidatePath('/admin/categories');
-  redirect('/admin/categories');
+  revalidatePath('/admin/taxonomy');
+  redirect('/admin/taxonomy');
 }
 
 export async function deleteCategoryAction(formData: FormData) {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
   await db.delete(categories).where(eq(categories.id, id));
-  revalidatePath('/admin/categories');
+  revalidatePath('/admin/taxonomy');
 }
 
 /* -------------------------------- Sectors -------------------------------- */
@@ -489,15 +499,15 @@ export async function saveSectorAction(_prev: ActionState, formData: FormData): 
   if (data.id) await db.update(sectors).set(values).where(eq(sectors.id, data.id));
   else await db.insert(sectors).values(values);
 
-  revalidatePath('/admin/sectors');
-  redirect('/admin/sectors');
+  revalidatePath('/admin/taxonomy');
+  redirect('/admin/taxonomy');
 }
 
 export async function deleteSectorAction(formData: FormData) {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
   await db.delete(sectors).where(eq(sectors.id, id));
-  revalidatePath('/admin/sectors');
+  revalidatePath('/admin/taxonomy');
 }
 
 /* ------------------------------- Modifiers ------------------------------ */

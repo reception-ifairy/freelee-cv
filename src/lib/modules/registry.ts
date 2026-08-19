@@ -470,6 +470,24 @@ export const MODULES: ModuleManifest[] = [
       { label: 'Rooms', href: '/admin/rooms', group: 'admin', order: 14 },
     ],
   },
+  {
+    key: 'persona-cards',
+    name: 'Persona cards',
+    version: '1.0.0',
+    description:
+      'A persona\'s visual identity, generated rather than photographed — a deterministic SVG mark ' +
+      'from category, sector and the persona itself. The platform rule it enforces: a persona is ' +
+      'never a human face, and the card is incapable of rendering an uploaded image. Adds a flip ' +
+      'card (the first 3D transform here), cross-container drag-to-assign for bot teams, and the ' +
+      'persona→sector link that finally makes 103 curated sector rows readable. ' +
+      'See docs/47-persona-cards.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning'] },
+    provides: { capabilities: ['personas.generated_identity', 'personas.card_flip', 'personas.drag_assign', 'taxonomy.sectors'] },
+    permissions: [],
+    navigation: [{ label: 'Taxonomy', href: '/admin/taxonomy', group: 'admin', order: 11 }],
+  },
   groupChat,
   crews,
 ];

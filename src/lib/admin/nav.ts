@@ -71,8 +71,9 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
       { href: '/admin/knowledge-sources', label: 'Knowledge sources', icon: Search },
-      { href: '/admin/categories', label: 'Categories', icon: Tags },
-      { href: '/admin/sectors', label: 'Sectors', icon: Layers },
+      // One entry, not two. Sectors only mean something inside a category,
+      // and while nothing read them a separate tab could only be filled in.
+      { href: '/admin/taxonomy', label: 'Taxonomy', icon: Tags },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
     ],
   },
@@ -158,4 +159,7 @@ export function findActiveNavItem(pathname: string): { section: AdminNavSection;
 /** The AI models screen redirects into Settings, so it has no nav entry but still needs a breadcrumb. */
 export const ADMIN_NAV_ALIASES: Record<string, string> = {
   '/admin/ai-models': 'AI models',
+  // Redirected into Taxonomy, but their [id] edit routes are still real pages.
+  '/admin/categories': 'Categories',
+  '/admin/sectors': 'Sectors',
 };

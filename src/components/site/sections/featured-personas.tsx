@@ -1,20 +1,22 @@
 import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { personas, personaVersions } from '@/db/schema';
+import { personas } from '@/db/schema';
 import { PersonaCard } from '@/components/site/persona-card';
+import { personaCardColumns, personaCardJoins, toCardData } from '@/lib/persona/card-query';
 import { getFrontendT } from '@/lib/i18n/translate';
 
 export async function FeaturedPersonasSection() {
   const [featured, { t }] = await Promise.all([
     db
-      .select({ persona: personas, audienceType: personaVersions.audienceType })
+      .select(personaCardColumns)
       .from(personas)
-      .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
+      .leftJoin(...personaCardJoins.version)
+      .leftJoin(...personaCardJoins.sector)
       .where(and(eq(personas.isActive, true), eq(personas.isFeatured, true)))
       .orderBy(personas.position)
       .limit(8)
-      .then((rows) => rows.map((r) => ({ ...r.persona, audienceType: r.audienceType }))),
+      .then((rows) => rows.map(toCardData)),
     getFrontendT(),
   ]);
 
@@ -35,7 +37,7 @@ export async function FeaturedPersonasSection() {
       {featured.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {featured.map((persona) => (
-            <PersonaCard key={persona.id} persona={persona} />
+            <PersonaCard key={persona.slug} persona={persona} />
           ))}
         </div>
       ) : (

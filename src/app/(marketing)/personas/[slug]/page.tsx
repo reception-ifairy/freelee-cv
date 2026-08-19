@@ -6,6 +6,7 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { PersonaCard } from '@/components/site/persona-card';
+import { personaCardColumns, personaCardJoins, toCardData } from '@/lib/persona/card-query';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { startChatAction } from '@/server/actions/chat';
@@ -52,9 +53,10 @@ export default async function PersonaPage({ params }: { params: Params }) {
       .innerJoin(categories, eq(categories.id, personaCategories.categoryId))
       .where(eq(personaCategories.personaId, persona.id)),
     db
-      .select({ persona: personas, audienceType: personaVersions.audienceType })
+      .select(personaCardColumns)
       .from(personas)
-      .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
+      .leftJoin(...personaCardJoins.version)
+      .leftJoin(...personaCardJoins.sector)
       .where(
         and(
           eq(personas.isActive, true),
@@ -68,9 +70,10 @@ export default async function PersonaPage({ params }: { params: Params }) {
           )`,
         ),
       )
-      .limit(4),
+      .limit(4)
+      .then((rows) => rows.map(toCardData)),
   ]);
-  const related = relatedRows.map((r) => ({ ...r.persona, audienceType: r.audienceType }));
+  const related = relatedRows;
 
   const registry = await getProviderRegistry();
   const providerId = resolveProviderId(version.aiProvider);
@@ -230,7 +233,7 @@ export default async function PersonaPage({ params }: { params: Params }) {
           <h2 className="mb-6 text-xl font-bold tracking-tight">Similar personas</h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((item) => (
-              <PersonaCard key={item.id} persona={item} />
+              <PersonaCard key={item.slug} persona={item} />
             ))}
           </div>
         </section>

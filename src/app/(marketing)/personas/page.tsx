@@ -5,6 +5,7 @@ import { and, asc, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { PersonaCard } from '@/components/site/persona-card';
+import { personaCardColumns, personaCardJoins, toCardData } from '@/lib/persona/card-query';
 import { AUDIENCE_TYPES } from '@/lib/persona/prompt';
 import { getFrontendT } from '@/lib/i18n/translate';
 import { helpTopics } from '@/lib/help/topics';
@@ -59,9 +60,10 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
 
   const [rawRows, countRows, categoryRows] = await Promise.all([
     db
-      .select({ persona: personas, audienceType: personaVersions.audienceType })
+      .select(personaCardColumns)
       .from(personas)
-      .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
+      .leftJoin(...personaCardJoins.version)
+      .leftJoin(...personaCardJoins.sector)
       .where(where)
       .orderBy(asc(personas.position), asc(personas.name))
       .limit(PER_PAGE)
@@ -84,7 +86,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
       .orderBy(categories.position),
   ]);
 
-  const rows = rawRows.map((r) => ({ ...r.persona, audienceType: r.audienceType }));
+  const rows = rawRows.map(toCardData);
   const total = countRows[0]?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PER_PAGE));
 
@@ -192,7 +194,7 @@ export default async function PersonasPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {rows.map((persona) => (
-                <PersonaCard key={persona.id} persona={persona} />
+                <PersonaCard key={persona.slug} persona={persona} />
               ))}
             </div>
 

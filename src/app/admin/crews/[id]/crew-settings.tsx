@@ -3,7 +3,12 @@
 import { InlineForm } from '@/components/admin/inline-form';
 import { Input, Textarea, Select, Label, Hint, Checkbox } from '@/components/ui/field';
 import { saveCrewAction } from '@/server/actions/admin-crews';
-import type { MemberRow } from './member-order';
+/**
+ * The membership fields this form needs. Members are added and removed by
+ * dragging now (see `team-assign.tsx`), so this panel keeps only the settings
+ * that are not positional.
+ */
+export type MemberRow = { personaId: number; name: string; isSupervisor: boolean };
 
 type Crew = {
   id: string; name: string; description: string | null; mode: string;
@@ -39,6 +44,12 @@ export function CrewSettings({
   return (
     <InlineForm action={saveCrewAction} title="Team settings" submitLabel="Save team">
       <input type="hidden" name="id" value={crew.id} />
+      {/* saveCrewAction replaces membership from `personaIds`, so the current
+          members ride along as hidden fields. Without them, saving a name
+          change would empty the team. */}
+      {members.map((m) => (
+        <input key={m.personaId} type="hidden" name="personaIds" value={m.personaId} />
+      ))}
       <div>
         <Label htmlFor="name">Name *</Label>
         <Input id="name" name="name" required defaultValue={crew.name} />
@@ -56,19 +67,9 @@ export function CrewSettings({
         </Select>
       </div>
 
-      <div>
-        <Label>Members</Label>
-        <Hint className="mb-2">Untick to remove. New ticks join at the end of the order.</Hint>
-        <div className="max-h-64 space-y-1 overflow-y-auto rounded-control border hairline p-2">
-          {ordered.map((persona) => (
-            <label key={persona.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-white/[0.04]">
-              <Checkbox name="personaIds" value={persona.id} defaultChecked={selected.has(persona.id)} />
-              {persona.name}
-            </label>
-          ))}
-        </div>
-      </div>
-
+      {/* The member list moved to the drag board above. Leaving a checkbox
+          list here as well would give two controls for one thing that could
+          disagree — and the one that submitted last would win silently. */}
       <div>
         <Label htmlFor="supervisorId">Supervisor</Label>
         <Select id="supervisorId" name="supervisorId" defaultValue={String(supervisor)}>

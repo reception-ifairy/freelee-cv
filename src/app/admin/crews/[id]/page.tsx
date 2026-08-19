@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Bot, Play } from 'lucide-react';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { personas, projects } from '@/db/schema';
+import { personas, projects, sectors } from '@/db/schema';
 import { crews, crewMembers, crewRuns } from '@/modules/crews/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Textarea, Label, Hint } from '@/components/ui/field';
 import { relativeTime } from '@/lib/utils';
 import { startAdminCrewRunAction } from '@/server/actions/admin-crews';
-import { MemberOrder, type MemberRow } from './member-order';
+import { TeamAssign } from '@/components/admin/team-assign';
 import { CrewSettings } from './crew-settings';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,24 @@ export default async function AdminCrewPage({ params }: { params: Promise<{ id: 
   const [members, runs, allPersonas, projectRows] = await Promise.all([
     db.select().from(crewMembers).where(eq(crewMembers.crewId, id)).orderBy(asc(crewMembers.position)),
     db.select().from(crewRuns).where(eq(crewRuns.crewId, id)).orderBy(desc(crewRuns.createdAt)).limit(15),
-    db.select({ id: personas.id, name: personas.name }).from(personas).where(eq(personas.isActive, true)).orderBy(asc(personas.name)),
+    db
+      .select({
+        id: personas.id,
+        slug: personas.slug,
+        name: personas.name,
+        expertise: personas.expertise,
+        accentColor: personas.accentColor,
+        sectorSlug: sectors.slug,
+        sectorName: sectors.name,
+        categoryId: sql<number | null>`(select c.id from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categorySlug: sql<string | null>`(select c.slug from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categoryColor: sql<string | null>`(select c.color from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categoryName: sql<string | null>`(select c.name from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+      })
+      .from(personas)
+      .leftJoin(sectors, eq(sectors.id, personas.sectorId))
+      .where(eq(personas.isActive, true))
+      .orderBy(asc(personas.name)),
     db.select({ id: projects.id, name: projects.name }).from(projects).orderBy(asc(projects.name)),
   ]);
 
@@ -47,13 +64,6 @@ export default async function AdminCrewPage({ params }: { params: Promise<{ id: 
     ? await db.select({ id: personas.id, name: personas.name }).from(personas).where(inArray(personas.id, members.map((m) => m.personaId)))
     : [];
 
-  const memberRows: MemberRow[] = members.map((member) => ({
-    id: member.id,
-    personaId: member.personaId,
-    name: memberPersonas.find((p) => p.id === member.personaId)?.name ?? `Persona ${member.personaId}`,
-    isSupervisor: member.isSupervisor,
-    instructions: member.instructions,
-  }));
 
   return (
     <div>
@@ -119,15 +129,30 @@ export default async function AdminCrewPage({ params }: { params: Promise<{ id: 
                   ? 'All members reply once, at the same time, each seeing only the task.'
                   : 'The supervisor picks who acts next each turn, until it says DONE.'}
             </Hint>
-            {memberRows.length === 0 ? (
-              <EmptyState icon={Bot} title="No members" description="Add personas in the settings panel." className="border-0 py-6" />
-            ) : (
-              <MemberOrder crewId={crew.id} members={memberRows} mode={crew.mode} />
-            )}
+            {/* Replaces the reorder-only list: members can now be added and
+                removed here too, by dragging across from the pool. */}
+            <TeamAssign
+              crewId={crew.id}
+              mode={crew.mode}
+              available={allPersonas}
+              initialMembers={members
+                .map((m) => allPersonas.find((p) => p.id === m.personaId))
+                .filter((p): p is (typeof allPersonas)[number] => Boolean(p))}
+              supervisorId={members.find((m) => m.isSupervisor)?.personaId ?? null}
+            />
           </Card>
         </div>
 
-        <CrewSettings crew={crew} members={memberRows} allPersonas={allPersonas} projects={projectRows} />
+        <CrewSettings
+          crew={crew}
+          members={members.map((m) => ({
+            personaId: m.personaId,
+            name: allPersonas.find((p) => p.id === m.personaId)?.name ?? `Persona ${m.personaId}`,
+            isSupervisor: m.isSupervisor,
+          }))}
+          allPersonas={allPersonas}
+          projects={projectRows}
+        />
       </div>
     </div>
   );

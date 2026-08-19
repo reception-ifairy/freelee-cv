@@ -135,6 +135,43 @@ export async function reorderCrewMembersAction(formData: FormData) {
   revalidatePath(`/admin/crews/${crewId}`);
 }
 
+/**
+ * Replaces a team's membership and order in one call.
+ *
+ * The drag UI sends the whole resulting list rather than a diff. A diff would
+ * have to express add, remove *and* reorder to arrive at the same place, and
+ * the list is short — sending the answer is simpler than sending the working.
+ */
+export async function assignCrewMembersAction(formData: FormData) {
+  await requireAdmin();
+  const crewId = z.string().min(1).parse(formData.get('crewId'));
+  const personaIds = z.array(z.number().int()).parse(JSON.parse(String(formData.get('personaIds') ?? '[]')));
+
+  const [crew] = await db.select({ id: crews.id }).from(crews).where(eq(crews.id, crewId)).limit(1);
+  if (!crew) return;
+
+  // Supervisor and per-member instructions are carried across, so a drag that
+  // only reorders does not silently discard settings made elsewhere on the page.
+  const existing = await db.select().from(crewMembers).where(eq(crewMembers.crewId, crewId));
+  const previous = new Map(existing.map((m) => [m.personaId, m]));
+
+  await db.transaction(async (tx) => {
+    await tx.delete(crewMembers).where(eq(crewMembers.crewId, crewId));
+    if (personaIds.length === 0) return;
+    await tx.insert(crewMembers).values(
+      personaIds.map((personaId, index) => ({
+        crewId,
+        personaId,
+        position: index,
+        isSupervisor: previous.get(personaId)?.isSupervisor ?? false,
+        instructions: previous.get(personaId)?.instructions ?? null,
+      })),
+    );
+  });
+
+  revalidatePath(`/admin/crews/${crewId}`);
+}
+
 export async function toggleCrewActiveAction(formData: FormData) {
   await requireAdmin();
   const id = z.string().min(1).parse(formData.get('id'));

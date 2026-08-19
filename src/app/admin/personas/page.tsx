@@ -3,14 +3,14 @@ import Link from 'next/link';
 import { Plus, Wand2 } from 'lucide-react';
 import { and, asc, desc, eq, exists, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
+import { categories, personaCategories, personaVersions, personas, sectors } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { ListToolbar } from '@/components/admin/list-toolbar';
 import { ListPagination } from '@/components/admin/list-pagination';
 import { getProviderRegistry, resolveProviderId } from '@/lib/ai/registry';
 import { getAdminView } from '@/lib/admin/view-preference-server';
 import { parseListParams, type ListConfig } from '@/lib/admin/list-query';
-import { formatCredits, initialsOf } from '@/lib/utils';
+import { formatCredits } from '@/lib/utils';
 import { PersonasList, type PersonaRow } from './personas-list';
 
 /**
@@ -105,7 +105,14 @@ export default async function AdminPersonasPage({
     conditions.push(
       exists(
         db
-          .select({ one: sql`1` })
+          .select({
+        // Taxonomy for the generated mark. The category comes from a correlated
+        // subquery rather than a join: persona_categories is many-to-many and
+        // joining it multiplies rows, which is what once made /admin/packs 500.
+        categoryId: sql<number | null>`(select c.id from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categorySlug: sql<string | null>`(select c.slug from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categoryColor: sql<string | null>`(select c.color from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        sectorSlug: sectors.slug, one: sql`1` })
           .from(personaCategories)
           .where(
             and(
@@ -134,9 +141,19 @@ export default async function AdminPersonasPage({
         modelTier: personaVersions.modelTier,
         model: personaVersions.model,
         aiProvider: personaVersions.aiProvider,
+        // Taxonomy for the generated mark. The category comes from a correlated
+        // subquery rather than a join: persona_categories is many-to-many, and
+        // joining it multiplies rows — the bug that once made /admin/packs 500
+        // and /admin/customers report zero chats for every customer. The outer
+        // reference is explicitly qualified for the same reason.
+        categoryId: sql<number | null>`(select c.id from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categorySlug: sql<string | null>`(select c.slug from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        categoryColor: sql<string | null>`(select c.color from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
+        sectorSlug: sectors.slug,
       })
       .from(personas)
       .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
+      .leftJoin(sectors, eq(sectors.id, personas.sectorId))
       .where(where)
       .orderBy(...orderBy)
       .limit(params.perPage)
@@ -146,12 +163,16 @@ export default async function AdminPersonasPage({
     db.select({ total: sql<number>`count(*)::int` }).from(personas).where(where),
   ]);
 
-  const items: PersonaRow[] = rows.map(({ persona, modelTier, model, aiProvider }) => ({
+  const items: PersonaRow[] = rows.map(({ persona, modelTier, model, aiProvider, categoryId, categorySlug, categoryColor, sectorSlug }) => ({
     id: persona.id,
+    slug: persona.slug,
     name: persona.name,
     expertise: persona.expertise,
     accentColor: persona.accentColor,
-    initials: initialsOf(persona.name),
+    categoryId,
+    categorySlug,
+    categoryColor,
+    sectorSlug,
     model: modelTier
       ? modelTier.charAt(0).toUpperCase() + modelTier.slice(1)
       : (model ?? registry[resolveProviderId(aiProvider)].defaultModel),
