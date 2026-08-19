@@ -11,7 +11,8 @@ affecting any conversation in progress.
 | **Tagline** | No | One line under the name on the catalogue card. |
 | **Expertise** | No | Two or three words. Shown on the card and in the chat header. |
 | **Description** | No | A paragraph on the persona's own page. |
-| **Accent colour** | Yes | Colour of the avatar tile and the header on its page. |
+| **Category and sector** | No | The field and speciality. Together they generate the persona's mark — see [How a persona looks](/admin/handbook/persona-cards). |
+| **Accent colour** | Yes | Colour of the persona's own page and its chat header. |
 
 ## Choosing a name
 

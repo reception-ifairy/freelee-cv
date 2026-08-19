@@ -21,8 +21,10 @@ or a room — read **[One assistant, or a team?](/admin/handbook/one-bot-or-a-te
 | **Fan-out** | Every member answers the same task at once, independently, seeing only the task |
 | **Delegating** | One member — the supervisor — picks who acts next each turn, until it decides the work is done |
 
-**Members.** Tick the personas you want. **In pipeline mode the order you tick them is the order
-they run in**, and you can drag to reorder afterwards on the team's own page.
+**Members.** On the team's own page you get two columns of persona cards — available on the left,
+the team on the right. **Drag a card across to add it**, drag it back to remove it, and drag within
+the right-hand column to set the order. **In pipeline mode that order is the order they run in.**
+Every card also has a plain **+** and **×** button, which work with a keyboard.
 
 **Budget and max turns.** Both are hard caps, checked before every step. These are not suggestions —
 they are the thing standing between a confused team and a real number on a real bill. The defaults

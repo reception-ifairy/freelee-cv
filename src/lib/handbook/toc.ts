@@ -43,6 +43,7 @@ export const HANDBOOK: HandbookPart[] = [
       { slug: 'persona-personality', title: 'Personality tab', summary: 'Ten sliders that change how a persona comes across.' },
       { slug: 'persona-capabilities', title: 'Capabilities tab', summary: 'Buttons, voice, suggestions, and the chat layout.' },
       { slug: 'persona-publishing', title: 'Publishing tab', summary: 'Drafts, versions, and putting a persona live.' },
+      { slug: 'persona-cards', title: 'How a persona looks', summary: 'The generated mark instead of a face, the flip card, categories and sectors, and dragging personas onto a team.' },
     ],
   },
   {

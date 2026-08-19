@@ -34,7 +34,21 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #52 · `pending` — Give AI personas a generated identity, never a face
+### #53 · `pending` — Write up the persona cards for the person running the site
+
+The engineering doc explains why a persona is never a face; the handbook has to
+explain what to do about it. New page under Personas covering the generated
+mark and what changes it, the flip, the merged Taxonomy screen, and dragging
+persona cards onto a bot team. The category-address warning lands here too —
+renaming is safe, the address is fixed, and the reason is behaviour keyed to it.
+
+Basics tab now lists category and sector as real fields, and accent colour no
+longer claims to colour an avatar tile that no longer exists. Bot teams replaces
+"tick the personas you want" with the two-column drag interface that shipped.
+
+📄 `47-persona-cards.md`
+
+### #52 · `10cee9a` — Give AI personas a generated identity, never a face
 
 A milestone: a persona is never represented by a human face. The audit found
 there were none to remove — every persona visual was initials on a colour, and

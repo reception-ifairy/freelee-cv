@@ -88,6 +88,7 @@ src/
 │   ├── portability/          export/import bundle contracts + bundle builder
 │   ├── permissions.ts         team-role permission checks
 │   ├── persona/prompt.ts     system-prompt assembly
+│   ├── persona/mark.ts       generated persona identity — deterministic SVG, never a face
 │   ├── persona/convert.ts    document → draft persona (admin-only bot converter)
 │   ├── documents/extract.ts  .docx/.xlsx readers, zero dependencies
 │   ├── site/nav.ts            visitor vs member navigation
@@ -99,7 +100,7 @@ src/
 └── components/
 ```
 
-**`docs/00-overview.md`** is the index into 48 documents covering every piece, and each one is
+**`docs/00-overview.md`** is the index into 49 documents covering every piece, and each one is
 written for the design decisions and trade-offs behind the code rather than a restatement of it —
 including what was deliberately *not* built, and why.
 
@@ -107,12 +108,12 @@ What has been built on top of the original persona-catalogue-and-chat app, rough
 
 | | |
 |---|---|
-| **Foundations** | teams/workspaces · three-level authorization · a plugin module system (27 manifests) · a DB-backed AI model registry · persona versioning with immutable published versions |
+| **Foundations** | teams/workspaces · three-level authorization · a plugin module system (28 manifests) · a DB-backed AI model registry · persona versioning with immutable published versions |
 | **Money** | team wallets · subscriptions · time-boxed passes · usage events · an external-vendor marketplace with payouts |
 | **Multi-bot** | group-chat rooms with `@mention` routing · bot-to-bot crews (pipeline / fan-out / delegating) · a durable job queue so runs survive the request · projects that group chats, rooms and crews |
 | **Content** | a block builder driving the front page, CMS pages and blog posts · nested menus · a showcase · translations from a modular word bank |
 | **Growth** | a site assistant that *is* a persona · lead-capture quick actions · an admin-only bot converter turning a document into a draft persona |
-| **Craft** | a theme composer generating WCAG-checked ramps · an admin design system with real loading and empty states · audience-split public navigation |
+| **Craft** | a theme composer generating WCAG-checked ramps · an admin design system with real loading and empty states · audience-split public navigation · persona cards built from a generated mark rather than a stock face, flipping to access and depth |
 
 Every capability has a manifest in `src/lib/modules/registry.ts` — that registry is the single
 source of truth for what this platform can do, and `npm run modules:verify` checks the dependency
