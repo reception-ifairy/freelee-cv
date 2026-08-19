@@ -53,7 +53,16 @@ turn cap itself plus an optional early-exit: `stopConditions` (case-insensitive 
 original plan's `stopConditions` mention, kept intentionally simple (substring match, not a real
 rule engine) for a v1.
 
-## Deliberate simplification: synchronous execution, no background worker
+## Superseded 2026-08-19: runs now execute on a job queue
+
+> **This section describes how crews worked from 2026-08-06 to 2026-08-19 and is kept for the
+> reasoning, not as a description of the code.** Runs are now enqueued and executed by a worker —
+> see `docs/46-job-queue.md`. The tripwire this section named ("revisit with a real worker if runs
+> commonly need more than ~6-10 turns, or step latency makes requests time out") is exactly what
+> was hit, and the change it called for is the one that was made. `executeCrewRun` itself is
+> unchanged in what it does; only *who calls it* moved.
+
+## The original simplification: synchronous execution, no background worker
 
 The original plan called for "background, not request-blocking" execution via a queued row and a
 polling worker. **Not built that way.** No queue or background-worker infrastructure exists
@@ -85,7 +94,22 @@ still gets live updates. Since runs currently execute fully before the page ever
 background worker yet), the live-update path is effectively inert today — kept in place
 deliberately, ready for the day `executeCrewRun` moves off the request thread.
 
-## What's built vs. deliberately deferred
+**That day arrived.** Since `docs/46-job-queue.md`, runs are enqueued rather than awaited and the
+SSE path is live rather than inert — the run page updates itself while the team works. The comment
+above was written as a bet that this plumbing would eventually be worth having; it was.
+
+## Since this was written
+
+| Then | Now |
+|---|---|
+| Runs execute inline in the request | Enqueued, executed by a worker (`docs/46-job-queue.md`) |
+| No way to cancel a run | `Stop run`, cooperative between steps |
+| No way to edit a crew after creating it | Full CRUD incl. drag-to-reorder (`docs/45-teamwork-and-projects.md`) |
+| `crew_run_steps` written, never read | The step timeline at `/admin/crews/runs/[id]` |
+| No admin surface at all | Admin → Teamwork |
+| Turn order taken from DB row order | Taken from the order you tick, as the UI always claimed |
+
+## What's built vs. deliberately deferred (as of 2026-08-06)
 
 | Built | Deferred |
 |---|---|

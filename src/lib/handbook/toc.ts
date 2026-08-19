@@ -46,6 +46,21 @@ export const HANDBOOK: HandbookPart[] = [
     ],
   },
   {
+    title: 'Teamwork',
+    pages: [
+      {
+        slug: 'projects',
+        title: 'Projects',
+        summary: 'Grouping the work for one job, and seeing what it cost.',
+      },
+      {
+        slug: 'bot-teams',
+        title: 'Bot teams',
+        summary: 'Building a team of personas, running it, watching it work and stopping it.',
+      },
+    ],
+  },
+  {
     title: 'Content and appearance',
     pages: [
       { slug: 'frontpage', title: 'Front page', summary: 'Rearrange your home page without touching code.' },

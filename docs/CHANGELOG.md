@@ -34,7 +34,35 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #50 · `pending` — Add the admin Teamwork section: bot teams, runs and rooms
+### #51 · `pending` — Document the teamwork work properly: handbook, docs and README
+
+The handbook gained a Teamwork part — Projects and Bot teams, written for the
+person running the site rather than the person maintaining the code — and its
+existing "One assistant, or a team?" page was corrected: it still described
+crew runs as something you wait for, which stopped being true when they moved
+onto the job queue.
+
+Two docs made false claims and now say so. docs/14-crews.md described
+synchronous execution and an inert SSE path as current; that section is marked
+superseded and kept for its reasoning, with a then/now table, because the
+tripwire it named is exactly the one that was hit.
+docs/09-team-authorization.md justified manual module sync by "no queue infra",
+which is no longer true — the decision stands on a different reason and now
+says which. docs/06-operations.md gained a job-worker section, since a deploy
+runbook that omits a process running in production is a trap.
+
+The README was ~20 commits stale: no projects, no job queue, no teamwork, no
+changelog pointer. It now leads with the changelog as the record of every
+update.
+
+Also fixes a real bug found by a liveness probe: db.execute returns raw
+snake_case driver rows, so `RETURNING *` gave max_attempts rather than
+maxAttempts and retryOrFail compared a number against undefined — a permanently
+failing job would have retried forever.
+
+📄 handbook `projects` + `bot-teams`, `06-operations.md`, `14-crews.md`, `46-job-queue.md`, `README.md`
+
+### #50 · `f67c708` — Add the admin Teamwork section: bot teams, runs and rooms
 
 Stages 3-5. Crews and group-chat both shipped with zero admin surface — `find
 src/app/admin` returned no crews, no rooms, no conversations.

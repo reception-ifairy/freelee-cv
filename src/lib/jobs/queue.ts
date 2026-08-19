@@ -82,10 +82,25 @@ export async function claimNext(workerId: string): Promise<JobRow | null> {
         FOR UPDATE SKIP LOCKED
         LIMIT 1
      )
-    RETURNING *;
+    RETURNING id;
   `);
 
-  const [row] = rows as unknown as JobRow[];
+  // Re-read through Drizzle rather than trusting the raw row.
+  //
+  // `db.execute` returns the driver's rows verbatim — snake_case, unmapped. So
+  // `RETURNING *` gives `max_attempts`, not `maxAttempts`, and every camelCase
+  // field reads as `undefined` while TypeScript insists the row is a `JobRow`.
+  // That made `retryOrFail`'s `job.attempts >= job.maxAttempts` compare a
+  // number against undefined, which is always false: a permanently failing job
+  // would have retried forever instead of giving up. Found by a liveness probe
+  // that should have failed after one attempt and didn't.
+  //
+  // One extra primary-key lookup per claim is a rounding error next to a
+  // hand-maintained mapping that drifts the first time a column is added.
+  const [claimed] = rows as unknown as { id: string }[];
+  if (!claimed) return null;
+
+  const [row] = await db.select().from(jobs).where(eq(jobs.id, claimed.id)).limit(1);
   return row ?? null;
 }
 

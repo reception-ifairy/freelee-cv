@@ -78,6 +78,25 @@ the model call: real durations of 827ms, 908ms, 582ms where all three were negat
 **Parallel mode checked its budget only after the fan-out**, so a run already over budget still spent
 a whole extra round before noticing. Now checked before.
 
+## A bug a liveness probe found
+
+Confirming the worker was actually polling — by enqueueing a job with no
+registered handler and expecting it to fail — turned up something else. The job
+failed as expected, then **requeued** despite `max_attempts = 1`.
+
+`db.execute` returns the driver's rows **verbatim, in snake_case**. So
+`RETURNING *` produced `max_attempts`, not `maxAttempts`, while TypeScript
+insisted the row was a `JobRow`. `retryOrFail`'s `job.attempts >= job.maxAttempts`
+was comparing a number against `undefined` — always false — so a permanently
+failing job would have retried forever instead of giving up.
+
+`claimNext` now returns `RETURNING id` and re-reads the row through Drizzle. One
+extra primary-key lookup per claim is a rounding error next to a hand-maintained
+snake-to-camel mapping that drifts the first time a column is added.
+
+Worth stating plainly: the type said `JobRow` and was wrong. `db.execute` is
+outside Drizzle's mapping, and a cast through `as unknown as` will not tell you.
+
 ## Verified
 
 Against a real 3-persona crew running on the local Ollama model:
@@ -90,6 +109,7 @@ Against a real 3-persona crew running on the local Ollama model:
 | Cancellation | ✅ `cancelled` / `stop_reason=cancelled` / 0 steps / 0 credits |
 | Double-submit | ✅ refused by the partial unique index |
 | Worker starts exactly once | ✅ |
+| A job with no handler gives up at `max_attempts` | ✅ `failed`, attempts 1 (retried forever before the fix) |
 
 ## Noted, not fixed
 

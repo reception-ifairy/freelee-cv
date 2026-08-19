@@ -1,8 +1,14 @@
 # Freelee — Next.js
 
 An AI persona marketplace: streaming chat, multi-tenant teams, a team-scoped credit wallet with
-subscriptions and time-boxed passes, group chat rooms, bot-to-bot "crews", data export/import, an
-external-vendor marketplace, a CMS, and a full admin panel.
+subscriptions and time-boxed passes, group chat rooms, bot-to-bot "crews" on a durable job queue,
+projects that group the work, data export/import, an external-vendor marketplace, a block-builder
+CMS, and a full admin panel.
+
+📖 **[docs/CHANGELOG.md](docs/CHANGELOG.md) is the record of every update** — one numbered entry per
+commit with the reason for the change, the doc that covers it, and the migration it applied. Start
+there to find out what happened and when; `npm run changelog:verify` fails the build if a commit
+has no entry.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript (strict) · Drizzle ORM ·
 PostgreSQL · Auth.js v5 · AI SDK 7 · Tailwind CSS 4
@@ -62,16 +68,18 @@ src/
 │   ├── (auth)/              login, register
 │   ├── (app)/                chat, dashboard, rooms, crews, marketplace   (per-team, dynamic)
 │   ├── admin/                admin panel                                  (gated twice: proxy + layout)
+│   │                          incl. Teamwork — projects, bot teams, runs, rooms
 │   └── api/
 │       ├── chat/              streaming completion + billing
 │       ├── rooms/[id]/stream/ SSE for group-chat/crew realtime (LISTEN/NOTIFY)
 │       ├── webhooks/          payment providers
 │       └── auth/              Auth.js handlers
 ├── db/
-│   ├── schema.ts             54 tables — core schema + feature-module barrels at the tail
+│   ├── schema.ts             64 tables — core schema + feature-module barrels at the tail
 │   └── seed.ts                idempotent
 ├── lib/
 │   ├── ai/registry.ts         DB-backed provider/model registry
+│   ├── jobs/                  durable Postgres job queue (SKIP LOCKED) + in-process worker
 │   ├── billing/credits.ts    the ONLY place a team wallet balance changes
 │   ├── billing/entitlements.ts  subscriptions/passes/marketplace-install grants
 │   ├── billing/gateways.ts   Stripe · PayPal · bank transfer
@@ -80,19 +88,35 @@ src/
 │   ├── portability/          export/import bundle contracts + bundle builder
 │   ├── permissions.ts         team-role permission checks
 │   ├── persona/prompt.ts     system-prompt assembly
+│   ├── persona/convert.ts    document → draft persona (admin-only bot converter)
+│   ├── documents/extract.ts  .docx/.xlsx readers, zero dependencies
+│   ├── site/nav.ts            visitor vs member navigation
+│   └── admin/nav.ts           admin sidebar, as data
 │   └── auth.ts                 Auth.js v5
 ├── modules/                  feature modules (group-chat, crews) — see docs/08-module-architecture.md
+├── instrumentation.ts        starts the job worker (guarded against edge, dev, and build)
 ├── server/actions/            Server Actions, all zod-validated
 └── components/
 ```
 
-Nine feature phases were built on top of the original persona-catalog-and-chat app: teams/
-workspaces, three-level authorization + a plugin module system, a DB-backed AI model registry,
-persona versioning (draft/publish, immutable published versions), a full billing overhaul (team
-wallets, subscriptions, time-boxed passes, usage events), group chat rooms, bot-to-bot crews, data
-export/import, and an external-vendor marketplace. **`docs/00-overview.md`** is the index into all
-of it — `docs/01-database.md` through `docs/16-marketplace.md` document each piece with the actual
-design decisions and trade-offs behind it, not just what the code does.
+**`docs/00-overview.md`** is the index into 48 documents covering every piece, and each one is
+written for the design decisions and trade-offs behind the code rather than a restatement of it —
+including what was deliberately *not* built, and why.
+
+What has been built on top of the original persona-catalogue-and-chat app, roughly in order:
+
+| | |
+|---|---|
+| **Foundations** | teams/workspaces · three-level authorization · a plugin module system (27 manifests) · a DB-backed AI model registry · persona versioning with immutable published versions |
+| **Money** | team wallets · subscriptions · time-boxed passes · usage events · an external-vendor marketplace with payouts |
+| **Multi-bot** | group-chat rooms with `@mention` routing · bot-to-bot crews (pipeline / fan-out / delegating) · a durable job queue so runs survive the request · projects that group chats, rooms and crews |
+| **Content** | a block builder driving the front page, CMS pages and blog posts · nested menus · a showcase · translations from a modular word bank |
+| **Growth** | a site assistant that *is* a persona · lead-capture quick actions · an admin-only bot converter turning a document into a draft persona |
+| **Craft** | a theme composer generating WCAG-checked ramps · an admin design system with real loading and empty states · audience-split public navigation |
+
+Every capability has a manifest in `src/lib/modules/registry.ts` — that registry is the single
+source of truth for what this platform can do, and `npm run modules:verify` checks the dependency
+graph resolves.
 
 ### Adding an AI provider
 
@@ -140,6 +164,10 @@ graph resolves before every build.
 - **Connection pool.** Set `DB_POOL_MAX` to match your database's limit divided by expected
   concurrent instances. The default (10) is fine for a single VPS and far too high for wide
   serverless fan-out.
+- **The job worker runs inside the web process.** `src/instrumentation.ts` starts it, so scaling to
+  more than one instance means more than one worker. That is safe by design — the claim query uses
+  `FOR UPDATE SKIP LOCKED` and a stale-heartbeat reclaim — but throughput per instance is one job at
+  a time. See `docs/46-job-queue.md`.
 - `AUTH_SECRET` must be set in production or Auth.js refuses to start.
 - Apply new migrations the same way as the initial install — hand-written `drizzle/000N_*.sql`
   files via `psql`, in order, never `db:push`/`db:migrate`.

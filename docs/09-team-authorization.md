@@ -36,8 +36,11 @@ migration later would not be.
 `modules` mirrors `src/lib/modules/registry.ts`'s `MODULES` array — write path is exclusively
 `syncModuleRegistry()` (`src/lib/modules/sync.ts`), run via `npm run modules:sync`
 (`scripts/sync-modules.ts`) after any registry change. Not wired into the build or deploy
-automatically yet — deliberately manual for now (see `06-operations.md`'s existing "no queue/cron
-infra" pragmatism; this is the same call). `module_team` is the actual per-team on/off switch;
+automatically yet — deliberately manual for now. The original reason was that this app had no
+queue or cron infrastructure; since `docs/46-job-queue.md` it does, so that justification no longer
+holds. The decision stands on a different one: syncing the registry is a **deploy-time** concern
+that should happen once, with the deployer watching, not a runtime job racing the app that just
+started. `module_team` is the actual per-team on/off switch;
 `isModuleEnabledForTeam()`/`listModulesForTeam()` (`src/lib/modules/db.ts`) are the read side.
 **Feature modules default OFF** (no `module_team` row = disabled) until a team turns them on — core
 modules have no row at all and are always on. There are currently zero `type: 'feature'` modules

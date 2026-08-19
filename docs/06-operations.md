@@ -42,6 +42,38 @@ target table name retargeted) so Postgres parses the literals/jsonb itself, then
 /`UPDATE ... FROM` into the live tables joining on a natural key (name, code). This is how the 103
 sectors and 20 categories' market data were backfilled without a single hand-typed data row.
 
+## The job worker
+
+Since `docs/46-job-queue.md` this app runs background work, which changes what a deploy means.
+
+**It lives inside the web process.** `src/instrumentation.ts` starts it; there is no second pm2 app
+to restart, and `pm2 restart aigency-freelee` restarts the worker along with everything else.
+
+**A restart mid-job is safe.** A job whose worker dies stops heartbeating and is reclaimed by the
+next worker after ~90 seconds, then retried. `executeCrewRun`'s idempotency guard is what makes the
+retry a no-op if the work actually completed — so a deploy during a crew run costs at most one
+duplicate attempt, never a lost run and never a double-charged one.
+
+**Checking it started:**
+
+```bash
+pm2 logs aigency-freelee --out --lines 100 --nostream | grep '\[jobs\]'
+# [jobs] worker 389267-dc390da8 started      ← exactly one line per restart
+```
+
+Two lines after one restart means the singleton guard failed and jobs are being polled twice.
+
+**Checking for stuck work:**
+
+```sql
+SELECT id, kind, status, attempts, locked_by, last_error
+FROM jobs WHERE status IN ('queued','running') ORDER BY run_after;
+```
+
+A row sitting in `running` with an old `heartbeat_at` and no worker holding it is the reclaim case
+and resolves itself. A row at `attempts = max_attempts` with `status = 'failed'` has given up, and
+`last_error` says why.
+
 ## Domain hygiene
 
 `scripts/archive-legacy-domain-deployments.sh` (project root) — archives (never deletes) stale
