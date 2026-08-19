@@ -18,7 +18,7 @@ import {
   uniqueIndex, index, pgEnum, serial, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { teams, users, personaVersions } from '@/db/schema';
+import { teams, users, personaVersions, projects } from '@/db/schema';
 
 export const conversationKind = pgEnum('conversation_kind', ['room', 'crew_run', 'playground']);
 export const conversationVisibility = pgEnum('conversation_visibility', ['private', 'team', 'link']);
@@ -34,7 +34,9 @@ export const conversations = pgTable(
     teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
     kind: conversationKind('kind').notNull().default('room'),
     title: text('title'),
-    createdBy: text('created_by').notNull().references(() => users.id),
+    /** Optional grouping (docs/45). Nulls out with the project; the room survives. */
+  projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
+  createdBy: text('created_by').notNull().references(() => users.id),
     visibility: conversationVisibility('visibility').notNull().default('team'),
     /** maxPersonasPerRoom override, autoRespond, mentionRequired — see manifest.settingsSchema for platform defaults. */
     settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),

@@ -415,6 +415,24 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [],
   },
+  {
+    key: 'projects',
+    name: 'Projects',
+    version: '1.0.0',
+    description:
+      'A named container for work — chats, rooms, bot teams and their runs — with a status and a ' +
+      'budget. Every project_id is nullable and ON DELETE SET NULL, so deleting a project unfiles ' +
+      'the work rather than destroying it. Budget is a pre-flight check and a reported total, not a ' +
+      'hard spend-time limit, because the wallet is team-scoped. Spend is attributed through the ' +
+      'existing credit_transactions.meta bag, needing no ledger migration. ' +
+      'See docs/45-teamwork-and-projects.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['teams', 'billing-overhaul'] },
+    provides: { capabilities: ['projects.grouping', 'projects.budget_reporting'] },
+    permissions: [],
+    navigation: [{ label: 'Projects', href: '/admin/projects', group: 'admin', order: 12 }],
+  },
   groupChat,
   crews,
 ];

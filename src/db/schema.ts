@@ -13,6 +13,7 @@ export const ledgerType = pgEnum('ledger_type', ['purchase', 'bonus', 'spend', '
 export const messageRole = pgEnum('message_role', ['system', 'user', 'assistant']);
 export const messageStatus = pgEnum('message_status', ['streaming', 'complete', 'failed']);
 export const modifierType = pgEnum('modifier_type', ['tone', 'writing', 'output', 'length', 'audience']);
+export const projectStatus = pgEnum('project_status', ['active', 'paused', 'done', 'archived']);
 export const menuLocation = pgEnum('menu_location', ['header', 'footer', 'legal']);
 export const menuVisibility = pgEnum('menu_visibility', ['all', 'guest', 'auth', 'admin']);
 export const audienceType = pgEnum('audience_type', ['B2B', 'B2C', 'B2G']);
@@ -753,6 +754,59 @@ export const promptModifiers = pgTable(
   (t) => [uniqueIndex('modifiers_type_name_idx').on(t.type, t.name)],
 );
 
+/* =============================== Projects ================================ */
+
+/**
+ * A named container for work — chats, rooms, crews and their runs.
+ *
+ * "Folders" was the first entry in the Deferred column of docs/13-group-chat.md
+ * and never came back. Until now the only grouping primitives were `teams` (the
+ * tenant) and `crews` (a grouping of personas, not of work), so there was
+ * nowhere to put "everything we did for this engagement".
+ *
+ * Every FK pointing here is nullable and `set null`: work created before
+ * projects existed keeps working, and deleting a project never deletes what was
+ * done inside it. See docs/45-teamwork-and-projects.md.
+ */
+export const projects = pgTable(
+  'projects',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    description: text('description'),
+    /** Same accent convention as personas and categories. */
+    colour: text('colour'),
+    status: projectStatus('status').notNull().default('active'),
+    /**
+     * NULL means no cap — deliberately not `notNull().default(0)`, because
+     * "no budget set" and "a budget of zero" are different intentions and a
+     * default would make them indistinguishable forever.
+     *
+     * It is a **pre-flight check and a reported total, not a hard limit**: the
+     * wallet `spendCredits` locks is team-scoped, so enforcing this at spend
+     * time would mean threading a project through every call site including
+     * 1:1 chat. The UI must not imply a guarantee this does not provide.
+     */
+    budgetCredits: integer('budget_credits'),
+    /** Cache for listing without a join; `credit_transactions` stays the source of truth. */
+    creditsSpent: integer('credits_spent').notNull().default(0),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Per team, not global: two teams may both have a "Website refresh" and
+    // neither should have to care that the other exists.
+    uniqueIndex('projects_team_slug_idx').on(t.teamId, t.slug),
+    index('projects_team_idx').on(t.teamId, t.status),
+  ],
+);
+
+export type ProjectRow = typeof projects.$inferSelect;
+
 /* ================================ Chat =================================== */
 
 export const chats = pgTable(
@@ -765,6 +819,8 @@ export const chats = pgTable(
     personaId: integer('persona_id').references(() => personas.id, { onDelete: 'set null' }),
     /** Set at chat-creation time only when the persona has pinVersioning=true — see docs/11-persona-versioning.md. */
     personaVersionId: integer('persona_version_id').references(() => personaVersions.id, { onDelete: 'set null' }),
+    /** Optional grouping. Nulls out with the project; the chat survives. */
+    projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
     guestToken: text('guest_token'),
 
     title: text('title'),

@@ -2,6 +2,7 @@ import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, Cpu,
   RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images, Inbox,
+  FolderKanban, Bot, MessagesSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export const TONE_CLASSES = {
   violet: { idle: 'text-violet-400/70', active: 'text-violet-400', rail: 'bg-violet-400' },
   emerald: { idle: 'text-emerald-400/70', active: 'text-emerald-400', rail: 'bg-emerald-400' },
   amber: { idle: 'text-amber-400/70', active: 'text-amber-400', rail: 'bg-amber-400' },
+  cyan: { idle: 'text-cyan-400/70', active: 'text-cyan-400', rail: 'bg-cyan-400' },
   slate: { idle: 'text-slate-500', active: 'text-slate-300', rail: 'bg-slate-400' },
 } as const;
 
@@ -72,6 +74,19 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { href: '/admin/categories', label: 'Categories', icon: Tags },
       { href: '/admin/sectors', label: 'Sectors', icon: Layers },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
+    ],
+  },
+  {
+    // Sits after AI rather than in System: a bot team is personas working
+    // together, so it belongs beside personas. Named "Teamwork" because
+    // `teams` already means *tenant* everywhere in this schema and a nav item
+    // called "Teams" would collide with the most load-bearing noun in the app.
+    heading: 'Teamwork',
+    tone: 'cyan',
+    items: [
+      { href: '/admin/projects', label: 'Projects', icon: FolderKanban },
+      { href: '/admin/crews', label: 'Bot teams', icon: Bot },
+      { href: '/admin/rooms', label: 'Rooms', icon: MessagesSquare },
     ],
   },
   {

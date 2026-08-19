@@ -34,7 +34,33 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #47 · `pending` — Give visitors their own navigation, and make /bionic part of the same site
+### #48 · `pending` — Add projects: the grouping of work that never existed
+
+Stage 1 of bot teamwork in the admin panel. Two multi-bot modules already
+existed (crews, group-chat) and were completely invisible to admin; nothing
+grouped work at all. "Folders" was the first entry in the Deferred column of
+docs/13-group-chat.md and never came back.
+
+A project groups chats, rooms and bot teams with a status and a budget. Every
+project_id is nullable and ON DELETE SET NULL, so deleting a project never
+deletes what was done inside it — verified, not assumed: 8 chats before, 8
+after, 0 filed. budget_credits is nullable because "no cap" and "a cap of zero"
+are different intentions, and it is honestly a pre-flight check rather than a
+hard limit, since the wallet spendCredits locks is team-scoped.
+
+Spend attribution needed no ledger migration — SpendOptions already carries a
+meta bag.
+
+Turned up the unqualified-correlated-subquery bug for the THIRD time in this
+admin: Drizzle emits a bare "id" inside a sql template, which Postgres resolves
+against the inner table, so every chat was compared to its own id. The credits
+subquery crashed with text = bigint, which is the only reason it was caught;
+the three count subqueries would have silently returned zero forever, exactly
+as /admin/customers once did.
+
+📄 `45-teamwork-and-projects.md` · 🗄 `0031_projects`
+
+### #47 · `c5ede95` — Give visitors their own navigation, and make /bionic part of the same site
 
 Every menu_items row was visibleTo 'all', so a first-time visitor and a paying
 customer saw an identical five-link bar — opposite jobs. Visitors now get a

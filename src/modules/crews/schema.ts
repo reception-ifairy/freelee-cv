@@ -10,7 +10,7 @@ import {
   pgTable, text, integer, boolean, timestamp, jsonb, serial, pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { teams, users, personas, conversations, conversationMessages } from '@/db/schema';
+import { teams, users, personas, projects, conversations, conversationMessages } from '@/db/schema';
 
 /**
  * 'graph' (arbitrary DAG of members/conditions) is deliberately not built —
@@ -39,6 +39,8 @@ export const crews = pgTable('crews', {
    * out the clock. Optional; `[]` means "run until maxTurns/budget."
    */
   stopConditions: jsonb('stop_conditions').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Optional grouping (docs/45). A crew outlives the project it was filed under. */
+  projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
   createdBy: text('created_by').notNull().references(() => users.id),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
