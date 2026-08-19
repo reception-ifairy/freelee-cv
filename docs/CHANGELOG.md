@@ -34,7 +34,35 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #49 · `pending` — Move crew runs onto a real job queue
+### #50 · `pending` — Add the admin Teamwork section: bot teams, runs and rooms
+
+Stages 3-5. Crews and group-chat both shipped with zero admin surface — `find
+src/app/admin` returned no crews, no rooms, no conversations.
+
+Bot teams were create-only: no edit, no delete, no member reorder, and
+crew_members.instructions had never been written by any UI. All closed,
+including drag-to-reorder turn order. Fixed a real bug there: the form said
+"Order above sets sequential turn order" while position came from database row
+order — in pipeline mode that order is the entire behaviour of the feature.
+
+The run view finally reads crew_run_steps, written on every step since crews
+shipped and read by nothing. Step timeline beside the transcript, live, with a
+working Stop. The transcript reuses MessageBubble with `speaker` and the flat
+layout — a pair that already existed with no surface using it — so it is the
+product's renderer rather than a second one that would drift.
+
+Rooms oversight lists every conversation across teams. Fixed the user-side
+/rooms list, which had no kind filter, so finished crew runs appeared as
+ordinary rooms and could be posted into.
+
+And the most consequential fix: mentions.ts labelled every past persona message
+with the CURRENT speaker's handle, so in any multi-persona room or crew run each
+member was told it had said everything its teammates said. Verified fixed on a
+real 3-persona run — four distinct handles where all three shared one.
+
+📄 `45-teamwork-and-projects.md`
+
+### #49 · `0d17923` — Move crew runs onto a real job queue
 
 Stage 2. Crew runs executed inline inside the server action, which is why
 crews.max_turns defaults to 6 — a run had to finish inside one HTTP request.

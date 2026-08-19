@@ -450,6 +450,26 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [],
   },
+  {
+    key: 'admin-teamwork',
+    name: 'Admin teamwork',
+    version: '1.0.0',
+    description:
+      'The operator surface for the two multi-bot modules, which shipped with none. Bot-team CRUD ' +
+      'including drag-to-reorder turn order and per-member instructions; a run view that finally ' +
+      'reads crew_run_steps (written since crews shipped, read by nothing) beside a transcript ' +
+      'rendered by the product\'s own MessageBubble; cross-team rooms oversight. ' +
+      'See docs/45-teamwork-and-projects.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['crews', 'group-chat', 'projects', 'job-queue'] },
+    provides: { capabilities: ['teamwork.crew_crud', 'teamwork.run_inspection', 'teamwork.rooms_oversight'] },
+    permissions: [],
+    navigation: [
+      { label: 'Bot teams', href: '/admin/crews', group: 'admin', order: 13 },
+      { label: 'Rooms', href: '/admin/rooms', group: 'admin', order: 14 },
+    ],
+  },
   groupChat,
   crews,
 ];

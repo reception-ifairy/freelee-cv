@@ -89,3 +89,78 @@ belongs beside personas.
 
 Stage 2 (job queue), Stage 3 (bot team CRUD), Stage 4 (runs + the `crew_run_steps` audit trail that
 has no reader today), Stage 5 (rooms oversight).
+
+---
+
+# Stages 3–5 — bot teams, runs and rooms
+
+## Bot teams: the CRUD that never existed
+
+Crews were **create-only**. No edit, no delete, no cancel, no way to add or remove a member or change
+the order, and `crew_members.instructions` — a per-member prompt append the runner genuinely uses —
+had never been written by any UI. `docs/14-crews.md` admitted *"delete + recreate today"*, and there
+was no delete either.
+
+`/admin/crews` and `/admin/crews/[id]` close all of it, including **drag-to-reorder** turn order via
+`@dnd-kit`, copying `block-list.tsx` — which also carries the lesson that server rows must be resynced
+into state rather than parked there.
+
+**A real bug fixed:** the create form said *"Order above sets sequential turn order"* while
+`createCrewAction` derived `position` from **database row order**. In pipeline mode that order is the
+entire behaviour of the feature, and it was arbitrary while the UI claimed otherwise. `formData.getAll`
+preserves submission order, so the order you tick is now the order you get.
+
+Mode labels are translated: `sequential`/`parallel`/`supervisor` are accurate but jargon. What they
+mean is a **pipeline**, a **fan-out** and a **delegator**.
+
+## Runs: the audit trail nobody could see
+
+`crew_run_steps` has been written on every step since crews shipped and **read by nothing**. Per-step
+credits, errors, timings and the linked message all existed with no screen.
+
+`/admin/crews/runs/[id]` shows the step timeline beside the transcript, live while the run is going,
+with a working **Stop run**. Step durations are metered against the slowest step so a stall stands out
+without reading numbers.
+
+**The transcript reuses `MessageBubble` unchanged**, with `speaker` and the `flat` bubble style — a
+pair that has existed since the chat-layouts work with no admin surface using it. That means markdown,
+guardrail callouts and narrative layouts all behave here exactly as they do in the product, because it
+*is* the product's renderer. A second one would drift within a release.
+
+Polling, not the SSE stream: `/api/rooms/[id]/stream` authorises by `assertParticipant`, and an admin
+watching somebody else's run is not a participant. Adding an admin bypass there would widen who can
+open a live feed of any conversation on the platform — a bigger decision than this screen should make.
+
+## Rooms: every conversation, across teams
+
+`/admin/rooms` lists all of them including crew runs, clearly labelled.
+
+**A real bug fixed on the user side:** `/rooms` selected by `teamId` with **no `kind` filter**, so
+every `crew_run` conversation appeared in a user's Rooms list as an ordinary room — and could be
+posted into after the run had finished. Runs have their own view; the user list now filters to
+`kind: 'room'`.
+
+## The attribution bug — the most consequential one
+
+`mentions.ts` labelled every past persona message with `participant.mentionHandle` — the handle of the
+persona **currently speaking**. In any room with two personas, and in every crew run, each member was
+told it had said everything its teammates said.
+
+The whole premise of multi-persona work is that they can tell each other apart, so this quietly
+undermined the feature it was part of. Now each line resolves its own author's handle.
+
+Verified on a real 3-persona run: `[you]`, `[llama-local]`, `[zz-researcher]`, `[zz-writer]` — four
+distinct speakers where all three personas would previously have shared one handle.
+
+## Verified
+
+| Check | Result |
+|---|---|
+| Team list, mode labels | ✅ |
+| Drag-to-reorder turn order | ✅ 3 handles |
+| Start a run from admin | ✅ enqueued, redirected, live badge |
+| Step timeline with real durations | ✅ 3 steps, 9.2s on step 1 |
+| Transcript via `MessageBubble` | ✅ markdown + speaker labels |
+| Rooms oversight, crew runs labelled | ✅ |
+| Speaker attribution | ✅ 4 distinct handles |
+| All suites | ✅ 103 assertions + changelog |

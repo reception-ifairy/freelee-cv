@@ -3,8 +3,13 @@ import { generateText } from 'ai';
 import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
-  personas, personaVersions, conversations, conversationMessages,
-  type ConversationParticipant, type ConversationMessage,
+  conversationMessages,
+  conversationParticipants,
+  conversations,
+  personaVersions,
+  personas,
+  type ConversationMessage,
+  type ConversationParticipant,
 } from '@/db/schema';
 import { getModel, resolveProviderId, resolveTierModel, getProviderRegistry } from '@/lib/ai/registry';
 import { buildSystemPrompt } from '@/lib/persona/prompt';
@@ -145,12 +150,38 @@ export async function runPersonaTurn({
     .orderBy(desc(conversationMessages.position))
     .limit(historyMessages);
 
+  // Who actually said each line.
+  //
+  // This used to label every past persona message with
+  // `participant.mentionHandle` — the handle of the persona *currently
+  // speaking*. In any room with two personas, and in every crew run, each
+  // member was therefore told it had said everything its teammates said.
+  // The whole premise of multi-persona work is that they can tell each other
+  // apart, so this quietly undermined the feature it was part of.
+  const speakers = await db
+    .select({
+      participantId: conversationParticipants.participantId,
+      participantType: conversationParticipants.participantType,
+      mentionHandle: conversationParticipants.mentionHandle,
+    })
+    .from(conversationParticipants)
+    .where(eq(conversationParticipants.conversationId, conversationId));
+
+  const handleFor = (authorType: string, authorId: string | null) =>
+    speakers.find((s) => s.participantType === authorType && s.participantId === authorId)?.mentionHandle;
+
   const aiMessages = history
     .reverse()
     .filter((m) => m.content.trim())
     .map((m) => ({
       role: (m.authorType === 'persona' ? 'assistant' : 'user') as 'assistant' | 'user',
-      content: m.authorType === 'user' ? m.content : `[${participant.mentionHandle}] ${m.content}`,
+      content:
+        m.authorType === 'user'
+          ? m.content
+          // Falls back to the speaker's own handle only when the author has
+          // left the conversation and their participant row is gone — rare,
+          // and better than an unlabelled line.
+          : `[${handleFor(m.authorType, m.authorId) ?? participant.mentionHandle}] ${m.content}`,
     }));
 
   const system = buildSystemPrompt({ ...version, name: persona.name, expertise: persona.expertise }) + contextNote;

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { conversations, personas } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
@@ -23,7 +23,10 @@ export default async function RoomsPage() {
   }
 
   const [rooms, catalog] = await Promise.all([
-    db.select().from(conversations).where(eq(conversations.teamId, teamId)).orderBy(desc(conversations.lastMessageAt)),
+    db.select().from(conversations)// `kind` filter added: without it every crew_run conversation appeared in
+    // this list as an ordinary room, and could be posted into after the run
+    // had finished. Runs have their own view at /crews/runs/[id].
+    .where(and(eq(conversations.teamId, teamId), eq(conversations.kind, 'room'))).orderBy(desc(conversations.lastMessageAt)),
     db.select().from(personas).where(eq(personas.teamId, teamId)).orderBy(personas.name),
   ]);
 
