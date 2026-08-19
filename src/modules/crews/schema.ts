@@ -21,6 +21,8 @@ import { teams, users, personas, projects, conversations, conversationMessages }
 export const crewMode = pgEnum('crew_mode', ['sequential', 'parallel', 'supervisor']);
 export const crewRunStatus = pgEnum('crew_run_status', [
   'queued', 'running', 'completed', 'failed', 'budget_exceeded', 'max_turns_reached',
+  // A run somebody stopped is neither completed nor failed.
+  'cancelled',
 ]);
 export const crewStepStatus = pgEnum('crew_step_status', ['running', 'completed', 'failed']);
 

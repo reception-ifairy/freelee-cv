@@ -136,4 +136,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Admin visual system** (design tokens, one surface recipe, a motion system with a reduced-motion guard, and the missing meter/sparkline/skeleton/empty-state primitives) — `43-admin-visual-system.md`
 - **Public navigation & one theme** (a visitor mega menu vs a member workspace nav, the mobile nav the site never had, and shared surface tokens that finally reach /bionic) — `44-public-navigation.md`
 - **Teamwork & projects** (an admin home for bot teams, runs and rooms, starting with projects — the grouping of work that never existed) — `45-teamwork-and-projects.md`
+- **Job queue** (durable Postgres-backed jobs so crew runs stop blocking the request, with crash recovery and real cancellation) — `46-job-queue.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

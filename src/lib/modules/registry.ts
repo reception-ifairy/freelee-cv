@@ -433,6 +433,23 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Projects', href: '/admin/projects', group: 'admin', order: 12 }],
   },
+  {
+    key: 'job-queue',
+    name: 'Job queue',
+    version: '1.0.0',
+    description:
+      'Durable Postgres-backed jobs (FOR UPDATE SKIP LOCKED, no Redis, no second process) with an ' +
+      'in-process worker started from instrumentation.ts. Moves crew runs off the request thread, ' +
+      'which switches on the SSE realtime path that had been built but inert, and makes cancellation ' +
+      'and crash recovery possible for the first time. Generic by kind/payload so scheduled runs and ' +
+      'rollups need no further migration. See docs/46-job-queue.md.',
+    type: 'core',
+    isCore: true,
+    requires: {},
+    provides: { capabilities: ['jobs.enqueue', 'jobs.worker', 'jobs.cancel', 'jobs.crash_recovery'] },
+    permissions: [],
+    navigation: [],
+  },
   groupChat,
   crews,
 ];

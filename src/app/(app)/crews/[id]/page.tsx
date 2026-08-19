@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: 'Crew' };
 
 const STATUS_TONE = {
   queued: 'slate', running: 'amber', completed: 'green',
-  failed: 'rose', budget_exceeded: 'rose', max_turns_reached: 'amber',
+  failed: 'rose', budget_exceeded: 'rose', max_turns_reached: 'amber', cancelled: 'slate',
 } as const;
 
 export default async function CrewPage({ params }: { params: Promise<{ id: string }> }) {

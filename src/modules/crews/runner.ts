@@ -50,7 +50,10 @@ function matchesStopCondition(text: string, stopConditions: string[]): boolean {
   return stopConditions.some((needle) => needle.trim() && lower.includes(needle.toLowerCase()));
 }
 
-type RunState = { turnCount: number; creditsSpent: number };
+type RunState = {
+  /** Set once a cancel has been observed, so every mode's loop can exit. */
+  cancelled?: boolean;
+  shouldCancel?: () => Promise<boolean>; turnCount: number; creditsSpent: number };
 
 async function recordStep(
   runId: string,
@@ -58,6 +61,7 @@ async function recordStep(
   member: CrewMember | undefined,
   personaId: number,
   message: ConversationMessage,
+  startedAt: Date,
 ): Promise<void> {
   await db.insert(crewRunSteps).values({
     crewRunId: runId,
@@ -68,6 +72,14 @@ async function recordStep(
     status: message.status === 'failed' ? 'failed' : 'completed',
     creditsCost: message.creditsCost,
     error: message.error,
+    // `startedAt` must be passed in, not left to the column default.
+    //
+    // The default is `defaultNow()`, evaluated by Postgres when the row is
+    // INSERTed — which happens *after* the step has finished. So the column
+    // recorded when the step ended, and `completed_at - started_at` came out
+    // NEGATIVE by the round trip: every duration in this audit trail was
+    // meaningless, and nothing read it, so nobody noticed.
+    startedAt,
     completedAt: new Date(),
   });
 }
@@ -81,6 +93,9 @@ async function step(
   contextNote: string,
 ): Promise<ConversationMessage> {
   const participant = await loadParticipant(run.conversationId, personaId);
+  // Taken before the model call, so the recorded duration is the step's, not
+  // the insert's.
+  const startedAt = new Date();
   const message = await runPersonaTurn({
     conversationId: run.conversationId,
     teamId: run.teamId,
@@ -91,14 +106,27 @@ async function step(
 
   state.turnCount += 1;
   state.creditsSpent += message.creditsCost;
-  await recordStep(run.id, state.turnCount, member, personaId, message);
+  await recordStep(run.id, state.turnCount, member, personaId, message, startedAt);
   await db.update(crewRuns).set({ turnCount: state.turnCount, creditsSpent: state.creditsSpent }).where(eq(crewRuns.id, run.id));
 
   return message;
 }
 
+/** One place for the cancel probe, so a failing check never aborts a healthy run. */
+async function cancelled(state: RunState): Promise<boolean> {
+  if (state.cancelled) return true;
+  if (!state.shouldCancel) return false;
+  try {
+    state.cancelled = await state.shouldCancel();
+  } catch {
+    return false;
+  }
+  return state.cancelled === true;
+}
+
 async function runSequential(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<string> {
   for (const member of members) {
+    if (await cancelled(state)) return 'cancelled';
     if (state.turnCount >= run.maxTurns) return 'max_turns_reached';
     if (state.creditsSpent >= run.budgetCredits) return 'budget_exceeded';
 
@@ -110,6 +138,10 @@ async function runSequential(run: CrewRun, crew: Crew, members: CrewMember[], st
 }
 
 async function runParallel(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<string> {
+  if (await cancelled(state)) return 'cancelled';
+  // Budget used to be checked only *after* the fan-out, so a run that was
+  // already over budget still spent a whole extra round before noticing.
+  if (state.creditsSpent >= run.budgetCredits) return 'budget_exceeded';
   const budgeted = members.slice(0, Math.max(0, run.maxTurns - state.turnCount));
   await Promise.all(budgeted.map((member) => step(run, crew, member, member.personaId, state, crewNote(crew, member))));
   return state.creditsSpent >= run.budgetCredits ? 'budget_exceeded' : 'parallel_complete';
@@ -125,6 +157,7 @@ async function runSupervisor(run: CrewRun, crew: Crew, members: CrewMember[], st
     'or reply with the single word DONE once the task is complete. Do not do the delegated work yourself.';
 
   for (;;) {
+    if (await cancelled(state)) return 'cancelled';
     if (state.turnCount >= run.maxTurns) return 'max_turns_reached';
     if (state.creditsSpent >= run.budgetCredits) return 'budget_exceeded';
 
@@ -155,9 +188,24 @@ const TERMINAL_STATUS: Record<string, CrewRun['status']> = {
   budget_exceeded: 'budget_exceeded',
   step_failed: 'failed',
   no_members: 'failed',
+  // A run somebody stopped is neither completed nor failed. Without this the
+  // map's fall-through would record it as 'completed' — a small lie, told
+  // every single time anyone cancels.
+  cancelled: 'cancelled',
 };
 
-export async function executeCrewRun(crewRunId: string): Promise<CrewRun> {
+export type ExecuteOptions = {
+  /**
+   * Asked between steps. Returning true stops the run cleanly.
+   *
+   * Cooperative by design: a step is one `runPersonaTurn` call and there is no
+   * way to abort a provider request already in flight, so a cancel takes effect
+   * after the current persona finishes speaking rather than instantly.
+   */
+  shouldCancel?: () => Promise<boolean>;
+};
+
+export async function executeCrewRun(crewRunId: string, options: ExecuteOptions = {}): Promise<CrewRun> {
   const [run] = await db.select().from(crewRuns).where(eq(crewRuns.id, crewRunId)).limit(1);
   if (!run) throw new Error(`Crew run ${crewRunId} not found.`);
   if (run.status !== 'queued') return run; // already started — avoid double-execution on a re-invoked action
@@ -168,7 +216,7 @@ export async function executeCrewRun(crewRunId: string): Promise<CrewRun> {
 
   await db.update(crewRuns).set({ status: 'running', startedAt: new Date() }).where(eq(crewRuns.id, run.id));
 
-  const state: RunState = { turnCount: 0, creditsSpent: 0 };
+  const state: RunState = { turnCount: 0, creditsSpent: 0, shouldCancel: options.shouldCancel };
 
   let stopReason: string;
   try {

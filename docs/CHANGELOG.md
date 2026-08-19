@@ -34,7 +34,33 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #48 · `pending` — Add projects: the grouping of work that never existed
+### #49 · `pending` — Move crew runs onto a real job queue
+
+Stage 2. Crew runs executed inline inside the server action, which is why
+crews.max_turns defaults to 6 — a run had to finish inside one HTTP request.
+That capped what bot teamwork could be, and it left the fully-built SSE
+realtime path inert because the run was always over before the page rendered.
+
+Postgres is the broker: SELECT ... FOR UPDATE SKIP LOCKED, no Redis, no second
+pm2 process. The worker runs in-process from instrumentation.ts, guarded
+against the edge runtime, next dev's double register(), and next build.
+Delivery is at-least-once, so executeCrewRun's existing status guard is
+load-bearing; a partial unique index keeps one live job per run.
+
+Cancellation is cooperative — checked between steps, since a provider call in
+flight cannot be aborted. crew_run_status gained 'cancelled', because
+TERMINAL_STATUS's fall-through would otherwise record a deliberately stopped
+run as 'completed'.
+
+Two bugs found while verifying. Every step duration in the audit trail was
+NEGATIVE: recordStep set completedAt from Node while startedAt used the
+column's defaultNow(), evaluated at INSERT — after the step finished. Nothing
+has ever read crew_run_steps, so nobody noticed. And parallel mode checked its
+budget only after the fan-out.
+
+📄 `46-job-queue.md` · 🗄 `0032_jobs`
+
+### #48 · `36dbba5` — Add projects: the grouping of work that never existed
 
 Stage 1 of bot teamwork in the admin panel. Two multi-bot modules already
 existed (crews, group-chat) and were completely invisible to admin; nothing

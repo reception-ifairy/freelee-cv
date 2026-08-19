@@ -9,7 +9,7 @@ import { crews, crewMembers, crewRuns, conversations, conversationParticipants, 
 import { requireUser } from '@/lib/auth';
 import { assertModuleEnabled } from '@/lib/modules/db';
 import { slugify } from '@/lib/utils';
-import { executeCrewRun } from './runner';
+import { enqueue } from '@/lib/jobs/queue';
 
 const MODULE_KEY = 'crews';
 
@@ -176,7 +176,15 @@ export async function startCrewRunAction(formData: FormData) {
     return run.id;
   });
 
-  await executeCrewRun(runId);
+  // Enqueued, not awaited.
+  //
+  // This request used to run the whole crew before redirecting, which is why
+  // crews.maxTurns defaults to 6 — a run had to fit inside one HTTP request.
+  // The run page is already wired for live updates via RoomLive and
+  // /api/rooms/[id]/stream; that plumbing has existed since Phase 6 and has
+  // been inert precisely because the run was always over before the page
+  // rendered. See docs/46-job-queue.md.
+  await enqueue('crew.run', { crewRunId: runId });
 
   revalidatePath(`/crews/${crewId}`);
   redirect(`/crews/runs/${runId}`);

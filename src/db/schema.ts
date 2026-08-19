@@ -14,6 +14,7 @@ export const messageRole = pgEnum('message_role', ['system', 'user', 'assistant'
 export const messageStatus = pgEnum('message_status', ['streaming', 'complete', 'failed']);
 export const modifierType = pgEnum('modifier_type', ['tone', 'writing', 'output', 'length', 'audience']);
 export const projectStatus = pgEnum('project_status', ['active', 'paused', 'done', 'archived']);
+export const jobStatus = pgEnum('job_status', ['queued', 'running', 'done', 'failed', 'cancelled']);
 export const menuLocation = pgEnum('menu_location', ['header', 'footer', 'legal']);
 export const menuVisibility = pgEnum('menu_visibility', ['all', 'guest', 'auth', 'admin']);
 export const audienceType = pgEnum('audience_type', ['B2B', 'B2C', 'B2G']);
@@ -753,6 +754,49 @@ export const promptModifiers = pgTable(
   },
   (t) => [uniqueIndex('modifiers_type_name_idx').on(t.type, t.name)],
 );
+
+/* ================================= Jobs ================================== */
+
+/**
+ * A durable job queue, in Postgres.
+ *
+ * Crew runs used to execute inline inside the server action, which is why
+ * `crews.max_turns` defaults to 6 — a run had to finish inside one HTTP
+ * request. That ceiling limited everything bot teamwork could become, and it
+ * also made the fully-built SSE path inert, because the run was always over
+ * before the page rendered.
+ *
+ * No Redis and no second pm2 process: `SELECT … FOR UPDATE SKIP LOCKED` is the
+ * standard primitive for this, and this app already uses Postgres for
+ * LISTEN/NOTIFY. See docs/46-job-queue.md.
+ */
+export const jobs = pgTable(
+  'jobs',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    /** 'crew.run' today. Generic so scheduled runs and rollups need no migration. */
+    kind: text('kind').notNull(),
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    status: jobStatus('status').notNull().default('queued'),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(3),
+    /** Scheduling and retry backoff in one column — both answer "not before when". */
+    runAfter: timestamp('run_after', { withTimezone: true }).notNull().defaultNow(),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    /** Which worker holds it, so a stuck job is diagnosable rather than a mystery. */
+    lockedBy: text('locked_by'),
+    /** Liveness, separate from lockedAt: a long job is not a dead one. */
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    /** Cooperative — checked between steps, cannot interrupt a model call in flight. */
+    cancelRequested: boolean('cancel_requested').notNull().default(false),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('jobs_claim_idx').on(t.runAfter), index('jobs_running_idx').on(t.heartbeatAt)],
+);
+
+export type JobRow = typeof jobs.$inferSelect;
 
 /* =============================== Projects ================================ */
 
