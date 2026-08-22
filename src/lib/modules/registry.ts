@@ -513,7 +513,10 @@ export const MODULES: ModuleManifest[] = [
       ],
     },
     permissions: [],
-    navigation: [{ label: 'Knowledgebase', href: '/admin/knowledgebase', group: 'admin', order: 14 }],
+    navigation: [
+      { label: 'Library', href: '/admin/knowledgebase', group: 'admin', order: 14 },
+      { label: 'Shelves', href: '/admin/knowledgebase/collections', group: 'admin', order: 15 },
+    ],
   },
   groupChat,
   crews,

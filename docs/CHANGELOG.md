@@ -34,7 +34,29 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #55 · `pending` — Record the Postgres settings the Knowledgebase depends on
+### #56 · `pending` — Knowledge becomes its own admin section, and grounding costs half
+
+Knowledgebase was two entries inside AI; what the bots know deserves a section
+beside AI, Teamwork and Commerce. Library, Shelves and External sources, in rose.
+
+Adding it exposed a latent sidebar bug: a nested route prefix-matches both its
+parent and its own entry, so two rows lit up at once. The highlight now takes the
+longest match, which is the rule the breadcrumb always used.
+
+The cost of a grounded reply was measured rather than estimated, and the earlier
+figure in docs/48 was wrong in the direction that matters — not double, but five
+times, because this site's average message is short (411 tokens in, 87 out) so
+retrieved text dominates the bill. On Haiku: plain 2 credits, grounded 10, which
+turned a 5,000-credit Starter pack from ~2,500 replies into ~500.
+
+Cut on that evidence: passages ~1,100 characters instead of 1,800, at most three
+retrieved instead of five, neighbour expansion off by default (it tripled the
+text for a modest gain in continuity). Re-measured at 6 credits, ~830 replies per
+pack. All three constants now say in their own comments that they are prices.
+
+📄 `48-knowledgebase.md` · 📕 `handbook/knowledgebase.md`
+
+### #55 · `e750781` — Record the Postgres settings the Knowledgebase depends on
 
 Tuning applied with ALTER SYSTEM lives in postgresql.auto.conf, outside this
 repository — so docs/48 is the only trace. shared_buffers 128MB→8GB is the

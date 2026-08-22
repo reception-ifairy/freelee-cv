@@ -70,14 +70,19 @@ irrelevant. That is deliberate — a confident answer built on the wrong page is
 ## Giving a bot access
 
 Open a persona, go to the **Capabilities** area, and tick the shelves under *Grounding sources*. Your
-own shelves are listed alongside the remote knowledge sources; both work the same way.
+own shelves are listed alongside the external sources; both work the same way.
+
+Everything to do with what the bots know lives under **Knowledge** in the sidebar: *Library* (the
+books), *Shelves* (what you grant), and *External sources* (someone else's search API).
 
 From then on, every reply that persona gives is preceded by a search of those shelves, and anything
 it uses is cited.
 
-> **This makes replies cost more.** A grounded reply sends the retrieved passages to the AI along
-> with the question, and those count as tokens like anything else — roughly **double** a plain reply.
-> If the persona is one customers pay for, check its credits-per-message before switching this on.
+> **This makes replies cost more, and the customer pays.** A grounded reply sends the retrieved
+> passages to the AI along with the question, and those count like any other text. On Haiku a plain
+> reply costs 2 credits and a grounded one costs **6** — so a Starter pack goes from about 2,500
+> replies to about 830. That is already as low as it goes without hurting answer quality. If the
+> persona is one customers pay for, look at its price before switching this on.
 
 ## When a book will not process
 

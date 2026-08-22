@@ -11,13 +11,14 @@ import { GUARDRAILS, isGuardrailCode } from '@/lib/persona/guardrails';
  * which strands the model with a quotation that stops mid-argument and a
  * citation it cannot honestly use.
  *
- * ~8,000 characters is roughly 2,000 input tokens on every grounded turn, and
+ * ~3,600 characters is roughly 900 input tokens on every grounded turn, and
  * `costForTokens` bills input and output alike — so this constant is a price
- * as much as a size. It is deliberately below what `searchLibrary` will hand
- * over (its own `maxChars`), which stays the upstream limit.
+ * as much as a size. It sits just above what `searchLibrary` will hand over
+ * (its own `maxChars`, 3,300), which stays the real limit: this one only has
+ * to stop a remote source from overflowing the section.
  */
-const GROUNDING_MAX_CHARS = 8000;
-const GROUNDING_CHUNK_CHARS = 2000;
+const GROUNDING_MAX_CHARS = 3600;
+const GROUNDING_CHUNK_CHARS = 1600;
 
 export const AUDIENCE_TYPES = {
   B2B: { label: 'Business (B2B)', description: 'Businesses, teams and professionals' },

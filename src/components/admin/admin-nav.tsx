@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ADMIN_NAV, TONE_CLASSES, isNavItemActive, type AdminNavSection } from '@/lib/admin/nav';
+import { ADMIN_NAV, TONE_CLASSES, isNavItemCurrent, type AdminNavSection } from '@/lib/admin/nav';
 import { cn } from '@/lib/utils';
 
 /**
@@ -48,7 +48,7 @@ function NavSection({
       ) : null}
 
       {section.items.map((item) => {
-        const active = isNavItemActive(item, pathname);
+        const active = isNavItemCurrent(item, pathname);
 
         return (
           <Link

@@ -2,7 +2,7 @@ import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, Cpu,
   RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images, Inbox,
-  FolderKanban, Bot, MessagesSquare, Library,
+  FolderKanban, Bot, MessagesSquare, Library, LibraryBig,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -38,6 +38,11 @@ export const TONE_CLASSES = {
   emerald: { idle: 'text-emerald-400/70', active: 'text-emerald-400', rail: 'bg-emerald-400' },
   amber: { idle: 'text-amber-400/70', active: 'text-amber-400', rail: 'bg-amber-400' },
   cyan: { idle: 'text-cyan-400/70', active: 'text-cyan-400', rail: 'bg-cyan-400' },
+  // Knowledge. Rose rather than another blue-green: the six tones above already
+  // occupy that half of the wheel, and at 16px an indigo or a teal is
+  // indistinguishable from the violet and cyan either side of it. Tone here is
+  // categorical only — severity is Badge's scale, not this one.
+  rose: { idle: 'text-rose-400/70', active: 'text-rose-400', rail: 'bg-rose-400' },
   slate: { idle: 'text-slate-500', active: 'text-slate-300', rail: 'bg-slate-400' },
 } as const;
 
@@ -70,15 +75,26 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'violet',
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
-      // Knowledgebase is the local library the bots read from; Knowledge
-      // sources are remote APIs they query. Two different things that both
-      // land in the same `## Grounding` prompt section, so they sit together.
-      { href: '/admin/knowledgebase', label: 'Knowledgebase', icon: Library },
-      { href: '/admin/knowledge-sources', label: 'Knowledge sources', icon: Search },
       // One entry, not two. Sectors only mean something inside a category,
       // and while nothing read them a separate tab could only be filled in.
       { href: '/admin/taxonomy', label: 'Taxonomy', icon: Tags },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
+    ],
+  },
+  {
+    // Its own section rather than two entries inside AI, because "what the
+    // bots know" is a body of work in its own right — books to file, shelves
+    // to curate, sources to wire up — and it grows independently of how
+    // personas are configured. Sits directly after AI: a persona is nothing
+    // without a model, and not much without something to read.
+    heading: 'Knowledge',
+    tone: 'rose',
+    items: [
+      { href: '/admin/knowledgebase', label: 'Library', icon: Library },
+      { href: '/admin/knowledgebase/collections', label: 'Shelves', icon: LibraryBig },
+      // Remote search APIs a persona can cite from — the same `## Grounding`
+      // prompt section as the library, a completely different mechanism.
+      { href: '/admin/knowledge-sources', label: 'External sources', icon: Search },
     ],
   },
   {
@@ -145,6 +161,24 @@ export const ADMIN_NAV: AdminNavSection[] = [
 export function isNavItemActive(item: AdminNavItem, pathname: string): boolean {
   if (item.exact) return pathname === item.href;
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+/**
+ * Whether this item — and no better-matching one — owns the route.
+ *
+ * Prefix matching alone lights up two rows once one section nests inside
+ * another: `/admin/knowledgebase/collections` matches both *Library* and
+ * *Shelves*, and a sidebar with two current pages is a sidebar you stop
+ * trusting. Longest match wins, which is the rule the breadcrumb has always
+ * used — this just makes the highlight agree with it.
+ *
+ * `exact` is still the right tool for a hub whose children are separate
+ * top-level routes (the Dashboard); this handles the opposite shape, where the
+ * children live *under* the parent and one of them has its own nav entry.
+ */
+export function isNavItemCurrent(item: AdminNavItem, pathname: string): boolean {
+  if (!isNavItemActive(item, pathname)) return false;
+  return findActiveNavItem(pathname)?.item.href === item.href;
 }
 
 /** The item owning this route, or null. Used for the header breadcrumb. */

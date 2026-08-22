@@ -24,14 +24,22 @@
 import type { ChunkKind, CleanedPage } from './clean';
 
 /**
- * ~450 tokens at roughly four characters per token. There is no tokenizer in
+ * ~275 tokens at roughly four characters per token. There is no tokenizer in
  * this project's dependencies and adding one for a sizing heuristic would be
  * a poor trade — but that is exactly why `charCount`, not `tokens`, is the
  * column name: an estimate should not be dressed up as a measurement.
+ *
+ * **This number is a price.** Three passages reach the model on every grounded
+ * turn and `costForTokens` bills them as input like anything else, so passage
+ * size lands directly on the customer's credit balance. Measured against real
+ * traffic on this site (average message: 411 tokens in, 87 out), a plain reply
+ * on Haiku costs 2 credits; at 1,800 characters a grounded one cost 10, and at
+ * 1,100 it costs 5. That was a deliberate trade of some context for half the
+ * price, taken with the numbers in hand. See docs/48-knowledgebase.md.
  */
-export const TARGET_CHARS = 1800;
+export const TARGET_CHARS = 1100;
 /** A passage may run over target to finish a paragraph, but never past this. */
-export const MAX_CHARS = 2600;
+export const MAX_CHARS = 1600;
 /** Below this a fragment is merged forward rather than emitted on its own. */
 export const MIN_CHARS = 300;
 

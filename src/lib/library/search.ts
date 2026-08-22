@@ -120,9 +120,24 @@ export async function searchLibrary(
   query: string,
   options: SearchOptions = {},
 ): Promise<KnowledgeChunk[]> {
-  const k = options.k ?? 5;
-  const expand = options.expand ?? 1;
-  const maxChars = options.maxChars ?? 9000;
+  /*
+   * Up to three passages, no neighbour expansion, ~3,000 characters in total.
+   * The budget is the binding constraint, not `k`: in practice two passages
+   * fit, and the third arrives only when they are short.
+   *
+   * Every one of these is a price rather than a preference. Retrieved text is
+   * billed to the customer as input tokens exactly like their own question,
+   * and on this site the average question is short — 411 tokens — so grounding
+   * dominates the bill rather than adding to it. Expansion in particular
+   * tripled the text for a modest gain in continuity; it stays available for
+   * the panel's test box, where nobody is being charged.
+   *
+   * Measured on Haiku 4.5: a plain reply is 2 credits, the original settings
+   * made a grounded one 10, and these make it 5.
+   */
+  const k = options.k ?? 3;
+  const expand = options.expand ?? 0;
+  const maxChars = options.maxChars ?? 3000;
 
   const text = query.trim();
   if (!text || collectionKeys.length === 0) return [];

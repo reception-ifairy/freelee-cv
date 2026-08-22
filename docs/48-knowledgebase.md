@@ -131,10 +131,16 @@ this long is how a CLI quietly stops matching production.
    Definitive, where "few characters per page" is a guess: a 400-page book with twenty scanned plates
    should be ingested, not refused. Status `needs_ocr` — a backlog, not a failure.
 3. **Clean** — NFKC, hyphen repair, running heads, bibliography tagged as `backmatter`.
-4. **Cut** — ~1,800 characters on paragraph boundaries, no overlap.
+4. **Cut** — ~1,100 characters on paragraph boundaries, no overlap.
 5. **Embed** — `embedMany` in batches of 96.
 6. **Commit once** — delete old passages, insert new, mark ready, **in a single transaction**. A
    crash leaves the document exactly as it was, never live-but-empty.
+
+**Knowledge is its own admin section**, not two entries under AI: what the bots know is a body of
+work in its own right — books to file, shelves to curate, external sources to wire up — and it grows
+independently of how personas are configured. Adding it exposed a latent bug in the sidebar, since
+`/admin/knowledgebase/collections` prefix-matches both *Library* and *Shelves* and lit up two rows
+at once. The highlight now takes the longest match, which is the rule the breadcrumb always used.
 
 **Small passages, no overlap.** Overlap costs ~15% more embedding for text you already have and
 fills results with near-duplicates that crowd out genuinely different material. Instead every
@@ -165,10 +171,25 @@ run twice, concurrently. The claim would catch it — but not blocking beats rel
 | Embedding at $0.02/1M | **~$1.60** | **~$12**, once |
 | Postgres | ~2 GB | ~15 GB |
 
-Recurring cost is the extra context tokens on every grounded answer — roughly 2,000, which
-`costForTokens` bills at the same rate as any other input token. **A grounded turn costs roughly
-double a plain one, and it lands on the customer's credit balance**, so grounded personas need a
-higher `creditsPerMessage` or the per-message rate needs revisiting before this reaches paying users.
+Recurring cost is the extra context on every grounded answer, which `costForTokens` bills at the
+same rate as any other input token — and **it lands on the customer's credit balance**, not yours.
+
+The first estimate here said "roughly double". Measured against real traffic on this site it was
+**five times**, because the average message is short (411 tokens in, 87 out) so the retrieved text
+dominates the bill rather than adding to it:
+
+| on Haiku 4.5 | plain | grounded |
+|---|---|---|
+| first settings (5 passages, ~2,000 tokens) | 2 credits | **10 credits** |
+| current settings (up to 3, ~780 tokens) | 2 credits | **6 credits** |
+
+A Starter pack (5,000 credits, $9) is ~2,500 plain replies, ~500 at the first settings, ~830 now.
+The retrieval budget was cut deliberately on that evidence: `searchLibrary`'s `maxChars`,
+`TARGET_CHARS` in the chunker, and `GROUNDING_MAX_CHARS` in the prompt are three numbers that are
+each a **price**, and every one of them says so where it is defined.
+
+Neighbour expansion was the biggest single cost and is now off by default — it tripled the text for
+a modest gain in continuity. It stays available for the panel's test box, where nobody is charged.
 
 Ingest has no billing home: `usage_events.team_id` is `NOT NULL` and a platform-wide backfill has no
 team. Tokens are recorded on `library_documents.ingest_tokens` and summed for the panel instead of
