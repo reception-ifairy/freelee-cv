@@ -2,7 +2,7 @@ import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, Cpu,
   RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images, Inbox,
-  FolderKanban, Bot, MessagesSquare,
+  FolderKanban, Bot, MessagesSquare, Library,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +70,10 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'violet',
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
+      // Knowledgebase is the local library the bots read from; Knowledge
+      // sources are remote APIs they query. Two different things that both
+      // land in the same `## Grounding` prompt section, so they sit together.
+      { href: '/admin/knowledgebase', label: 'Knowledgebase', icon: Library },
       { href: '/admin/knowledge-sources', label: 'Knowledge sources', icon: Search },
       // One entry, not two. Sectors only mean something inside a category,
       // and while nothing read them a separate tab could only be filled in.

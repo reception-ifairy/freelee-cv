@@ -3,8 +3,21 @@ import { PERSONALITY_TRAITS, type PersonalityTrait } from '@/db/schema';
 import type { KnowledgeChunk } from '@/lib/knowledge/types';
 import { GUARDRAILS, isGuardrailCode } from '@/lib/persona/guardrails';
 
-const GROUNDING_MAX_CHARS = 3000;
-const GROUNDING_CHUNK_CHARS = 500;
+/**
+ * The grounding budget.
+ *
+ * Sized originally for one-paragraph results from a remote search API. A
+ * passage from a book is not that: 500 characters of one is two sentences,
+ * which strands the model with a quotation that stops mid-argument and a
+ * citation it cannot honestly use.
+ *
+ * ~8,000 characters is roughly 2,000 input tokens on every grounded turn, and
+ * `costForTokens` bills input and output alike — so this constant is a price
+ * as much as a size. It is deliberately below what `searchLibrary` will hand
+ * over (its own `maxChars`), which stays the upstream limit.
+ */
+const GROUNDING_MAX_CHARS = 8000;
+const GROUNDING_CHUNK_CHARS = 2000;
 
 export const AUDIENCE_TYPES = {
   B2B: { label: 'Business (B2B)', description: 'Businesses, teams and professionals' },
@@ -217,11 +230,28 @@ export function buildSystemPrompt(
   }
 
   if (groundingChunks.length > 0) {
-    let lines = groundingChunks
-      .map((c) => `- ${c.title}: ${c.text.slice(0, GROUNDING_CHUNK_CHARS)} [${c.citation}]`)
-      .join('\n');
-    if (lines.length > GROUNDING_MAX_CHARS) lines = lines.slice(0, GROUNDING_MAX_CHARS);
-    sections.push(`## Grounding — cite these references when you use them\n${lines}`);
+    /*
+     * Whole references only, dropped from the end.
+     *
+     * The old truncation sliced the joined string at a fixed offset, which
+     * could cut through the middle of a `[citation]` — handing the model a
+     * malformed reference that it would then reproduce, and a quotation that
+     * stops mid-word as if the source did.
+     */
+    const kept: string[] = [];
+    let budget = GROUNDING_MAX_CHARS;
+    for (const chunk of groundingChunks) {
+      const text = chunk.text.length > GROUNDING_CHUNK_CHARS
+        ? `${chunk.text.slice(0, GROUNDING_CHUNK_CHARS).replace(/\s+\S*$/, '')}…`
+        : chunk.text;
+      const line = `- ${chunk.title}: ${text} [${chunk.citation}]`;
+      if (line.length > budget) break;
+      budget -= line.length + 1;
+      kept.push(line);
+    }
+    if (kept.length > 0) {
+      sections.push(`## Grounding — cite these references when you use them\n${kept.join('\n')}`);
+    }
   }
 
   if (modifiers.length > 0) {

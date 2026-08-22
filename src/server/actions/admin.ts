@@ -11,7 +11,7 @@ import {
   PERSONALITY_TRAITS, type PersonaCapabilities, type PersonaPersonality, type PersonaBlueprint,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
+import { groundingOptions } from '@/lib/knowledge/grounding';
 import { isGuardrailCode } from '@/lib/persona/guardrails';
 import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { uniquePersonaSlug } from '@/lib/persona/slug';
@@ -88,7 +88,10 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
   // docs/18-knowledge-sources.md), so resolved once here into a plain Set
   // rather than inline in the values object below, where a synchronous
   // .filter() can't await per-item.
-  const validSourceKeys = new Set((await getActiveKnowledgeSources()).map((s) => s.key));
+  // Remote sources *and* local Knowledgebase shelves (`lib:` keys) — the same
+  // list the form renders, so a key it offers can never be silently dropped
+  // here on save.
+  const validSourceKeys = new Set((await groundingOptions()).map((s) => s.key));
 
   let blueprint: PersonaBlueprint | null = null;
   if (data.blueprintJson) {

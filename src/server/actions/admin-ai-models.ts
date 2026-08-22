@@ -20,7 +20,10 @@ import type { ActionState } from './auth';
 
 const tierSchema = z.enum(['fast', 'balanced', 'advanced']).or(z.literal('')).transform((v) => (v === '' ? null : v));
 const statusSchema = z.enum(['preview', 'stable', 'deprecated', 'retired']);
-const modalitySchema = z.enum(['text', 'image']);
+// 'embedding' joined the enum for the Knowledgebase (drizzle/0035, docs/48).
+// Without it here, importing an embedding model through "Fetch models" would
+// pass the classifier and then be rejected by validation.
+const modalitySchema = z.enum(['text', 'image', 'embedding']);
 
 const newModelSchema = z.object({
   providerId: z.coerce.number().int(),

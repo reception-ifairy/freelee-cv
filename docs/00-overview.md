@@ -138,4 +138,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Teamwork & projects** (an admin home for bot teams, runs and rooms, starting with projects — the grouping of work that never existed) — `45-teamwork-and-projects.md`
 - **Job queue** (durable Postgres-backed jobs so crew runs stop blocking the request, with crash recovery and real cancellation) — `46-job-queue.md`
 - **Persona cards** (a generated mark instead of a face, a flip card, cross-container drag-to-assign, and the categories/sectors merge that finally made sectors mean something) — `47-persona-cards.md`
+- **Knowledgebase** (a private PDF library the personas read from — poppler extraction, passages, pgvector, hybrid retrieval with a measured relevance floor, and a panel that shows a non-expert exactly what embedding did) — `48-knowledgebase.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

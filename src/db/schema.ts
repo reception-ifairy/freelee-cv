@@ -1,6 +1,6 @@
 import {
   pgTable, text, integer, bigint, boolean, timestamp, jsonb, real, date,
-  uniqueIndex, index, primaryKey, pgEnum, serial, type AnyPgColumn,
+  uniqueIndex, index, primaryKey, pgEnum, serial, vector, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -51,7 +51,14 @@ export const moduleStatus = pgEnum('module_status', ['installed', 'disabled', 'b
 export const aiModelStatus = pgEnum('ai_model_status', ['preview', 'stable', 'deprecated', 'retired']);
 // Image-generation engines (docs/21-image-engines.md) — 'text' is every existing row's default,
 // zero behavior change for chat; 'image' models never appear in a persona's model picker.
-export const aiModelModality = pgEnum('ai_model_modality', ['text', 'image']);
+export const aiModelModality = pgEnum('ai_model_modality', [
+  'text',
+  'image',
+  // Added for the Knowledgebase (drizzle/0035, docs/48): the model that turns
+  // a passage into a vector. Both model pickers filter on 'text', so these
+  // rows never reach a place where a chat model is chosen.
+  'embedding',
+]);
 // Persona versioning (docs/11-persona-versioning.md).
 export const personaVersionStatus = pgEnum('persona_version_status', ['draft', 'published', 'deprecated']);
 // BYOK (Phase 5) — declared now so provider_credentials doesn't need a later migration.
@@ -2018,6 +2025,191 @@ export const externalIdMap = pgTable(
 );
 
 export type ExternalIdMapRow = typeof externalIdMap.$inferSelect;
+
+/* ============================= Knowledgebase ===============================
+ * A private document library the personas can read (drizzle/0034, docs/48).
+ *
+ * Core rather than a src/modules/<key> feature module, same reasoning as the
+ * AI model registry and data portability: it is platform infrastructure the
+ * operator curates once, not a per-team product surface you would ever want
+ * switched off. Hence no team_id anywhere here — the scope line
+ * `knowledge_sources` already draws.
+ *
+ * The name split is worth knowing: the admin section is **Knowledgebase**
+ * (what the operator sees), the tables and code are `library_*` (what the
+ * thing is), because `knowledge_sources` already owns the word "knowledge" in
+ * this schema and two tables called knowledge-something would be a coin flip
+ * every time you read a query.
+ * ------------------------------------------------------------------------- */
+
+export const libraryDocStatus = pgEnum('library_doc_status', [
+  // Discovered on disk, nothing done to it. Nothing is ever processed by
+  // simply existing — the operator presses a button.
+  'pending',
+  'processing',
+  'ready',
+  'failed',
+  /** A scan with no text layer — a backlog item for OCR, not a failure. */
+  'needs_ocr',
+  /** The row outlived its file. Never set automatically to 'deleted'. */
+  'missing',
+]);
+
+export const libraryDocKind = pgEnum('library_doc_kind', [
+  'book', 'paper', 'notes', 'manual', 'reference', 'other',
+]);
+
+/** Bibliographies and indexes are kept but excluded from retrieval by default. */
+export const libraryChunkKind = pgEnum('library_chunk_kind', ['body', 'frontmatter', 'backmatter']);
+
+export const libraryDocuments = pgTable(
+  'library_documents',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    /**
+     * Path relative to LIBRARY_ROOT, and the document's **identity** — the
+     * scanner knows a file by where it is. The first segment is the
+     * collection, so dropping a file into `operations/` files it on that shelf
+     * without anyone ticking a box.
+     */
+    sourcePath: text('source_path').notNull(),
+    filename: text('filename').notNull(),
+    /**
+     * Change detector, not identity. Making *this* unique would turn "the
+     * author sent a corrected PDF" into a duplicate row with the old passages
+     * still live. Computed by streaming the file — hashing a 30 MB buffer
+     * synchronously would block the event loop past the job worker's 90s
+     * stale-reclaim window and get the job run twice, concurrently.
+     */
+    sha256: text('sha256'),
+    title: text('title').notNull(),
+    author: text('author'),
+    year: integer('year'),
+    publisher: text('publisher'),
+    kind: libraryDocKind('kind').notNull().default('book'),
+    language: text('language').notNull().default('en'),
+    bytes: bigint('bytes', { mode: 'number' }).notNull().default(0),
+    pages: integer('pages'),
+    status: libraryDocStatus('status').notNull().default('pending'),
+    /** Written for a person: it is rendered verbatim in the panel. */
+    error: text('error'),
+    /**
+     * Unlike `jobs`, this table has no heartbeat, so a crashed run would wedge
+     * a book forever. A 'processing' row older than the reclaim window is
+     * claimable again.
+     */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    attempts: integer('attempts').notNull().default(0),
+    textChars: integer('text_chars').notNull().default(0),
+    passageCount: integer('passage_count').notNull().default(0),
+    /**
+     * Vectors from two different models are not comparable, so this is what
+     * makes "which books still need re-embedding" answerable without guessing.
+     */
+    embeddingModel: text('embedding_model'),
+    /**
+     * Ingest has no billing home — `usage_events.team_id` is NOT NULL and a
+     * platform-wide backfill has no team. Recorded here and summed for the
+     * panel instead of forced into a table it does not fit.
+     */
+    ingestTokens: bigint('ingest_tokens', { mode: 'number' }).notNull().default(0),
+    categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),
+    sectorId: integer('sector_id').references(() => sectors.id, { onDelete: 'set null' }),
+    addedBy: text('added_by').references(() => users.id, { onDelete: 'set null' }),
+    indexedAt: timestamp('indexed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('library_documents_path_idx').on(t.sourcePath),
+    index('library_documents_status_idx').on(t.status, t.createdAt),
+    index('library_documents_sha_idx').on(t.sha256),
+  ],
+);
+
+/** Deliberately the same shape as `knowledgeSources` — it plays the same role. */
+export const libraryCollections = pgTable(
+  'library_collections',
+  {
+    id: serial('id').primaryKey(),
+    key: text('key').notNull(),
+    label: text('label').notNull(),
+    description: text('description'),
+    /** Created by the scanner from a folder name rather than by hand. */
+    fromFolder: boolean('from_folder').notNull().default(false),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('library_collections_key_idx').on(t.key)],
+);
+
+export const libraryCollectionDocuments = pgTable(
+  'library_collection_documents',
+  {
+    collectionId: integer('collection_id')
+      .notNull()
+      .references(() => libraryCollections.id, { onDelete: 'cascade' }),
+    documentId: text('document_id')
+      .notNull()
+      .references(() => libraryDocuments.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.collectionId, t.documentId] }),
+    index('library_collection_documents_doc_idx').on(t.documentId),
+  ],
+);
+
+export const libraryChunks = pgTable(
+  'library_chunks',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    documentId: text('document_id')
+      .notNull()
+      .references(() => libraryDocuments.id, { onDelete: 'cascade' }),
+    /**
+     * Stable ordinal within the document, and the reason passages can be small:
+     * retrieve one, then fetch `position ± 1` and stitch at read time. That
+     * beats storing large overlapping passages and costs ~15% less to embed.
+     */
+    position: integer('position').notNull(),
+    pageFrom: integer('page_from'),
+    pageTo: integer('page_to'),
+    heading: text('heading'),
+    kind: libraryChunkKind('kind').notNull().default('body'),
+    text: text('text').notNull(),
+    charCount: integer('char_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // `tsv` (tsvector, GENERATED ALWAYS AS to_tsvector('english', text) STORED)
+    // exists in the table but not here: Drizzle has no tsvector column type,
+    // and it is only ever touched inside raw `sql` fragments in the search
+    // query. Declaring it as something it is not would be worse than omitting
+    // it. See drizzle/0034_library.sql.
+  },
+  (t) => [uniqueIndex('library_chunks_doc_position_idx').on(t.documentId, t.position)],
+);
+
+/**
+ * Vectors live apart from their text on purpose. Together the row would be
+ * text (~2 KB) + tsvector (~3 KB) + vector(1536) (6,152 B) — past the 8 KB
+ * page, so Postgres would attempt pglz compression on float32 data (near
+ * incompressible: pure wasted CPU on every insert) and then TOAST it out of
+ * line, making every scan pay a detoast. Split, this table is one tuple per
+ * page, and re-embedding with a different model is a TRUNCATE rather than a
+ * migration.
+ */
+export const libraryChunkVectors = pgTable('library_chunk_vectors', {
+  chunkId: bigint('chunk_id', { mode: 'number' })
+    .primaryKey()
+    .references(() => libraryChunks.id, { onDelete: 'cascade' }),
+  embedding: vector('embedding', { dimensions: 1536 }).notNull(),
+});
+
+export type LibraryDocumentRow = typeof libraryDocuments.$inferSelect;
+export type NewLibraryDocumentRow = typeof libraryDocuments.$inferInsert;
+export type LibraryCollectionRow = typeof libraryCollections.$inferSelect;
+export type LibraryChunkRow = typeof libraryChunks.$inferSelect;
 
 /* ============================= Feature modules =============================
  * Core tables live directly above; a `type: 'feature'` module's own tables

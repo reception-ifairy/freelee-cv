@@ -4,7 +4,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { getProviderRegistry } from '@/lib/ai/registry';
-import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
+import { groundingOptions } from '@/lib/knowledge/grounding';
 import { PersonaForm } from '@/components/admin/persona-form';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { suggestedToolsFor } from '@/lib/tools/catalog';
@@ -29,7 +29,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .from(personaCategories)
       .where(eq(personaCategories.personaId, personaId)),
     getProviderRegistry(),
-    getActiveKnowledgeSources(),
+    groundingOptions(),
   ]);
 
   if (!persona) notFound();
@@ -71,7 +71,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       categories={categoryRows}
       selectedCategoryIds={links.map((link) => link.categoryId)}
       providers={providers}
-      knowledgeSources={knowledgeSourceRows.map((s) => ({ key: s.key, label: s.label }))}
+      knowledgeSources={knowledgeSourceRows}
     />
   );
 }

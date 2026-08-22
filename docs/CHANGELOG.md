@@ -34,7 +34,49 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #53 · `pending` — Write up the persona cards for the person running the site
+### #54 · `pending` — Knowledgebase: a private library the bots can read
+
+PDFs on the attached volume become passages a persona can quote with the page
+number. It plugs into a socket that already existed: buildSystemPrompt has had
+a Grounding section since Phase 5 and /api/chat one retrieval hook, both
+pointing at remote REST APIs. searchLibrary returns the same KnowledgeChunk
+type, so the prompt builder needed no change — one dispatcher splits a
+persona's keys on a `lib:` prefix. One grounding field, not two.
+
+The plan opened with an experiment rather than code, and it found two bugs no
+synthetic test could. `-layout` really does interleave columns: a two-column
+page comes out as half-sentences from two unrelated columns on one line, on
+every journal PDF. And poppler emits U+2010 HYPHEN, which NFKC does not fold —
+the de-hyphenation rule would have matched nothing at all on a real PDF while
+passing every synthetic test.
+
+Property tests caught two more. The running-head stripper deleted body text
+where many pages ended on the same sentence (a running head is short; a
+sentence is not), surfaced by the reassembly property. And back matter was split
+by page, so the closing paragraphs of a book were tagged as references and
+dropped from retrieval — a bibliography does not start on a fresh sheet.
+
+Retrieval is hybrid with the usual trap avoided: websearch_to_tsquery ANDs every
+term, so a conversational question matches zero rows and fusion silently
+degenerates to pure vector while every test passes. The keyword leg ORs the
+question's own lexemes, built inside Postgres. No ANN index deliberately —
+pgvector 0.6.0 filters after the approximate scan, so a shelf-restricted query
+can return nothing; iterative scans arrived in 0.8.0. The relevance floor of
+0.25 is measured, not guessed: on topic 0.43–0.74, related 0.28, nonsense below
+0.15.
+
+Nothing is embedded automatically — scanning discovers, processing is a button,
+because it spends money and sends text out of the building. The panel is built
+for someone who has not done this before: four stages named in plain language,
+the actual passages listed, and a test-question box showing exactly what a bot
+would be handed.
+
+Indexing 500 books costs about $1.60 once. A grounded reply costs roughly double
+a plain one and that lands on the customer's balance — flagged in the doc.
+
+📄 `48-knowledgebase.md` · 📕 `handbook/knowledgebase.md` · 🗄 `0034_library`, `0035_embedding_modality`, `0036_embedding_model_seed`
+
+### #53 · `d51f98e` — Write up the persona cards for the person running the site
 
 The engineering doc explains why a persona is never a face; the handbook has to
 explain what to do about it. New page under Personas covering the generated

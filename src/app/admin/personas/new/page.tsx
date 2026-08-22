@@ -3,7 +3,7 @@ import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories } from '@/db/schema';
 import { getProviderRegistry } from '@/lib/ai/registry';
-import { getActiveKnowledgeSources } from '@/lib/knowledge/registry';
+import { groundingOptions } from '@/lib/knowledge/grounding';
 import { PersonaForm } from '@/components/admin/persona-form';
 
 /**
@@ -17,7 +17,7 @@ export default async function NewPersonaPage() {
   const [categoryRows, providers, knowledgeSourceRows] = await Promise.all([
     db.select().from(categories).orderBy(asc(categories.position)),
     getProviderRegistry(),
-    getActiveKnowledgeSources(),
+    groundingOptions(),
   ]);
 
   return (
@@ -25,7 +25,7 @@ export default async function NewPersonaPage() {
       categories={categoryRows}
       selectedCategoryIds={[]}
       providers={providers}
-      knowledgeSources={knowledgeSourceRows.map((s) => ({ key: s.key, label: s.label }))}
+      knowledgeSources={knowledgeSourceRows}
     />
   );
 }

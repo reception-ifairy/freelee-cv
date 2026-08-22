@@ -488,6 +488,33 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [{ label: 'Taxonomy', href: '/admin/taxonomy', group: 'admin', order: 11 }],
   },
+  {
+    key: 'knowledgebase',
+    name: 'Knowledgebase',
+    version: '1.0.0',
+    description:
+      'A private document library the personas read from — PDFs on the attached volume become ' +
+      'passages, passages become vectors in pgvector, and a persona granted a shelf quotes from ' +
+      'them with the page number. Hybrid retrieval (exact cosine + tsvector, fused by reciprocal ' +
+      'rank) behind a measured relevance floor, so a question the library cannot answer returns ' +
+      'nothing rather than the nearest thing in the room. Nothing is embedded automatically: ' +
+      'scanning discovers, processing is a button. The admin section is built to make embedding ' +
+      'legible to a non-expert — a named pipeline, the actual passages, and a test-question box. ' +
+      'See docs/48-knowledgebase.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['ai-model-registry', 'job-queue', 'knowledge-sources'] },
+    provides: {
+      capabilities: [
+        'knowledgebase.ingest',
+        'knowledgebase.collections',
+        'knowledgebase.hybrid_search',
+        'knowledgebase.grounding',
+      ],
+    },
+    permissions: [],
+    navigation: [{ label: 'Knowledgebase', href: '/admin/knowledgebase', group: 'admin', order: 14 }],
+  },
   groupChat,
   crews,
 ];

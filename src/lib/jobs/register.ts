@@ -1,6 +1,7 @@
 import 'server-only';
 import { registerHandler, startWorker } from './worker';
 import { runCrewRunJob } from '@/modules/crews/job';
+import { runLibrarySweepJob, SWEEP_KIND } from '@/lib/library/job';
 
 /**
  * Wires every job kind to its handler, then starts the loop.
@@ -11,5 +12,6 @@ import { runCrewRunJob } from '@/modules/crews/job';
  */
 export function startJobs() {
   registerHandler('crew.run', runCrewRunJob);
+  registerHandler(SWEEP_KIND, runLibrarySweepJob);
   startWorker();
 }

@@ -8,7 +8,7 @@ import { isAssistantPersona, DEFAULT_ASSISTANT_GUEST_MESSAGES } from '@/lib/assi
 import { checkRateLimit, callerIp } from '@/lib/rate-limit';
 import { assertChatAccess } from '@/server/actions/chat';
 import { getModel, resolveProviderId, resolveProviderKeys, resolveTierModel, providerIsConfigured, getProviderRegistry } from '@/lib/ai/registry';
-import { searchMany } from '@/lib/knowledge/registry';
+import { searchGrounding } from '@/lib/knowledge/grounding';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { narrativePromptFragment } from '@/lib/chat/layouts';
 import { findTool } from '@/lib/tools/registry';
@@ -215,8 +215,10 @@ export async function POST(request: Request) {
 
   // Only fetched for personas that opted into a knowledge source — never
   // blocks or breaks a turn if the source is unavailable (see searchMany).
+  // `searchGrounding` fans the keys out: bare keys are remote REST sources,
+  // `lib:` keys are shelves of the local Knowledgebase (docs/48).
   const groundingChunks = version?.groundingSources.length
-    ? await searchMany(version.groundingSources, userText)
+    ? await searchGrounding(version.groundingSources, userText)
     : [];
 
   // The narrative layouts (story / screenplay / gamebook) change the *output*,

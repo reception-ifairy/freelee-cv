@@ -46,10 +46,13 @@ async function fetchJson(url: string, headers: Record<string, string>): Promise<
 }
 
 /** OpenAI's `/v1/models` has no capability flag — id prefixes are the only signal, so this is a heuristic, not authoritative. */
-function classifyOpenAiModel(id: string): 'text' | 'image' | null {
+function classifyOpenAiModel(id: string): 'text' | 'image' | 'embedding' | null {
   if (/^(gpt-image|dall-e)/.test(id)) return 'image';
+  // Kept out until the Knowledgebase existed, since nothing could consume one.
+  // Now they are the thing that indexes the library (docs/48).
+  if (/^text-embedding-/.test(id)) return 'embedding';
   if (/^(gpt-|o1-|o3-|o4-|chatgpt-)/.test(id)) return 'text';
-  return null; // embeddings/whisper/tts/moderation/etc — not a chat or image model, excluded
+  return null; // whisper/tts/moderation/etc — still not a model this platform runs
 }
 
 /**

@@ -109,7 +109,8 @@ type Props = {
   selectedCategoryIds: number[];
   providers: ProviderRegistry;
   /** Active rows from `knowledge_sources` (docs/18-knowledge-sources.md) — admin-managed, no longer a hardcoded list. */
-  knowledgeSources: { key: string; label: string }[];
+  /** Local Knowledgebase shelves (`lib:` keys) and remote sources, in one list — see src/lib/knowledge/grounding.ts. */
+  knowledgeSources: { key: string; label: string; hint?: string }[];
   /** What `suggestLayoutForPersona()` would pick — shown so the auto-default is visible, not hidden magic. */
   suggestedLayout?: ChatLayoutKey;
   /** Tool keys suggested by this persona's categories — pre-ticked on a new persona. */
@@ -611,7 +612,8 @@ export function PersonaForm({
               <Label>Grounding sources</Label>
               {knowledgeSources.length === 0 ? (
                 <Hint>
-                  None configured yet — add one under Admin → Knowledge sources.
+                  Nothing to draw on yet — add books under Admin → Knowledgebase, or a remote
+                  source under Admin → Knowledge sources.
                 </Hint>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -625,14 +627,19 @@ export function PersonaForm({
                         value={source.key}
                         defaultChecked={version?.groundingSources.includes(source.key) ?? false}
                       />
-                      <span className="text-sm">{source.label}</span>
+                      <span className="min-w-0 text-sm">
+                        {source.label}
+                        {source.hint ? (
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">{source.hint}</span>
+                        ) : null}
+                      </span>
                     </label>
                   ))}
                 </div>
               )}
               <Hint>
-                Fetched before every reply and cited in the system prompt. A source outage never blocks the
-                turn.
+                Searched before every reply and cited in the answer. A shelf is your own library; a remote
+                source is someone else's API. Either being unavailable never blocks the turn.
               </Hint>
             </div>
 

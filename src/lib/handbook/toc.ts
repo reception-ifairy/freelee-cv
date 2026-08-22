@@ -81,7 +81,8 @@ export const HANDBOOK: HandbookPart[] = [
     title: 'Platform',
     pages: [
       { slug: 'ai-models', title: 'AI models', summary: 'Connecting providers and choosing which models you offer.' },
-      { slug: 'knowledge-sources', title: 'Knowledge sources', summary: 'Letting a persona cite from your own documents.' },
+      { slug: 'knowledgebase', title: 'Knowledgebase', summary: 'Your bots\' own library — putting books in, processing them, and seeing exactly what they read.' },
+      { slug: 'knowledge-sources', title: 'Knowledge sources', summary: 'Letting a persona cite from an external search API.' },
       { slug: 'settings', title: 'Settings', summary: 'The options that apply to the whole site.' },
     ],
   },

@@ -4,11 +4,11 @@ import { cache } from 'react';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import type { LanguageModel } from 'ai';
+import type { LanguageModel, EmbeddingModel } from 'ai';
 import { db } from '@/db';
 import { aiProviders, aiModels } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
-import { isChatProvider, isProviderId, isModelTier } from './provider-ids';
+import { isChatProvider, isProviderId, isModelTier, CHAT_PROVIDER_IDS } from './provider-ids';
 import type { ProviderId, ModelTier } from './provider-ids';
 
 /**
@@ -39,7 +39,12 @@ export type ModelInfo = {
   label: string;
   /** Credits charged per 1,000 tokens. */
   creditsPer1k: number;
-  modality: 'text' | 'image';
+  /**
+   * 'embedding' joined 'text' and 'image' for the Knowledgebase (docs/48).
+   * Both model pickers filter on `modality === 'text'`, so an embedding row
+   * cannot appear where a chat model is chosen.
+   */
+  modality: 'text' | 'image' | 'embedding';
 };
 
 export type ProviderConfig = {
@@ -199,6 +204,64 @@ export function getModel(
       ? { organization: keys.organization, project: keys.project }
       : {}),
   })(modelId);
+}
+
+/**
+ * The model the Knowledgebase embeds with.
+ *
+ * Resolved from the registry rather than a constant, because the platform's
+ * rule is that **models are DB rows and providers are code** — switching to a
+ * different embedding model should be a row edit, not a deploy. The setting
+ * `library_embedding_model` overrides the first stable embedding row when
+ * there is more than one.
+ *
+ * Returns null rather than throwing: a server with no embedding model
+ * configured should show "not configured yet" in the panel, not 500.
+ */
+export function findEmbeddingModel(
+  registry: ProviderRegistry,
+  preferredModelId?: string | null,
+): { providerId: ProviderId; modelId: string } | null {
+  for (const providerId of CHAT_PROVIDER_IDS) {
+    const models = registry[providerId]?.models ?? [];
+    for (const model of models) {
+      if (model.modality !== 'embedding') continue;
+      if (preferredModelId && model.id !== preferredModelId) continue;
+      return { providerId, modelId: model.id };
+    }
+  }
+  // A preference that no longer exists must not silently disable embedding.
+  return preferredModelId ? findEmbeddingModel(registry, null) : null;
+}
+
+/**
+ * An embedding-model handle, built the same way `getModel` builds a chat one.
+ *
+ * Separate function rather than a branch inside `getModel` because the return
+ * types are genuinely different — `LanguageModel` and `EmbeddingModel` are not
+ * interchangeable, and a single function returning a union would push the
+ * discrimination onto every caller.
+ */
+export function getEmbeddingModel(
+  registry: ProviderRegistry,
+  providerId: ProviderId,
+  modelId: string,
+  keys: ResolvedKeys = {},
+): EmbeddingModel {
+  const config = registry[providerId];
+  const apiKey = keys.apiKey ?? process.env[config?.apiKeyEnv ?? ''];
+  const baseURL =
+    keys.baseUrl ?? (config?.baseUrlEnv ? process.env[config.baseUrlEnv] : undefined) ?? config?.fallbackBaseUrl;
+
+  // OpenAI and every OpenAI-compatible endpoint (Ollama included) share one
+  // factory here, exactly as they do for chat. Anthropic has no embedding API
+  // at all, and Google's would need its own factory — neither is offered
+  // rather than pretending otherwise.
+  return createOpenAI({
+    apiKey: apiKey ?? 'not-set',
+    baseURL,
+    ...(providerId === 'openai' ? { organization: keys.organization, project: keys.project } : {}),
+  }).textEmbeddingModel(modelId);
 }
 
 export function creditsPer1k(registry: ProviderRegistry, providerId: ProviderId, modelId: string): number {
