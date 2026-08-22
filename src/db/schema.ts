@@ -751,6 +751,45 @@ export const personaVersions = pgTable(
   ],
 );
 
+/**
+ * Which audiences a field serves.
+ *
+ * The 70-segment catalogue in src/lib/persona/audience-segments.ts carries
+ * `keyNeeds`, `preferredTone`, `riskSensitivity` and UK context for each one,
+ * and until this table existed **no entity pointed at a segment** — the same
+ * structural gap sectors had before 0033, with the same consequence: rich data
+ * that could not reach anything.
+ *
+ * `segmentCode` has no foreign key on purpose. The catalogue is a TypeScript
+ * file rather than a table, so codes are validated in the server action with
+ * `isAudienceSegmentCode` — exactly the shape `personaVersions.audienceSegments`
+ * already uses. A table would mean two sources of truth for the same 70 rows,
+ * and the payload lives in the TypeScript one.
+ */
+export const categoryAudienceSegments = pgTable(
+  'category_audience_segments',
+  {
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    segmentCode: text('segment_code').notNull(),
+    /**
+     * Why this audience matters to this field, in the operator's own words.
+     * Compiled into the brief a persona is designed against, so it is content
+     * rather than an annotation.
+     */
+    note: text('note'),
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.categoryId, t.segmentCode] }),
+    index('category_audience_segments_code_idx').on(t.segmentCode),
+  ],
+);
+
+export type CategoryAudienceSegmentRow = typeof categoryAudienceSegments.$inferSelect;
+
 export const personaCategories = pgTable(
   'persona_categories',
   {

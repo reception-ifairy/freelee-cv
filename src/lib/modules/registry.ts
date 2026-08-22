@@ -518,6 +518,37 @@ export const MODULES: ModuleManifest[] = [
       { label: 'Shelves', href: '/admin/knowledgebase/collections', group: 'admin', order: 15 },
     ],
   },
+  {
+    key: 'taxonomy-workbench',
+    name: 'Taxonomy workbench',
+    version: '1.0.0',
+    description:
+      'Turns the 20-category UK taxonomy from a filing cabinet into a brief — market, regulation, ' +
+      'risk level, specialisms and audiences, assembled once by categoryBrief() and read both by ' +
+      'the category page and by the design conversation that sits on it. Adds the missing ' +
+      'category→audience edge, so the 70-segment catalogue reaches a system prompt for the first ' +
+      'time, and a playground workbench that produces draft personas already filed, shelved and ' +
+      'safeguarded. Also puts the taxonomy itself into version control, which it had never been. ' +
+      'See docs/49-taxonomy-workbench.md.',
+    type: 'core',
+    isCore: true,
+    requires: { modules: ['persona-versioning', 'group-chat', 'chat-layouts'] },
+    provides: {
+      capabilities: [
+        'taxonomy.brief',
+        'taxonomy.audiences',
+        'taxonomy.workbench',
+        'taxonomy.prototypes',
+        'personas.audience_prompt',
+      ],
+    },
+    permissions: [],
+    navigation: [
+      { label: 'Categories', href: '/admin/taxonomy', group: 'admin', order: 11 },
+      { label: 'Prototypes', href: '/admin/taxonomy/prototypes', group: 'admin', order: 12 },
+      { label: 'Audiences', href: '/admin/taxonomy/audiences', group: 'admin', order: 13 },
+    ],
+  },
   groupChat,
   crews,
 ];

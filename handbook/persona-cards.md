@@ -51,7 +51,7 @@ A category is the field — *Marketing and advertising*, *Legal*, *Health*. A se
 inside it — *Search engine optimisation*, *Contract review*. Each sector carries scores for how well
 AI suits that kind of work, which is worth reading before you build a persona for it.
 
-Set both on the persona's Basics tab. A persona with no sector still gets a mark; it just has one
+Set the category and the specialism on the persona's Basics tab. A persona with no sector still gets a mark; it just has one
 fewer thing making it distinctive.
 
 > **One thing not to do.** Renaming a category is safe. Its **address** (`/personas?category=legal`)

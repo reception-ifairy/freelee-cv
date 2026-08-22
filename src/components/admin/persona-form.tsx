@@ -106,6 +106,13 @@ type Props = {
   /** Past published versions, newest first — for the revert list. Empty for a new persona. */
   versionHistory?: PersonaVersion[];
   categories: Category[];
+  /**
+   * Specialisms, grouped by category. Added because `personas.sector_id` had no
+   * writer anywhere in the UI — the column that gives a persona card its third
+   * visual axis could only be set in SQL, while the handbook told you to set it
+   * on this very form.
+   */
+  sectors?: { id: number; name: string; categoryName: string }[];
   selectedCategoryIds: number[];
   providers: ProviderRegistry;
   /** Active rows from `knowledge_sources` (docs/18-knowledge-sources.md) — admin-managed, no longer a hardcoded list. */
@@ -118,7 +125,7 @@ type Props = {
 };
 
 export function PersonaForm({
-  persona, version, versionHistory = [], categories, selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [],
+  persona, version, versionHistory = [], categories, sectors = [], selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [],
 }: Props) {
   const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
@@ -809,6 +816,22 @@ export function PersonaForm({
           </div>
 
           <div className={cn('space-y-5', tab !== 'publishing' && 'hidden')}>
+            <div>
+              <Label htmlFor="sectorId">Specialism</Label>
+              <Select id="sectorId" name="sectorId" defaultValue={persona?.sectorId ? String(persona.sectorId) : ''}>
+                <option value="">No specialism</option>
+                {sectors.map((sector) => (
+                  <option key={sector.id} value={sector.id}>
+                    {sector.categoryName} — {sector.name}
+                  </option>
+                ))}
+              </Select>
+              <Hint>
+                One level below the category. It sets the density of this persona&rsquo;s mark, so two
+                specialists in the same sector look like relatives.
+              </Hint>
+            </div>
+
             <div>
               <Label>Categories</Label>
               <div className="grid max-h-64 gap-2 overflow-y-auto rounded-xl border border-slate-200 p-3 sm:grid-cols-2 dark:border-slate-700">

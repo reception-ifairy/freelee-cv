@@ -243,7 +243,6 @@ export async function POST(request: Request) {
             approachToUnknown: chat.approachToUnknown ?? version.approachToUnknown,
           },
           selectedModifiers,
-          undefined,
           groundingChunks,
         ) + narrativePromptFragment(layoutKey)
       : undefined;

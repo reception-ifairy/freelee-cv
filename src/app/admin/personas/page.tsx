@@ -96,7 +96,20 @@ export default async function AdminPersonasPage({
   if (status === 'premium') conditions.push(eq(personas.isPremium, true));
 
   if (params.filters.provider) conditions.push(eq(personas.aiProvider, params.filters.provider));
-  if (params.filters.audience) conditions.push(sql`${personas.audienceType}::text = ${params.filters.audience}`);
+  /*
+   * Filtered on the **version**, not on `personas.audience_type`.
+   *
+   * That column has not been written since Phase 4 moved audience onto
+   * `persona_versions` — so this filter matched nothing for every persona
+   * created or edited since, and silently returned an empty list rather than
+   * erroring. The public catalogue has always filtered the right column.
+   */
+  if (params.filters.audience) {
+    conditions.push(sql`exists (
+      select 1 from persona_versions pv
+      where pv.id = ${personas.currentVersionId} and pv.audience_type::text = ${params.filters.audience}
+    )`);
+  }
 
   if (params.filters.category) {
     // EXISTS rather than a join: a persona in three categories must appear

@@ -2,7 +2,7 @@ import {
   LayoutGrid, Sparkles, Tags, Layers, SlidersHorizontal, Package, Receipt, Users,
   PenLine, FileText, Menu as MenuIcon, Settings, Palette, BookOpen, Cpu,
   RefreshCw, Clock, Store, Languages, Search, LayoutTemplate, LifeBuoy, Images, Inbox,
-  FolderKanban, Bot, MessagesSquare, Library, LibraryBig,
+  FolderKanban, Bot, MessagesSquare, Library, LibraryBig, FlaskConical, Users2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -38,6 +38,10 @@ export const TONE_CLASSES = {
   emerald: { idle: 'text-emerald-400/70', active: 'text-emerald-400', rail: 'bg-emerald-400' },
   amber: { idle: 'text-amber-400/70', active: 'text-amber-400', rail: 'bg-amber-400' },
   cyan: { idle: 'text-cyan-400/70', active: 'text-cyan-400', rail: 'bg-cyan-400' },
+  // Taxonomy. Lime is what is left that reads as a different colour at 16px
+  // from the violet above it and the rose below it — indigo and teal both sit
+  // close enough to violet and cyan to be a coin flip at icon size.
+  lime: { idle: 'text-lime-400/70', active: 'text-lime-400', rail: 'bg-lime-400' },
   // Knowledge. Rose rather than another blue-green: the six tones above already
   // occupy that half of the wheel, and at 16px an indigo or a teal is
   // indistinguishable from the violet and cyan either side of it. Tone here is
@@ -75,10 +79,22 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'violet',
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
-      // One entry, not two. Sectors only mean something inside a category,
-      // and while nothing read them a separate tab could only be filled in.
-      { href: '/admin/taxonomy', label: 'Taxonomy', icon: Tags },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
+    ],
+  },
+  {
+    // Its own section rather than one entry inside AI, because this stopped
+    // being a filing cabinet. A category carries the market, the regulations,
+    // the risk level and the audiences of a whole field — the brief a
+    // specialist gets designed against — and designing them is work that
+    // happens here. Sits directly after AI and before Knowledge: what a bot
+    // is, then what it is for, then what it reads.
+    heading: 'Taxonomy',
+    tone: 'lime',
+    items: [
+      { href: '/admin/taxonomy', label: 'Categories', icon: Tags },
+      { href: '/admin/taxonomy/prototypes', label: 'Prototypes', icon: FlaskConical },
+      { href: '/admin/taxonomy/audiences', label: 'Audiences', icon: Users2 },
     ],
   },
   {
@@ -177,6 +193,8 @@ export function isNavItemActive(item: AdminNavItem, pathname: string): boolean {
  * children live *under* the parent and one of them has its own nav entry.
  */
 export function isNavItemCurrent(item: AdminNavItem, pathname: string): boolean {
+  const adopted = adoptedHref(pathname);
+  if (adopted) return item.href === adopted;
   if (!isNavItemActive(item, pathname)) return false;
   return findActiveNavItem(pathname)?.item.href === item.href;
 }
@@ -201,3 +219,22 @@ export const ADMIN_NAV_ALIASES: Record<string, string> = {
   '/admin/categories': 'Categories',
   '/admin/sectors': 'Sectors',
 };
+
+/**
+ * Routes that belong to a nav item without living under its href.
+ *
+ * `/admin/categories/29` is a category editor and should light up *Categories*,
+ * but it shares no prefix with `/admin/taxonomy` — so until now, editing a
+ * category or a sector highlighted nothing at all and the sidebar simply went
+ * blank on you. Prefix matching cannot express "this route belongs over there";
+ * this can.
+ */
+const NAV_ADOPTIONS: { prefix: string; href: string }[] = [
+  { prefix: '/admin/categories', href: '/admin/taxonomy' },
+  { prefix: '/admin/sectors', href: '/admin/taxonomy' },
+  { prefix: '/admin/ai-models', href: '/admin/settings' },
+];
+
+export function adoptedHref(pathname: string): string | null {
+  return NAV_ADOPTIONS.find((a) => pathname === a.prefix || pathname.startsWith(`${a.prefix}/`))?.href ?? null;
+}

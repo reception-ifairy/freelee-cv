@@ -24,6 +24,10 @@ export type ChatCapabilities = {
 };
 
 export type ChatWindowProps = {
+  /** Where to POST. Defaults to the customer chat route. */
+  apiPath?: string;
+  /** Extra fields merged into every request body — the workbench sends its category. */
+  apiBody?: Record<string, unknown>;
   chatId: string;
   initialMessages: UIMessage[];
   suggestions: string[];
@@ -63,6 +67,8 @@ export function ChatWindow({
   capabilities = {},
   locale = 'en-GB',
   serverTranscription = false,
+  apiPath = '/api/chat',
+  apiBody,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('');
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -73,7 +79,15 @@ export function ChatWindow({
   const { messages, setMessages, sendMessage, status, error, stop } = useChat({
     id: chatId,
     messages: initialMessages,
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    /*
+     * The endpoint is a prop because the same window now serves two of them:
+     * `/api/chat` for customers, and `/api/admin/workbench` for designing a bot
+     * against a category brief. Those routes differ in the things that cannot be
+     * a flag — one bills a wallet and authorises by chat ownership, the other
+     * charges nothing and authorises by `requireAdmin` — so they stay separate
+     * routes, and only the transport moves.
+     */
+    transport: new DefaultChatTransport({ api: apiPath, body: apiBody }),
   });
 
   const busy = status === 'submitted' || status === 'streaming';

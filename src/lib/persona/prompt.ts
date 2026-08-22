@@ -2,6 +2,7 @@ import type { Persona, PersonaVersion, PersonaBlueprint, PromptModifier } from '
 import { PERSONALITY_TRAITS, type PersonalityTrait } from '@/db/schema';
 import type { KnowledgeChunk } from '@/lib/knowledge/types';
 import { GUARDRAILS, isGuardrailCode } from '@/lib/persona/guardrails';
+import { AUDIENCE_SEGMENTS, isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 
 /**
  * The grounding budget.
@@ -176,11 +177,10 @@ export function buildSystemPrompt(
   persona: Pick<Persona, 'name' | 'expertise'> &
     Pick<
       PersonaVersion,
-      | 'systemPrompt' | 'personality' | 'knowledgeDomains' | 'audienceType'
+      | 'systemPrompt' | 'personality' | 'knowledgeDomains' | 'audienceType' | 'audienceSegments'
       | 'blueprint' | 'interactionStyle' | 'approachToUnknown' | 'promptTechnique' | 'guardrails'
     >,
   modifiers: Pick<PromptModifier, 'type' | 'value'>[] = [],
-  levelOverride?: AudienceTypeId | null,
   groundingChunks: KnowledgeChunk[] = [],
 ): string {
   const sections: string[] = [persona.systemPrompt.trim()];
@@ -210,14 +210,59 @@ export function buildSystemPrompt(
     sections.push(`## Personality\nExpress these traits consistently in every reply:\n${lines.join('\n')}`);
   }
 
-  const audience = levelOverride ?? persona.audienceType;
+  /*
+   * The audience, from what is actually known about it.
+   *
+   * This section used to be three static sentences — one of three possible
+   * strings, chosen by an enum. Meanwhile `audienceSegments` carried codes into
+   * a 70-entry catalogue holding each group's key needs, preferred tone, UK
+   * context, age range and how badly a wrong answer lands, and **none of it was
+   * ever read**: the whole payload existed in source and reached no model. The
+   * catalogue's own header said as much ("nothing here is wired into live
+   * behavior yet"), and that is what this fixes.
+   *
+   * Capped at four segments. A persona tagged with a dozen is describing
+   * everybody, and pouring all twelve into every turn would cost real money for
+   * a description that had stopped saying anything.
+   */
+  const audience = persona.audienceType;
+  const segments = (persona.audienceSegments ?? [])
+    .filter(isAudienceSegmentCode)
+    .map((code) => AUDIENCE_SEGMENTS[code])
+    .slice(0, 4);
+
   if (audience && audience in AUDIENCE_TYPES) {
     const meta = AUDIENCE_TYPES[audience as AudienceTypeId];
-    sections.push(
-      `## Audience\nThis persona is optimised for the **${meta.label}** audience. ` +
-        `${meta.description}. ` +
-        'Match your tone, examples and depth to this audience in every reply.',
-    );
+    const lines = [
+      `This persona is written for the **${meta.label}** audience — ${meta.description}.`,
+    ];
+
+    if (segments.length > 0) {
+      lines.push('', 'Specifically, these people:');
+      for (const segment of segments) {
+        const context: string[] = [];
+        if (segment.ageRangeMin && segment.ageRangeMax) {
+          context.push(`aged ${segment.ageRangeMin}–${segment.ageRangeMax}`);
+        }
+        if (segment.ukContext) context.push(segment.ukContext);
+        const needs = segment.keyNeeds.slice(0, 5).map((n) => n.replace(/_/g, ' ')).join(', ');
+        const tone = segment.preferredTone?.length
+          ? ` They respond to a ${segment.preferredTone.join(', ')} voice.`
+          : '';
+        lines.push(
+          `- **${segment.name}**${context.length ? ` (${context.join(', ')})` : ''} — they need ${needs}.` +
+            ` Getting it wrong matters to them: ${segment.riskSensitivity.replace(/_/g, ' ')}.${tone}`,
+        );
+      }
+      lines.push(
+        '',
+        'Match your depth, examples and tone to them specifically, not to a general reader.',
+      );
+    } else {
+      lines.push('Match your tone, examples and depth to this audience in every reply.');
+    }
+
+    sections.push(`## Audience\n${lines.join('\n')}`);
   }
 
   if (persona.guardrails.length > 0) {

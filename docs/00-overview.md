@@ -139,4 +139,5 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Job queue** (durable Postgres-backed jobs so crew runs stop blocking the request, with crash recovery and real cancellation) — `46-job-queue.md`
 - **Persona cards** (a generated mark instead of a face, a flip card, cross-container drag-to-assign, and the categories/sectors merge that finally made sectors mean something) — `47-persona-cards.md`
 - **Knowledgebase** (a private PDF library the personas read from — poppler extraction, passages, pgvector, hybrid retrieval with a measured relevance floor, and a panel that shows a non-expert exactly what embedding did) — `48-knowledgebase.md`
+- **Taxonomy workbench** (the 20 fields turned into briefs a bot is designed against — audiences finally linked and compiled into the prompt, a design conversation per category, and the taxonomy itself rescued into git) — `49-taxonomy-workbench.md`
 - **Handbook** (plain-language user guide for the admin panel, GitBook-style, at `/admin/handbook`) — see `handbook/` and `src/lib/handbook/toc.ts`

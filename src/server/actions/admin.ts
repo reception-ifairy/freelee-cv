@@ -30,6 +30,7 @@ const commaList = (value: string | undefined) =>
 /* ------------------------------- Personas ------------------------------- */
 
 const personaSchema = z.object({
+  sectorId: z.string().trim().optional(),
   id: z.coerce.number().int().optional(),
   name: z.string().trim().min(2).max(120),
   slug: z.string().trim().max(120).optional(),
@@ -130,6 +131,14 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     isActive: checkbox(formData, 'isActive'),
     position: data.position,
     pinVersioning: checkbox(formData, 'pinVersioning'),
+    /*
+     * The specialism. Added by 0033 and, until now, **with no writer at all** —
+     * this form contained the string "sector" nowhere, so the column that
+     * "makes the card's third axis real" could only be set by hand in SQL,
+     * while two handbook pages told you to set it here. '' means unfiled,
+     * which is a normal state and distinct from a sector that was deleted.
+     */
+    sectorId: data.sectorId ? Number(data.sectorId) : null,
     updatedAt: new Date(),
   };
 
@@ -488,7 +497,6 @@ export async function saveSectorAction(_prev: ActionState, formData: FormData): 
   const values = {
     categoryId: data.categoryId,
     name: data.name,
-    slug: data.slug?.trim() || slugify(data.name),
     description: data.description ?? null,
     b2cSuitability: data.b2cSuitability,
     b2bSuitability: data.b2bSuitability,
@@ -499,8 +507,25 @@ export async function saveSectorAction(_prev: ActionState, formData: FormData): 
     isActive: checkbox(formData, 'isActive'),
   };
 
-  if (data.id) await db.update(sectors).set(values).where(eq(sectors.id, data.id));
-  else await db.insert(sectors).values(values);
+  if (data.id) {
+    /*
+     * The slug is written only when the field carries one, never re-derived
+     * from the name.
+     *
+     * A sector slug feeds the persona mark's grid size and density
+     * (src/lib/persona/mark.ts), so regenerating it on save silently re-rolls
+     * the visual identity of every persona in that sector. Category slugs were
+     * frozen for exactly this reason (docs/47); sectors were missed then, and
+     * blanking the field was enough to trigger it.
+     */
+    const explicit = data.slug?.trim();
+    await db
+      .update(sectors)
+      .set(explicit ? { ...values, slug: explicit } : values)
+      .where(eq(sectors.id, data.id));
+  } else {
+    await db.insert(sectors).values({ ...values, slug: data.slug?.trim() || slugify(data.name) });
+  }
 
   revalidatePath('/admin/taxonomy');
   redirect('/admin/taxonomy');

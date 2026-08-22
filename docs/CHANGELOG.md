@@ -34,7 +34,48 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #56 · `pending` — Knowledge becomes its own admin section, and grounding costs half
+### #57 · `pending` — Taxonomy becomes a brief, and a workbench for designing bots
+
+Twenty fields and 103 specialisms were researched properly and then read by
+nothing: hand-scored B2C/B2B/B2G suitability with not one row left at the 50
+default, UK market size, growth, regulations, industry bodies, risk levels, and
+a 70-segment audience catalogue carrying key needs, preferred tone and age
+ranges. The whole audience contribution to a system prompt was three static
+sentences. Guardrails were the one piece of it that reached a model.
+
+categoryBrief() assembles all of it once — split three ways so the prose
+rendering can be property-tested without a database, which is where the edge
+cases live. All 20 categories produce a valid brief; the largest is 652 tokens.
+
+category_audience_segments is the missing edge, seeded with the 26 obvious
+matches (twelve B2B segments name an industry outright). The prompt's Audience
+section now compiles real segment data: +139 tokens for two segments, and the
+difference between "optimised for the B2C audience" and knowing the readers are
+3-5, need play-based learning, and want a playful, gentle voice.
+
+The workbench is a conversation with the brief already in front of it, stored as
+a `playground` conversation — an enum value reserved since group-chat shipped and
+never written. Not a chats row: those are customer property. Its output is a
+draft persona already filed under the category, with its sector, audience and
+mandatory safeguards set.
+
+Most importantly the taxonomy is now in git. 0003 was pure DDL with zero inserts
+and the curated dump was nowhere in the repo, so a fresh install produced 20
+empty categories and no sectors. export-taxonomy.ts was verified by restoring
+into a scratch database and diffing all 123 rows — identical, and idempotent on
+a second run. That test also found a real ordering bug: the audience seed matched
+on category slug, so on an empty database it inserted nothing.
+
+Five bugs fixed on the way: personas.sectorId had no writer anywhere in the UI
+while two handbook pages said to set it on that form; the admin audience filter
+read a column nothing has written since Phase 4 and silently returned nothing;
+sector slugs regenerated when blanked, re-rolling the mark of every persona in
+them; editing a category highlighted nothing in the sidebar; and levelOverride
+was dead parameter surface in buildSystemPrompt.
+
+📄 `49-taxonomy-workbench.md` · 📕 `handbook/taxonomy.md` · 🗄 `0037_category_audiences`, `0038_taxonomy_seed`, `0039_category_audience_seed`
+
+### #56 · `dffc385` — Knowledge becomes its own admin section, and grounding costs half
 
 Knowledgebase was two entries inside AI; what the bots know deserves a section
 beside AI, Teamwork and Commerce. Library, Shelves and External sources, in rose.

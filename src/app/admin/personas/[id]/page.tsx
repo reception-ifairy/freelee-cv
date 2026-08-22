@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions } from '@/db/schema';
 import { getProviderRegistry } from '@/lib/ai/registry';
 import { groundingOptions } from '@/lib/knowledge/grounding';
+import { sectorOptions } from '@/lib/taxonomy/queries';
 import { PersonaForm } from '@/components/admin/persona-form';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { suggestedToolsFor } from '@/lib/tools/catalog';
@@ -21,7 +22,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
   const personaId = Number(id);
   if (!Number.isFinite(personaId)) notFound();
 
-  const [[persona], categoryRows, links, providers, knowledgeSourceRows] = await Promise.all([
+  const [[persona], categoryRows, links, providers, knowledgeSourceRows, sectorRows] = await Promise.all([
     db.select().from(personas).where(eq(personas.id, personaId)).limit(1),
     db.select().from(categories).orderBy(asc(categories.position)),
     db
@@ -30,6 +31,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .where(eq(personaCategories.personaId, personaId)),
     getProviderRegistry(),
     groundingOptions(),
+    sectorOptions(),
   ]);
 
   if (!persona) notFound();
@@ -72,6 +74,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       selectedCategoryIds={links.map((link) => link.categoryId)}
       providers={providers}
       knowledgeSources={knowledgeSourceRows}
+      sectors={sectorRows.map((s) => ({ id: s.id, name: s.name, categoryName: s.categoryName }))}
     />
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Layers, Pencil, Plus, Tags } from 'lucide-react';
+import { FlaskConical, Layers, Plus, Tags } from 'lucide-react';
 import { asc, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, sectors } from '@/db/schema';
@@ -64,7 +64,7 @@ export default async function AdminTaxonomyPage() {
     <div>
       <PageHeader
         title="Taxonomy"
-        description="Categories and the sectors inside them. A category shapes a persona's chat layout and suggested tools; a sector is its specialism."
+        description="Twenty fields, each carrying its market, its regulation, its risk level and the people it serves — the brief a specialist gets designed against. Open one to design a bot for it."
         actions={
           <Link
             href="/admin/categories/new"
@@ -104,7 +104,11 @@ export default async function AdminTaxonomyPage() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold">{category.name}</h2>
+                      <h2 className="font-semibold">
+                        <Link href={`/admin/taxonomy/${category.id}`} className="hover:underline">
+                          {category.name}
+                        </Link>
+                      </h2>
                       {!category.isActive ? <Badge tone="slate">Hidden</Badge> : null}
                       <Badge tone="slate">{own.length} sector{own.length === 1 ? '' : 's'}</Badge>
                       <Badge tone={category.personaCount > 0 ? 'brand' : 'slate'}>
@@ -121,11 +125,14 @@ export default async function AdminTaxonomyPage() {
                     <p className="mt-1 font-mono text-[11px] text-slate-500">/{category.slug}</p>
                   </div>
 
+                  {/* Open, not Edit. The field's data is the smaller half of
+                      what lives behind this link now — the brief, its audiences
+                      and the design workbench are the other half. */}
                   <Link
-                    href={`/admin/categories/${category.id}`}
+                    href={`/admin/taxonomy/${category.id}`}
                     className="inline-flex h-9 shrink-0 items-center gap-2 rounded-control border hairline px-3 text-xs font-semibold"
                   >
-                    <Pencil className="size-3.5" /> Edit
+                    <FlaskConical className="size-3.5" /> Open
                   </Link>
                 </div>
 
