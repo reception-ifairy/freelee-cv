@@ -34,7 +34,23 @@ Conventions used throughout:
 
 ## 2026-08-11
 
-### #54 · `pending` — Knowledgebase: a private library the bots can read
+### #55 · `pending` — Record the Postgres settings the Knowledgebase depends on
+
+Tuning applied with ALTER SYSTEM lives in postgresql.auto.conf, outside this
+repository — so docs/48 is the only trace. shared_buffers 128MB→8GB is the
+load-bearing change: roughly a gigabyte of vectors is scanned exactly on every
+search, and at the packaged size none of it stayed resident, so each query read
+from the volume. Also maintenance_work_mem→2GB (pgvector's README warns an HNSW
+build spills at about the size a 500-book library reaches), work_mem→32MB,
+random_page_cost→1.1 and parallel maintenance workers→4.
+
+The restart cost about seven seconds and touched every database on the host. All
+seven came back, and freelee.cv plus the other sites on this box were verified
+serving afterwards.
+
+📄 `48-knowledgebase.md`
+
+### #54 · `124d067` — Knowledgebase: a private library the bots can read
 
 PDFs on the attached volume become passages a persona can quote with the page
 number. It plugs into a socket that already existed: buildSystemPrompt has had

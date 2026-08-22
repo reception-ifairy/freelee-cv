@@ -174,11 +174,25 @@ Ingest has no billing home: `usage_events.team_id` is `NOT NULL` and a platform-
 team. Tokens are recorded on `library_documents.ingest_tokens` and summed for the panel instead of
 being forced into a table that does not fit them.
 
+## Server settings this depends on
+
+Applied 2026-08-22 with `ALTER SYSTEM` (so they live in `postgresql.auto.conf`, **outside this
+repository** — which is the only reason they are written down here):
+
+| | packaged | now | why |
+|---|---|---|---|
+| `shared_buffers` | 128 MB | **8 GB** | ~1 GB of vectors is scanned exactly on every search. At 128 MB none of it stays resident and each query reads from the volume |
+| `effective_cache_size` | 4 GB | **20 GB** | tells the planner what the OS is really caching |
+| `maintenance_work_mem` | 64 MB | **2 GB** | pgvector's README warns an HNSW build spills once the graph stops fitting, and its own example fires at 100,000 tuples — roughly a 500-book library |
+| `work_mem` | 4 MB | **32 MB** | sorting and hashing over passages |
+| `random_page_cost` | 4 | **1.1** | SSD, not spinning rust |
+| `max_parallel_maintenance_workers` | 2 | **4** | 0.6.0's headline feature is parallel HNSW builds |
+
+The restart cost about seven seconds and affects every database on the host, not only this one.
+`ALTER SYSTEM RESET ALL` plus a restart puts it back.
+
 ## Known gaps
 
-- **Postgres is untuned.** `shared_buffers` is 128 MB on a machine with 19 GB free, so vectors are
-  read from disk on every search rather than held in memory. Correct, just slower than it should be.
-  It needs a restart, so it is a separate decision.
 - **Grounding still lives in the system prompt**, which mutates it every turn and defeats provider
   prompt caching on the large stable persona prefix. Moving retrieved passages into a message after
   the cacheable prefix is probably the single largest saving available here.
