@@ -18,6 +18,8 @@
     "modules:sync": "tsx scripts/sync-modules.ts",
     "data:export": "tsx scripts/export-bundle.ts",
     "data:import": "tsx scripts/import-bundle.ts",
+    "personas:import-legacy": "DOTENV_CONFIG_PATH=.env.local tsx --conditions=react-server scripts/import-legacy-personas.ts",
+    "personas:verify-import": "tsx scripts/verify-legacy-persona-import.ts",
     "i18n:extract": "tsx scripts/extract-translations.ts",
     "i18n:translate": "tsx scripts/translate-bank.ts",
     "i18n:export": "tsx scripts/export-translations.ts",

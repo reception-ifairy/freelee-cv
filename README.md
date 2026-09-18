@@ -174,3 +174,18 @@ graph resolves before every build.
   files via `psql`, in order, never `db:push`/`db:migrate`.
 
 See `DEPLOY.md` for a gated, actually-verified deployment runbook.
+
+### Importing the legacy persona catalog
+
+The private `personattest.json` source is a MySQL dump despite its extension.
+Use the resumable importer rather than executing it or hand-copying rows:
+
+```bash
+npm run personas:verify-import
+npm run personas:import-legacy -- --prepare
+npm run personas:import-legacy -- --dry-run
+```
+
+Preparation never writes to production. The destructive apply is deliberately
+separate and gated; the backup, maintenance-window and recovery procedure is in
+[`docs/50-legacy-persona-import.md`](docs/50-legacy-persona-import.md).

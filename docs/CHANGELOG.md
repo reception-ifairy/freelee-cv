@@ -32,9 +32,32 @@ Conventions used throughout:
 
 ---
 
+## 2026-09-18
+
+### #58 · `pending` — Import the legacy character catalog without gambling the live database
+
+The supplied personattest.json was six MySQL INSERT blocks wearing a JSON file
+extension: 126 rows, repeated ids and four duplicate target characters. A
+strict parser now reads its literals without executing source SQL, proves the
+fixed source profile and produces 122 stable characters (87 active, 35 hidden).
+
+Preparation and mutation are deliberately separate. Gemini Flash converts the
+persona and chooses one category/sector in the same call, writing a private
+checkpoint after every character so a retry never repays completed work. The
+dry run validates all 122 outputs against the live 20-category/103-sector
+taxonomy and the exact audited cleanup baseline. Apply requires an explicit
+purge flag and wraps test cleanup, credit-cache repair, all inserts and final
+count/FK assertions in one transaction.
+
+The importer preserves accounts, teams, bonus grants, taxonomy, settings, CMS
+and the model registry. Source prompts, model output and backups stay outside
+the public repository; only the reusable importer and its runbook are tracked.
+
+📄 `50-legacy-persona-import.md`
+
 ## 2026-08-11
 
-### #57 · `pending` — Taxonomy becomes a brief, and a workbench for designing bots
+### #57 · `cc486a5` — Taxonomy becomes a brief, and a workbench for designing bots
 
 Twenty fields and 103 specialisms were researched properly and then read by
 nothing: hand-scored B2C/B2B/B2G suitability with not one row left at the 50

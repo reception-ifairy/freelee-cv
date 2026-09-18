@@ -257,6 +257,100 @@ export type ConversionResult =
   | { ok: true; persona: ConvertedPersona; provider: string; model: string }
   | { ok: false; error: string };
 
+export type PersonaTaxonomyOption = {
+  slug: string;
+  name: string;
+  description: string | null;
+  sectors: { slug: string; name: string; description: string | null }[];
+};
+
+export const legacyConvertedPersonaSchema = convertedPersonaSchema.extend({
+  categorySlug: z.string().trim().min(1).max(160),
+  sectorSlug: z.string().trim().min(1).max(160),
+  taxonomyConfidence: z.coerce.number().min(0).max(1),
+  taxonomyReason: z.string().trim().min(5).max(500),
+});
+
+export type LegacyConvertedPersona = z.infer<typeof legacyConvertedPersonaSchema>;
+
+export type LegacyConversionResult =
+  | { ok: true; persona: LegacyConvertedPersona; provider: string; model: string }
+  | { ok: false; error: string };
+
+/**
+ * The batch importer needs one paid model call per character, not a converter
+ * call followed by a classifier call.  It therefore extends the converter's
+ * exact schema with four taxonomy fields and gives the same architect the
+ * closed category/sector vocabulary in the same request.
+ */
+export async function convertLegacyCharacterToPersona(
+  source: string,
+  sourceName: string,
+  taxonomy: PersonaTaxonomyOption[],
+): Promise<LegacyConversionResult> {
+  const registry = await getProviderRegistry();
+  const providerId = 'google';
+  const modelId = 'gemini-flash-latest';
+  const provider = registry[providerId];
+  if (!provider?.models.some((model) => model.id === modelId)) {
+    return { ok: false, error: `${providerId}/${modelId} is not a stable configured text model.` };
+  }
+
+  const model = getModel(registry, providerId, modelId, await resolveProviderKeys(providerId));
+  const taxonomyCatalog = taxonomy.map((category) => ({
+    categorySlug: category.slug,
+    categoryName: category.name,
+    description: category.description,
+    sectors: category.sectors.map((sector) => ({
+      sectorSlug: sector.slug,
+      sectorName: sector.name,
+      description: sector.description,
+    })),
+  }));
+
+  const system = `${SYSTEM_PROMPT}
+
+LEGACY GLOBAL IMPORT EXTENSION:
+- Preserve the character's identity. The output name must be exactly ${JSON.stringify(sourceName)}.
+- In the same response, classify the character from its actual role, expertise and system prompt.
+- Choose exactly one categorySlug and exactly one sectorSlug from the catalog below.
+- The chosen sector MUST belong to the chosen category. Never invent a slug.
+- taxonomyConfidence is a number from 0 to 1. taxonomyReason is one concise sentence.
+- This extends the JSON shape shown above. Add these four top-level fields:
+  categorySlug, sectorSlug, taxonomyConfidence, taxonomyReason.
+
+TAXONOMY CATALOG:
+${JSON.stringify(taxonomyCatalog)}`;
+
+  let raw: string;
+  try {
+    const result = await generateText({
+      model,
+      system,
+      messages: [{ role: 'user', content: `Legacy character: ${sourceName}\n\n${source}` }],
+    });
+    raw = result.text;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: `${provider.label} refused the request: ${message}` };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(isolateJson(raw));
+  } catch {
+    return { ok: false, error: 'The model did not return valid JSON.' };
+  }
+
+  const validated = legacyConvertedPersonaSchema.safeParse(parsed);
+  if (!validated.success) {
+    const issue = validated.error.issues[0];
+    return { ok: false, error: `The converted persona was incomplete: ${issue?.path.join('.')} — ${issue?.message}.` };
+  }
+
+  return { ok: true, persona: validated.data, provider: provider.label, model: modelId };
+}
+
 /**
  * Runs the extraction against the platform's configured default chat model —
  * the same one the translator uses. It is deliberately not the persona's own
