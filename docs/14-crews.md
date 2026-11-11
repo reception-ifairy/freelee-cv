@@ -114,7 +114,7 @@ above was written as a bet that this plumbing would eventually be worth having; 
 | No way to edit a crew after creating it | Full CRUD incl. drag-to-reorder (`docs/45-teamwork-and-projects.md`) |
 | `crew_run_steps` written, never read | The step timeline at `/admin/crews/runs/[id]` |
 | No admin surface at all | Admin → Teamwork |
-| Turn order taken from DB row order | Taken from the order you tick, as the UI always claimed |
+| Turn order taken from DB row order | ~~Taken from the order you tick, as the UI always claimed~~ — not true until #63: checkboxes submit in page order, so teams ran alphabetically. The builder now saves the order shown (`45-teamwork-and-projects.md`) |
 
 ## What's built vs. deliberately deferred (as of 2026-08-06)
 

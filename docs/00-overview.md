@@ -100,7 +100,7 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Teams / workspaces** (multi-tenancy retrofit, phase 1 of the marketplace-concept integration) — `07-teams.md`
 - **Module architecture** (Next.js-native plugin convention, phase 0 of the marketplace-concept integration) — `08-module-architecture.md`
 - **Team authorization & module toggles** (permissions, `/dashboard/team`, phase 2 of the marketplace-concept integration) — `09-team-authorization.md`
-- **AI model registry** (DB-backed provider/model catalog, `/admin/ai-models`, phase 3 of the marketplace-concept integration) — `10-ai-model-registry.md`
+- **AI model registry** (DB-backed provider/model catalog — now under Settings → Models, phase 3 of the marketplace-concept integration) — `10-ai-model-registry.md`
 - **Persona versioning** (identity/content split, draft-publish cycle, phase 4 of the marketplace-concept integration) — `11-persona-versioning.md`
 - **Billing overhaul** (team wallets, subscriptions, time-boxed passes, phase 5 of the marketplace-concept integration) — `12-billing-overhaul.md`
 - **Group chat / rooms** (multi-participant conversations, `@mention` persona routing, realtime via LISTEN/NOTIFY, phase 6 of the marketplace-concept integration) — `13-group-chat.md`
@@ -111,7 +111,7 @@ reconciling, do it deliberately with a TTY available to verify the result.
 - **Knowledge sources** (admin-manageable external RAG/search APIs personas can cite from, generic dot-path response mapping, replaces the hardcoded curriculum/universe integration) — `18-knowledge-sources.md`
 - **Frontpage sections** (ordered, admin-editable homepage sections — reorder/hide/edit without a deploy, replaces a fixed hardcoded JSX sequence) — `19-frontpage-sections.md`
 - **Branding** (`/admin/theme` rebuilt into a full theme CRUD list — logo, favicon, curated fonts, full color palette, multiple saved themes with one active) — `20-branding.md`
-- **Image-generation engines** (catalog + admin config only — OpenAI/Stability image models, live "Fetch models" for every AI provider including chat, shared grid-picker UI components) — `21-image-engines.md`
+- **Image-generation engines** (catalog + admin config only — OpenAI/Stability image models, live "Fetch models" for every AI provider including chat — since #62 an automatic sync behind a passing Test, see `51-connection-checks.md` — shared grid-picker UI components) — `21-image-engines.md`
 - **Modular word bank & help tips** (translation module rebuilt around per-module banks + AI translation, scan-based extractor that can't go stale, side-by-side export, `?` help tips) — `22-modular-word-bank.md`
 - **Chat layouts** (13 category/audience-adaptive chat UIs incl. group and narrative variants; narrative layouts restructure the model's output into narration/dialogue/choices) — `23-chat-layouts.md`
 - **Conversation controls** (per-chat tone/writing/output/length + interaction style and how-it-handles-unknowns, without editing the persona) — `24-chat-controls.md`

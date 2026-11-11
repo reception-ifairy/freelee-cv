@@ -42,7 +42,7 @@ export const HANDBOOK: HandbookPart[] = [
       { slug: 'persona-model', title: 'Model tab', summary: 'Which AI does the thinking, and how much freedom it gets.' },
       { slug: 'persona-personality', title: 'Personality tab', summary: 'Ten sliders that change how a persona comes across.' },
       { slug: 'persona-capabilities', title: 'Capabilities tab', summary: 'Buttons, voice, suggestions, and the chat layout.' },
-      { slug: 'persona-publishing', title: 'Publishing tab', summary: 'Drafts, versions, and putting a persona live.' },
+      { slug: 'persona-publishing', title: 'Publishing tab', summary: 'Save draft or Save and publish, versions, and putting a persona live.' },
       { slug: 'taxonomy', title: 'Taxonomy and the workbench', summary: 'The twenty fields your bots work in, who they serve, and where new bots get designed.' },
       { slug: 'persona-cards', title: 'How a persona looks', summary: 'The generated mark instead of a face, the flip card, categories and sectors, and ordering a team.' },
     ],
@@ -82,10 +82,10 @@ export const HANDBOOK: HandbookPart[] = [
   {
     title: 'Platform',
     pages: [
-      { slug: 'ai-models', title: 'AI models', summary: 'Connecting providers and choosing which models you offer.' },
-      { slug: 'knowledgebase', title: 'Knowledgebase', summary: 'Your bots\' own library — putting books in, processing them, and seeing exactly what they read.' },
+      { slug: 'ai-models', title: 'AI models', summary: 'Connecting a provider (Save, Test, Fetch) and choosing which models you offer.' },
+      { slug: 'knowledgebase', title: 'Knowledgebase', summary: 'Your bots\' own library — putting books in, processing them, granting shelves to bots, and seeing exactly what they read.' },
       { slug: 'knowledge-sources', title: 'Knowledge sources', summary: 'Letting a persona cite from an external search API.' },
-      { slug: 'settings', title: 'Settings', summary: 'The options that apply to the whole site.' },
+      { slug: 'settings', title: 'Settings', summary: 'The options that apply to the whole site, and checking every key with Test.' },
     ],
   },
   {

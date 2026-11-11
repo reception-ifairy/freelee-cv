@@ -34,7 +34,31 @@ Conventions used throughout:
 
 ## 2026-11-11
 
-### #63 · `pending` — Bot teams get one simple builder, and run in the order you chose
+### #64 · `pending` — Bring the README, handbook and doc index in line with today's updates
+
+Each of #59–#63 updated the pages it touched. A read-through of everything
+else found places that now described the old behaviour.
+
+- **README:** said keys are pasted under *Settings → AI* with no word of Test
+  or Fetch. It called teams pipeline / fan-out / delegating, pointed new
+  providers at `/admin/ai-models` (now a redirect), counted 49 documents
+  (there are 51), and had no line for the Knowledgebase.
+- **Handbook *Projects*:** promised a project budget "is checked before a bot
+  team run starts". No code does that. The page now says so and names the cap
+  that is enforced: the team's own budget.
+- **Handbook *When something looks wrong* — "Nothing can be bought":** now
+  explains that payment keys live in the env file and how to test them under
+  *Settings → Billing*.
+- **Engineering docs:** `docs/02` and the `00-overview` index point to
+  `51-connection-checks.md`. `docs/14-crews.md` still carried the false
+  "order you tick" claim; it is struck through and corrected. Older design docs
+  otherwise stay as the historical record they are.
+- **Handbook table of contents:** the summaries mention Save → Test → Fetch,
+  Save and publish, and granting shelves.
+
+No behaviour changes.
+
+### #63 · `40df192` — Bot teams get one simple builder, and run in the order you chose
 
 Building a bot team meant two different member pickers: a checkbox list of
 every active persona to create, and a drag board with no search to edit. A

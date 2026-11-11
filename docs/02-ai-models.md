@@ -5,6 +5,9 @@
 `10-ai-model-registry.md`. This page's remaining sections (resolution order, the 2026-08-03 bug fix,
 settings, verification) are still accurate — only the registry's storage changed.
 
+**Since #62 (2026-11-11)** `/admin/ai-models` redirects to **Settings → Models**, and keys, Test and
+Fetch live on each provider's card under **Settings → Providers & keys** — `51-connection-checks.md`.
+
 ## Provider registry — `src/lib/ai/registry.ts`
 
 Still the single source of truth every caller goes through, but the data now lives in the database,

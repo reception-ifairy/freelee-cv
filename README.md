@@ -54,8 +54,11 @@ production checklist), see **`DEPLOY.md`**.
 ### Making the AI answer
 
 Nothing generates until a provider key exists. Either set `OPENAI_API_KEY` in `.env.local`, or
-sign in as admin and paste it under **Admin → Settings → AI**. Keys stored in the settings table
-take precedence over the environment, so they can be rotated without a redeploy.
+sign in as admin and paste it under **Admin → Settings → Providers & keys**: **Save**, then **Test**
+(a real 8-token reply), then **Fetch models**, which adds the provider's models as *preview* — mark
+the ones you want Stable under **Settings → Models**. Keys stored in the settings table take
+precedence over the environment, so they can be rotated without a redeploy. Every other outside
+service (tools, email, payments, storage) has the same card — see `docs/51-connection-checks.md`.
 
 ---
 
@@ -100,7 +103,7 @@ src/
 └── components/
 ```
 
-**`docs/00-overview.md`** is the index into 49 documents covering every piece, and each one is
+**`docs/00-overview.md`** is the index into 51 documents covering every piece, and each one is
 written for the design decisions and trade-offs behind the code rather than a restatement of it —
 including what was deliberately *not* built, and why.
 
@@ -108,9 +111,10 @@ What has been built on top of the original persona-catalogue-and-chat app, rough
 
 | | |
 |---|---|
-| **Foundations** | teams/workspaces · three-level authorization · a plugin module system (28 manifests) · a DB-backed AI model registry · persona versioning with immutable published versions |
+| **Foundations** | teams/workspaces · three-level authorization · a plugin module system (28 manifests) · a DB-backed AI model registry · persona versioning with immutable published versions · one Save → Test → Fetch check for every key and outside service |
 | **Money** | team wallets · subscriptions · time-boxed passes · usage events · an external-vendor marketplace with payouts |
-| **Multi-bot** | group-chat rooms with `@mention` routing · bot-to-bot crews (pipeline / fan-out / delegating) · a durable job queue so runs survive the request · projects that group chats, rooms and crews |
+| **Multi-bot** | group-chat rooms with `@mention` routing · bot teams (one after another / all at once / a lead bot delegates) built on one screen with per-bot roles and a pre-run check · a durable job queue so runs survive the request · projects that group chats, rooms and teams |
+| **Knowledge** | a private library the bots read from (shelves, hybrid retrieval, cited passages) · remote knowledge sources · shelves granted to many bots in one step (`scripts/grant-grounding.ts`) |
 | **Content** | a block builder driving the front page, CMS pages and blog posts · nested menus · a showcase · translations from a modular word bank |
 | **Growth** | a site assistant that *is* a persona · lead-capture quick actions · an admin-only bot converter turning a document into a draft persona |
 | **Craft** | a theme composer generating WCAG-checked ramps · an admin design system with real loading and empty states · audience-split public navigation · persona cards built from a generated mark rather than a stock face, flipping to access and depth |
@@ -121,7 +125,8 @@ graph resolves.
 
 ### Adding an AI provider
 
-One entry in `src/lib/ai/registry.ts`'s DB-backed catalog (`/admin/ai-models`), or a row insert.
+One entry in `src/lib/ai/registry.ts`'s DB-backed catalog (**Settings → Models**), or a row insert,
+plus a connection in `src/lib/connections/registry.ts` so its card gets Save → Test → Fetch.
 Any OpenAI-compatible endpoint (OpenRouter, Groq, Together, LM Studio, vLLM, Ollama) needs no new
 code at all — just a base URL.
 
