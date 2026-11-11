@@ -10,6 +10,7 @@ import { requireUser } from '@/lib/auth';
 import { assertModuleEnabled } from '@/lib/modules/db';
 import { slugify } from '@/lib/utils';
 import { enqueue } from '@/lib/jobs/queue';
+import { effectiveMaxTurns } from './rules';
 
 const MODULE_KEY = 'crews';
 
@@ -45,13 +46,18 @@ export async function createCrewAction(formData: FormData) {
   await assertModuleEnabled(teamId, MODULE_KEY);
 
   const parsed = createCrewSchema.parse(Object.fromEntries(formData));
-  const personaIds = formData.getAll('personaIds').map(Number).filter(Number.isFinite);
+  // Submission order is turn order. The browser sends ticked boxes in the
+  // order they appear on the page, which is the order the form's hint ("Order
+  // above sets sequential turn order") promises — but this used to rebuild the
+  // list by filtering the team's personas in *database* row order, so position
+  // came from neither the page nor the user. Deduplicated, first one wins.
+  const personaIds = [...new Set(formData.getAll('personaIds').map(Number).filter(Number.isFinite))];
   const supervisorPersonaId = Number(formData.get('supervisorPersonaId')) || undefined;
   if (personaIds.length === 0) throw new Error('A crew needs at least one persona.');
 
   const selectable = await db.select().from(personas).where(eq(personas.teamId, teamId));
-  const wanted = new Set(personaIds);
-  const chosen = selectable.filter((p) => wanted.has(p.id));
+  const byId = new Map(selectable.map((p) => [p.id, p]));
+  const chosen = personaIds.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const stopConditions = (parsed.stopConditions ?? '')
     .split(',')
@@ -153,7 +159,9 @@ export async function startCrewRunAction(formData: FormData) {
         conversationId: conversation.id,
         input,
         budgetCredits: crew.budgetCredits,
-        maxTurns: crew.maxTurns,
+        // "Parallel" gives every member one turn; a stored limit below the
+        // member count used to drop the rest silently. See rules.ts.
+        maxTurns: effectiveMaxTurns(crew.mode, crew.maxTurns, members.length),
         triggeredBy: user.id,
       })
       .returning({ id: crewRuns.id });

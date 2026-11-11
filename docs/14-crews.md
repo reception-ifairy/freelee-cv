@@ -40,6 +40,13 @@ which is a much bigger v1 than this phase warranted; revisit if a concrete use c
   degenerate loops (a supervisor that never says `DONE`) — the turn cap is the actual backstop,
   not the model's good behavior.
 
+> **Changed in #63 (2026-11-11)** — see `docs/45-teamwork-and-projects.md`, "Builder rework". The
+> supervisor is now given its teammates' handles and roles; `DONE` counts only as a line on its own
+> (not any "done" in the reply); delegation takes the earliest teammate `@handle`
+> (`firstMentionedHandle`, `src/modules/crews/rules.ts`) instead of `parseMentions()`; a supervisor
+> that names nobody ends as `failed` / `supervisor_no_delegate`, no longer `completed`. Parallel now
+> runs every member, using `max(maxTurns, members)`.
+
 ## Hard caps, not suggestions
 
 Every crew has `budgetCredits` (default 50) and `maxTurns` (default 6), checked before every step

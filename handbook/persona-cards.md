@@ -59,13 +59,13 @@ fewer thing making it distinctive.
 > including which chat layout a persona gets, are keyed to it. If a category's address is genuinely
 > wrong, make a new category and move the personas across.
 
-## Assigning personas by dragging
+## Putting personas on a team
 
-On a bot team's page the members are cards too, in two columns: everyone available on the left, the
-team on the right.
+On a bot team's **Build** tab the personas are cards too. Search for one by name or category and
+press **Add**; it joins the list under **On the team**.
 
-**Drag a card across** to add it, drag it back to remove it, and drag within the right-hand column to
-change the running order — which in pipeline mode is the order they act in.
+**Drag a card by its handle** to change the order — which, when the team works *one after another*,
+is the order they reply in. Every card also has up and down arrows and a **×** to take it off the
+team. Dragging is faster; the buttons always work, and work with a keyboard.
 
-Every card also has a plain **+** and **×** button. Dragging is faster; the buttons always work, and
-work with a keyboard.
+See *[Bot teams](/admin/handbook/bot-teams)* for the rest of the builder.

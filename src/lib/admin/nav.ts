@@ -118,12 +118,16 @@ export const ADMIN_NAV: AdminNavSection[] = [
     // together, so it belongs beside personas. Named "Teamwork" because
     // `teams` already means *tenant* everywhere in this schema and a nav item
     // called "Teams" would collide with the most load-bearing noun in the app.
+    //
+    // Bot teams first: it is what the section is for and what the owner asked
+    // to be easiest to reach. Projects last — it is a folder for the other
+    // two, and nobody starts there.
     heading: 'Teamwork',
     tone: 'cyan',
     items: [
-      { href: '/admin/projects', label: 'Projects', icon: FolderKanban },
       { href: '/admin/crews', label: 'Bot teams', icon: Bot },
       { href: '/admin/rooms', label: 'Rooms', icon: MessagesSquare },
+      { href: '/admin/projects', label: 'Projects', icon: FolderKanban },
     ],
   },
   {

@@ -13,16 +13,12 @@ import { StatTile } from '@/components/ui/stat-tile';
 import { Meter } from '@/components/ui/meter';
 import { EmptyState } from '@/components/ui/empty-state';
 import { jobForCrewRun } from '@/lib/jobs/queue';
+import { runOutcome } from '@/modules/crews/labels';
 import { RunTranscript } from './run-transcript';
 import { RunControls } from './run-controls';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Run' };
-
-const RUN_TONE: Record<string, 'green' | 'amber' | 'rose' | 'slate' | 'brand'> = {
-  completed: 'green', running: 'amber', queued: 'slate', failed: 'rose',
-  budget_exceeded: 'rose', max_turns_reached: 'amber', cancelled: 'slate',
-};
 
 const TERMINAL = ['completed', 'failed', 'budget_exceeded', 'max_turns_reached', 'cancelled'];
 
@@ -54,6 +50,7 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
 
   const nameOf = (personaId: number) => stepPersonas.find((p) => p.id === personaId)?.name ?? `Persona ${personaId}`;
   const live = !TERMINAL.includes(run.status);
+  const outcome = runOutcome(run.status, run.stopReason);
   const slowest = Math.max(1, ...steps.map((s) => duration(s.startedAt, s.completedAt)));
 
   return (
@@ -64,11 +61,12 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
         actions={
           <>
             <RunControls runId={run.id} live={live} cancellable={Boolean(job && ['queued', 'running'].includes(job.status))} />
+            {/* Back to the Runs tab, which is where this run was started from. */}
             <Link
-              href={crew ? `/admin/crews/${crew.id}` : '/admin/crews'}
+              href={crew ? `/admin/crews/${crew.id}?tab=runs` : '/admin/crews'}
               className="inline-flex h-10 items-center gap-2 rounded-control border hairline px-4 text-sm font-semibold"
             >
-              <ArrowLeft className="size-4" /> Team
+              <ArrowLeft className="size-4" /> Back to team
             </Link>
           </>
         }
@@ -78,11 +76,12 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
         <Card padding="md">
           <p className="eyebrow">Status</p>
           <p className="mt-2 flex items-center gap-2">
-            <Badge tone={RUN_TONE[run.status] ?? 'slate'}>{run.status.replace(/_/g, ' ')}</Badge>
+            <Badge tone={outcome.tone}>{outcome.label}</Badge>
           </p>
-          {run.stopReason ? (
-            <p className="mt-1.5 text-xs text-slate-500">Stopped: {run.stopReason.replace(/_/g, ' ')}</p>
-          ) : null}
+          {/* A sentence, not the stored reason with its underscores swapped
+              for spaces ("supervisor no delegate"). */}
+          <p className="mt-1.5 text-xs text-slate-500">{outcome.sentence}</p>
+          {outcome.detail ? <p className="mt-1 break-words text-xs text-rose-400">{outcome.detail}</p> : null}
         </Card>
         <StatTile label="Turns" icon={Repeat} value={`${run.turnCount} / ${run.maxTurns}`} />
         <StatTile label="Credits" icon={Coins} value={`${run.creditsSpent} / ${run.budgetCredits}`} />
@@ -97,15 +96,14 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
         <Card padding="md">
           <h2 className="font-semibold">Steps</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Who acted, what it cost and how long it took. Recorded since crews shipped; this is the
-            first screen to read it.
+            Which bot replied, in what order, what it cost and how long it took.
           </p>
 
           {steps.length === 0 ? (
             <EmptyState
               icon={Repeat}
               title={live ? 'Waiting to start' : 'No steps recorded'}
-              description={live ? 'The first step appears as soon as the worker picks this run up.' : 'This run ended before any member acted.'}
+              description={live ? 'The first step appears as soon as the worker picks this run up.' : 'This run ended before any bot replied.'}
               className="mt-4 border-0 py-8"
             />
           ) : (
@@ -119,7 +117,9 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
                         {step.position}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">{nameOf(step.personaId)}</span>
-                      <Badge tone={step.status === 'failed' ? 'rose' : 'green'}>{step.status}</Badge>
+                      <Badge tone={step.status === 'failed' ? 'rose' : step.status === 'running' ? 'amber' : 'green'}>
+                        {step.status === 'failed' ? 'Failed' : step.status === 'running' ? 'Replying' : 'Replied'}
+                      </Badge>
                     </div>
 
                     <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">

@@ -105,10 +105,18 @@ was no delete either.
 `@dnd-kit`, copying `block-list.tsx` — which also carries the lesson that server rows must be resynced
 into state rather than parked there.
 
-**A real bug fixed:** the create form said *"Order above sets sequential turn order"* while
-`createCrewAction` derived `position` from **database row order**. In pipeline mode that order is the
-entire behaviour of the feature, and it was arbitrary while the UI claimed otherwise. `formData.getAll`
-preserves submission order, so the order you tick is now the order you get.
+**A real bug ~~fixed~~ — not fixed, see the builder rework below:** the create form said *"Order
+above sets sequential turn order"* while `createCrewAction` derived `position` from **database row
+order**. In pipeline mode that order is the entire behaviour of the feature, and it was arbitrary
+while the UI claimed otherwise. ~~`formData.getAll` preserves submission order, so the order you tick
+is now the order you get.~~
+
+> **Correction (2026-11-11, #63).** That last sentence was wrong. `formData.getAll` preserves
+> *submission* order, and a browser submits checkboxes in **page** order, not the order they were
+> ticked — and the admin list was sorted by name. So every admin-created team started out in
+> alphabetical order (only the drag board could change it afterwards), the hint "the order you tick
+> them is the order they run in" was false, and the customer-side `createCrewAction` was never changed
+> at all. Both are fixed in the builder rework.
 
 Mode labels are translated: `sequential`/`parallel`/`supervisor` are accurate but jargon. What they
 mean is a **pipeline**, a **fan-out** and a **delegator**.
@@ -164,3 +172,143 @@ distinct speakers where all three personas would previously have shared one hand
 | Rooms oversight, crew runs labelled | ✅ |
 | Speaker attribution | ✅ 4 distinct handles |
 | All suites | ✅ 103 assertions + changelog |
+
+---
+
+# Builder rework (#63) — 2026-11-11
+
+The owner's brief: *"Focus on teamwork. Navigation and creating a team must be simpler and
+intuitive."* Admin stays English, in plain words with no jargon; the admin builder comes first, and
+only shared bug fixes reach the customer side.
+
+## What was wrong
+
+Building one team took three screens that each owned part of it and disagreed:
+
+- an **inline create form** beside the list — ten controls, including a checkbox list of every active
+  persona with no search, and the false "tick order" hint above;
+- a **drag board** (`team-assign.tsx`) on the team page that saved membership on every drop;
+- a **settings panel** (`crew-settings.tsx`) with the same fields as the create form, plus the only
+  supervisor select — which listed **every persona on the platform**, not the team's members.
+
+And three bugs nobody could see from the screens:
+
+- **Roles were wiped on every save.** `saveCrewAction` rebuilt members with
+  `instructions: formData.get('instructions-<id>')` — a field no screen ever rendered — so every
+  "Save team" reset each member's `crew_members.instructions` to `NULL`. There was also no input for
+  it anywhere, so the column the runner reads was write-only by accident.
+- **Removing the supervisor by drag** silently fell back to the first member at run time.
+- **Raw values on screen:** `sequential · 6 turns · 50 credits`, "max turns reached", "sequential
+  complete" — enum values with the underscores swapped for spaces.
+
+## What it is now
+
+**One builder, `src/components/admin/team-builder.tsx`,** used by `/admin/crews/new` and by the
+**Build** tab of `/admin/crews/[id]`. Three numbered sections and one Save:
+
+1. **What is this team for?** — name, goal, and three mode cards with a one-line explanation and an
+   example each: **One after another** (`sequential`), **All at once** (`parallel`), **A lead bot
+   delegates** (`supervisor`). Stored values are unchanged.
+2. **Who is on the team** — a search box over the persona pool (name, category, sector, expertise),
+   results as cards with **Add**. Personas without a published version are shown, disabled, as "Not
+   published yet". The chosen list is a single `@dnd-kit` sortable (the `block-list.tsx` set-up, not
+   `team-assign.tsx`'s cross-container one) with up/down buttons beside the grip, a **Role on this
+   team** box per bot (→ `crew_members.instructions`), remove, ordinals (1st, 2nd…) in *One after
+   another* only, and in lead mode a crown toggle — only on member rows, so the lead is always a
+   member, and always exactly one.
+3. **Limits** — collapsed under "Advanced" with a one-line summary of what is set: budget, turn
+   limit, stop phrase, project, enabled. Collapsed, not unmounted, so the fields still submit.
+
+**Save sends members as one ordered JSON list** (`{ personaId, instructions, isLead }[]` in a hidden
+`members` input), validated by `checkTeam` in `src/modules/crews/team-check.ts`: at least one bot,
+no duplicates, lead mode needs exactly one lead *and* someone to delegate to, roles ≤ 1,000
+characters. Position is the array index, so **the order on screen is the order saved**. Errors come
+back with a `field`, and the builder shows them under that field (opening Limits if needed) and moves
+the cursor there. Settings and members are written in one transaction.
+
+**"All at once" with more bots than turns** raises the stored turn limit to the member count on save,
+and the builder says so before (an info note) and after (the success message).
+
+**The team page** has two tabs, as links (`?tab=runs`) so a tab survives a reload and can be linked
+to:
+
+- **Build** — the builder.
+- **Runs** — a **Test run** box with a **pre-check** (`crewReadiness`, `src/modules/crews/readiness.ts`):
+  team enabled; has bots; lead mode has a lead and someone to delegate to; every member has a
+  published version (exactly what `runPersonaTurn` needs); the wallet that will be charged — the
+  crew's own team, i.e. the platform wallet for admin-made teams — has at least `MINIMUM_CHARGE` or an
+  active pass, with an amber note when it holds less than the team's budget. **Start** stays disabled
+  with the first failing reason beside it, and `startAdminCrewRunAction` runs the same check again
+  server-side. Below it, the runs list with plain outcomes.
+
+The header reads e.g. *3 bots · one after another · up to 6 turns · budget 50 credits*
+(`teamSummary`). After creating a team you land on it with a "Next, give it a small task" note
+linking to Runs.
+
+**The list page** has a **New bot team** button instead of the inline form; rows show the plain mode,
+bot count, run count and the last run's outcome; the empty state explains a bot team in one sentence.
+
+**Plain words** live in one place, `src/modules/crews/labels.ts`: mode copy, ordinals, the team
+summary, and `runOutcome(status, stopReason)` — e.g. "Finished — every bot had its turn", "Stopped —
+reached the turn limit", "Stopped — the lead didn't hand the task to anyone". The stop reason wins
+over the status, because `failed` covers two different situations (below). An exception message the
+runner recorded as the reason is shown as a detail line, not as the sentence.
+
+## Runner fixes (shared with the customer side)
+
+All in `src/modules/crews/runner.ts`, with the decisions pulled into `src/modules/crews/rules.ts` (no
+`db`, no `server-only`, no zod — client components import it) so they can be checked for free by
+`scripts/verify-crew-runner.ts`, now part of `npm run blocks:verify`.
+
+- **Turn order.** Admin: the ordered JSON list above. Customer `createCrewAction`: position now
+  follows submission order (deduplicated) instead of filtering the team's personas in database row
+  order. Its checkbox list is sorted by name and submits in that order, which is what its hint
+  ("Order above sets sequential turn order") has always said — so the hint is finally true without
+  changing that UI.
+- **"All at once" never drops members.** It ran `members.slice(0, maxTurns)` and reported
+  `parallel_complete`, so a seventh bot under the default limit of 6 was silently skipped. The runner
+  now uses `max(maxTurns, members)` (`effectiveMaxTurns`), and both start actions store that on the
+  run so the run page's "turns used / limit" agrees.
+- **The lead finishes only on a line that is DONE.** It was `/\bdone\b/i` over the whole reply, so
+  "I'm not done yet — @writer, draft the intro" ended the run. Now a line must be exactly `DONE`,
+  trimmed and case-insensitive. **Deviation from the brief:** markdown emphasis around it
+  (`**DONE**`) and a closing full stop (`DONE.`) are tolerated, because models add both unasked and
+  the alternative is recording a lead that clearly finished as "handed the task to nobody". "Done:
+  here is the summary" still does not count.
+- **"The lead named nobody" is no longer `completed`.** `supervisor_no_delegate` was missing from the
+  status map and fell through to `completed`. The map is now total over a closed `StopReason` list,
+  so a new reason cannot be added without choosing its status. The enum has no `stopped` value and
+  adding one is a migration (out of scope), so the status is `failed` and the stop reason carries
+  the distinction; every admin screen reads the reason first and says **"Stopped — the lead didn't
+  hand the task to anyone"**.
+- **The lead is told who its teammates are.** It was told to reply "with exactly one `@handle`" and
+  never given the handles — teammates only appear in the transcript after they have spoken, which in
+  this mode is only after the lead has named them. The lead's note now lists each teammate's handle,
+  name and role.
+- **Delegation picks the first teammate mentioned.** It used `parseMentions(…, 1)`, which returns
+  matches in *participant* order and was cut to one *before* the lead itself was filtered out, so
+  "@lead will review after @writer drafts" could resolve to nobody. `firstMentionedHandle` takes the
+  earliest `@handle` that belongs to a teammate.
+
+Smaller: `startAdminCrewRunAction` validated the task with `.parse()`, so a two-letter task threw to
+the error page instead of showing a message; it is `safeParse` now. Members are ordered by
+`(position, id)` everywhere a run reads them.
+
+## Navigation
+
+The Teamwork section is **Bot teams → Rooms → Projects** (the handbook's Teamwork part follows). The
+admin **Rooms** list filters out `kind = 'crew_run'`: runs are reached from their team's Runs tab. A
+run's transcript is still at `/admin/rooms/<id>` by link — which matters for a deleted team, whose run
+records cascade away while the conversations remain (see `deleteCrewAction`).
+
+## Retired
+
+`src/components/admin/team-assign.tsx`, `src/app/admin/crews/[id]/crew-settings.tsx`, and the
+`assignCrewMembersAction` / `reorderCrewMembersAction` server actions — nothing imports them any more,
+and an unused server action is still a public endpoint.
+
+## Not done here
+
+- The **customer** crews pages keep their own form and still show raw statuses — "admin builder
+  first" was the decision; they share only the runner and ordering fixes.
+- No schema changes. A real `stopped` run status would need an enum migration.

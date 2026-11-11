@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MessagesSquare } from 'lucide-react';
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { conversations, conversationParticipants, projects, teams } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
@@ -15,12 +15,15 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Rooms' };
 
 /**
- * Every conversation on the platform, across teams.
+ * Every room on the platform, across teams.
  *
- * Includes `crew_run` conversations, clearly labelled. The user-facing
- * `/rooms` list deliberately does *not* — it filters to `kind: 'room'`,
- * because a finished crew run appearing there as an ordinary room let anyone
- * post into it after the fact. Here the whole picture is the point.
+ * Bot-team runs used to be listed here too, as "Team run" rows between the
+ * rooms. They are conversations underneath, but nobody looks for a run in
+ * Rooms: a run belongs to its team, and the team page's Runs tab lists them
+ * with what each one cost and how it ended. So `crew_run` is filtered out
+ * here, the same way the user-facing `/rooms` list has always done (there for
+ * a sharper reason — a finished run listed as a room could be posted into).
+ * A run's transcript is still reachable at `/admin/rooms/<id>` by link.
  */
 export default async function AdminRoomsPage() {
   const rows = await db
@@ -39,6 +42,7 @@ export default async function AdminRoomsPage() {
     .from(conversations)
     .leftJoin(teams, eq(teams.id, conversations.teamId))
     .leftJoin(projects, eq(projects.id, conversations.projectId))
+    .where(ne(conversations.kind, 'crew_run'))
     .orderBy(desc(conversations.lastMessageAt))
     .limit(100);
 
@@ -48,14 +52,14 @@ export default async function AdminRoomsPage() {
     <div>
       <PageHeader
         title="Rooms"
-        description="Every multi-participant conversation on the platform, including bot-team runs."
+        description="Every group conversation on the platform. Bot-team runs are on each team's Runs tab."
       />
 
       {rows.length === 0 ? (
         <EmptyState
           icon={MessagesSquare}
           title="No rooms yet"
-          description="A room is a conversation several people and personas share, where an @mention asks a persona to reply. Bot-team runs appear here too."
+          description="A room is a conversation several people and bots share, where an @mention asks a bot to reply."
         />
       ) : (
         <Card className="overflow-hidden">
@@ -72,8 +76,8 @@ export default async function AdminRoomsPage() {
                     </span>
                   </span>
 
-                  <Badge tone={room.kind === 'crew_run' ? 'brand' : room.kind === 'playground' ? 'amber' : 'slate'}>
-                    {room.kind === 'crew_run' ? 'Team run' : room.kind === 'playground' ? 'Playground' : 'Room'}
+                  <Badge tone={room.kind === 'playground' ? 'amber' : 'slate'}>
+                    {room.kind === 'playground' ? 'Playground' : 'Room'}
                   </Badge>
 
                   <span className="hidden w-32 shrink-0 sm:block">
