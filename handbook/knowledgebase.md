@@ -69,8 +69,9 @@ irrelevant. That is deliberate — a confident answer built on the wrong page is
 
 ## Giving a bot access
 
-Open a persona, go to the **Capabilities** area, and tick the shelves under *Grounding sources*. Your
-own shelves are listed alongside the external sources; both work the same way.
+Open a persona, go to the **Personality** tab, and tick the shelves under *Grounding sources*. Your
+own shelves are listed alongside the external sources; both work the same way. If the persona has
+version pinning on, use **Save and publish** — a grant saved only as a draft is not live.
 
 Everything to do with what the bots know lives under **Knowledge** in the sidebar: *Library* (the
 books), *Shelves* (what you grant), and *External sources* (someone else's search API).
@@ -83,6 +84,39 @@ it uses is cited.
 > reply costs 2 credits and a grounded one costs **6** — so a Starter pack goes from about 2,500
 > replies to about 830. That is already as low as it goes without hurting answer quality. If the
 > persona is one customers pay for, look at its price before switching this on.
+
+## Giving many bots the same shelves
+
+Ticking a shelf on eleven bots is eleven forms and eleven publishes. On the server, one command does
+it, through the same rules as the form — a pinned bot gets a new published version with the shelves
+added, an unpinned bot is updated in place:
+
+```
+npx tsx scripts/grant-grounding.ts --personas=bizcoach-b1,finaan-f1 \
+  --sources=lib:strategy-frameworks,lib:business-plan-method
+```
+
+That only shows what would change. Add `--apply` to do it. A bot with an unpublished draft is
+refused rather than published, and a shelf name that does not exist stops the whole run.
+
+## The business shelves
+
+Three shelves hold the business library (installed 2026-11-11, 132 documents in English):
+
+| Shelf | What it holds |
+|---|---|
+| `strategy-frameworks` | 114 frameworks — what each answers, how to apply it, the calculations, good practice and common mistakes |
+| `business-plan-method` | writing an investor business plan section by section, review criteria, start-up finance formulas, why start-ups fail |
+| `ai-adoption-research` | a survey on attitudes to AI in online retail (with its caveats), evidence from the literature, Gen Z in the UK, Industry 4.0 |
+
+They are granted to the eleven business bots: BizCoach-B1, BizConsult-B2, FinAna-F1, Sales-A1,
+Sales-A2, B2B Sales-S4, B2C Sales-S5, Project-Manager-P12, Data-Analyst-D3, RiskMgmt-G1 and
+Risk-Management-R5. Good test questions: *"How do I calculate break-even for a subscription
+product?"*, *"What are common mistakes in a SWOT analysis?"*, *"What must the financial section of an
+investor business plan contain?"*
+
+The files contain no personal data and no text copied from books. Figures in
+`ai-adoption-research` should be checked at the original source before anyone quotes them publicly.
 
 ## When a book will not process
 

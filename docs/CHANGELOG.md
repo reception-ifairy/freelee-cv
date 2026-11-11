@@ -34,7 +34,32 @@ Conventions used throughout:
 
 ## 2026-11-11
 
-### #59 · `pending` — Bot edits save again, and say which field is wrong
+### #60 · `pending` — Give many bots the same shelves in one step, starting with the business library
+
+The business library is live: 132 English Markdown documents on three shelves
+(`strategy-frameworks`, `business-plan-method`, `ai-adoption-research`), built from
+the owner's coursework and installed on the library volume, not in git. Processing
+cost 97,155 embedding tokens, about $0.002. It had waited a day because the OpenAI
+account was out of credit, and four documents stuck in `processing` from that
+failed run were reprocessed by id.
+
+Granting those shelves to eleven bots through the form means eleven forms and
+eleven publishes, because pinned bots need a new version. `scripts/grant-grounding.ts`
+does it in one transaction by the form's own rules. A pinned persona gets a new
+published, immutable version with the keys added, never an edit to a published one.
+An unpinned persona is updated in place. A persona with an unpublished draft is
+refused rather than having that draft shipped, and an unknown key fails the run.
+It is dry-run by default and idempotent.
+
+Applied to the eleven business bots after a pg_dump of `personas` and
+`persona_versions`. Verified: all three test questions retrieve the right
+passages, and FinAna-F1 answered the break-even question from the *Break-Even
+Analysis* passages (2,567 in / 92 out tokens, 48 credits). The handbook had the
+grounding picker on the wrong tab; it is on Personality.
+
+📄 `48-knowledgebase.md` · handbook *Knowledgebase*
+
+### #59 · `9447bdd` — Bot edits save again, and say which field is wrong
 
 No persona could be saved from the admin since the legacy import (#58). That
 import never set max_tokens, the form submitted the empty box as `""`, and
