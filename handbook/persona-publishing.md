@@ -19,6 +19,18 @@ Off by default, and off is right for most personas.
 **On** — the persona gets a proper draft/publish cycle. Edits go to a draft nobody sees until you
 press Publish, each published version is frozen permanently, and you can roll back.
 
+With pinning on, the top of the form has two buttons:
+
+- **Save draft** — keeps your edits in the draft. Users still talk to the published version, and the
+  form says so in an amber note.
+- **Save and publish** — saves and makes the edits live as a new version in one click. Use this for
+  everyday changes.
+
+**Publish new version** under *Versions* still works for a draft you saved earlier, and is where
+you add a changelog line.
+
+Every persona imported from the old catalogue has pinning on.
+
 Turn it on when a persona is doing something where a surprise change is a real problem: anything
 regulated, anything being sold, anything where you'd need to prove what it said last March.
 

@@ -53,9 +53,20 @@ language can't reach visitors.
 **Content → Frontpage**, and hit the eye icon to hide the offending block. Fastest possible fix,
 fully reversible, and it buys you time to work out the real problem.
 
+## A persona won't save
+
+The red message above the tabs names the field and its tab — for example *"Max tokens (Model tab):
+enter 64–32,000, or leave it empty for the model default"* — and the form jumps to that tab with the
+cursor in the field. Fix that one field and save again.
+
+Empty boxes are fine: an empty Max tokens means "the model's default", and "Not set" in a dropdown
+means "no preference". If the message names no field, the problem is somewhere the form does not
+show; **System → Documentation** has the details.
+
 ## A change didn't appear
 
-- Personas with **version pinning** on need **Publish**, not just Save
+- Personas with **version pinning** on need **Save and publish** (or **Publish new version**), not
+  just **Save draft** — the amber note after saving says when the change is not live yet
 - A persona with **Published** unticked is invisible to everyone but you
 - A model must be **Stable** to be offered — Preview models are catalogued but not selectable
 

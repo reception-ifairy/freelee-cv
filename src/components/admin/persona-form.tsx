@@ -1,10 +1,10 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { savePersonaAction, publishPersonaVersionAction, revertPersonaVersionAction } from '@/server/actions/admin';
-import type { ActionState } from '@/server/actions/auth';
+import type { PersonaSaveState } from '@/lib/persona/form-schema';
 import type { Category, Persona, PersonaVersion } from '@/db/schema';
 import { PERSONALITY_TRAITS } from '@/db/schema';
 import { Input, Textarea, Select, Label, Hint, Checkbox, FormMessage } from '@/components/ui/field';
@@ -85,19 +85,53 @@ const CAPABILITIES: { key: string; label: string }[] = [
   { key: 'output', label: 'Offer output-format selector' },
 ];
 
-function SaveButton() {
+function SaveButton({ draftOnly }: { draftOnly?: boolean }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
+      name="intent"
+      value="save"
       disabled={pending}
-      className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60"
+      className={cn(
+        'h-10 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-60',
+        draftOnly
+          ? 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+          : 'bg-brand-600 text-on-brand hover:bg-brand-700',
+      )}
+      title={draftOnly ? 'Saves a draft. Users keep seeing the published version until you publish.' : undefined}
     >
-      {pending ? 'Saving…' : 'Save persona'}
+      {pending ? 'Saving…' : draftOnly ? 'Save draft' : 'Save persona'}
     </button>
   );
 }
+
+/** For version-pinned personas: save the edits and make them live in one click. */
+function SavePublishButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      name="intent"
+      value="publish"
+      disabled={pending}
+      className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60"
+    >
+      {pending ? 'Publishing…' : 'Save and publish'}
+    </button>
+  );
+}
+
+const SAVED_NOTICE: Record<string, { tone: 'ok' | 'draft'; text: string }> = {
+  live: { tone: 'ok', text: 'Saved. Users see the change from their next message.' },
+  published: { tone: 'ok', text: 'Saved and published as a new version. Users see it from their next message.' },
+  draft: {
+    tone: 'draft',
+    text: 'Draft saved — not live yet. Users still see the published version. Use “Save and publish” (or Publish under Versions) when it is ready.',
+  },
+};
 
 type Props = {
   persona?: Persona;
@@ -122,13 +156,30 @@ type Props = {
   suggestedLayout?: ChatLayoutKey;
   /** Tool keys suggested by this persona's categories — pre-ticked on a new persona. */
   suggestedTools?: string[];
+  /** `?saved=` after a redirect from save: 'live' | 'draft' | 'published'. */
+  savedAs?: string;
 };
 
 export function PersonaForm({
-  persona, version, versionHistory = [], categories, sectors = [], selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [],
+  persona, version, versionHistory = [], categories, sectors = [], selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [], savedAs,
 }: Props) {
-  const [state, formAction] = useActionState<ActionState, FormData>(savePersonaAction, null);
+  const [state, formAction] = useActionState<PersonaSaveState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
+  const savedNotice = savedAs ? SAVED_NOTICE[savedAs] : undefined;
+
+  // A field error names its tab: switch there and put the cursor in the field,
+  // instead of leaving a message above six tabs and the field out of sight.
+  useEffect(() => {
+    if (!state?.tab) return;
+    setTab(state.tab);
+    if (state.field) {
+      const id = state.field;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id) ?? document.getElementsByName(id)[0];
+        if (el instanceof HTMLElement) el.focus();
+      });
+    }
+  }, [state]);
   const [name, setName] = useState(persona?.name ?? '');
   // Controlled purely so the tab bar can show whether this tab is complete —
   // the required marker has to read the live value, not the initial one.
@@ -164,7 +215,10 @@ export function PersonaForm({
 
   return (
     <>
-    <form action={formAction}>
+    {/* noValidate: the browser's own checks block the submit silently when the
+        bad field sits on a hidden tab ("not focusable") — the server validates
+        every field and names the tab instead. */}
+    <form action={formAction} noValidate>
       {persona ? <input type="hidden" name="id" value={persona.id} /> : null}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -178,10 +232,30 @@ export function PersonaForm({
           >
             Cancel
           </Link>
-          <SaveButton />
+          {persona?.pinVersioning ? (
+            <>
+              <SaveButton draftOnly />
+              <SavePublishButton />
+            </>
+          ) : (
+            <SaveButton />
+          )}
         </div>
       </div>
 
+      {savedNotice && !state ? (
+        <p
+          role="status"
+          className={cn(
+            'rounded-lg px-3 py-2 text-sm',
+            savedNotice.tone === 'ok'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+              : 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300',
+          )}
+        >
+          {savedNotice.text}
+        </p>
+      ) : null}
       <FormMessage state={state} />
 
       <div className="my-4 flex flex-wrap gap-1 rounded-control bg-slate-100 p-1 dark:bg-white/[0.03]">
@@ -474,7 +548,7 @@ export function PersonaForm({
                   id="frequencyPenalty"
                   name="frequencyPenalty"
                   type="number"
-                  step={0.1}
+                  step="any"
                   min={-2}
                   max={2}
                   defaultValue={version?.frequencyPenalty ?? 0}
@@ -487,7 +561,7 @@ export function PersonaForm({
                   id="presencePenalty"
                   name="presencePenalty"
                   type="number"
-                  step={0.1}
+                  step="any"
                   min={-2}
                   max={2}
                   defaultValue={version?.presencePenalty ?? 0}
@@ -500,9 +574,13 @@ export function PersonaForm({
                   id="maxTokens"
                   name="maxTokens"
                   type="number"
+                  min={64}
+                  max={32000}
+                  step={1}
                   defaultValue={version?.maxTokens ?? ''}
-                  placeholder="provider default"
+                  placeholder="model default"
                 />
+                <Hint>Longest reply allowed, 64–32,000. Leave empty for the model&apos;s default.</Hint>
               </div>
             </div>
 

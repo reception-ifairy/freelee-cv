@@ -17,10 +17,10 @@ import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { uniquePersonaSlug } from '@/lib/persona/slug';
 import { slugify, readingMinutes } from '@/lib/utils';
 import { getPlatformTeamId } from '@/lib/teams';
-import { isChatProvider } from '@/lib/ai/registry';
 import { isChatLayoutKey } from '@/lib/chat/layouts';
 import { isToolKey } from '@/lib/tools/catalog';
 import type { ActionState } from './auth';
+import { personaSchema, personaFieldError, type PersonaSaveState } from '@/lib/persona/form-schema';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);
 const narrativeFitSchema = z.enum(['low', 'medium', 'high', 'very_high']);
@@ -29,40 +29,6 @@ const commaList = (value: string | undefined) =>
 
 /* ------------------------------- Personas ------------------------------- */
 
-const personaSchema = z.object({
-  sectorId: z.string().trim().optional(),
-  id: z.coerce.number().int().optional(),
-  name: z.string().trim().min(2).max(120),
-  slug: z.string().trim().max(120).optional(),
-  tagline: z.string().trim().max(255).optional(),
-  description: z.string().trim().max(4000).optional(),
-  expertise: z.string().trim().max(120).optional(),
-  accentColor: z.string().trim().max(16).default('#6366f1'),
-  systemPrompt: z.string().trim().min(20, 'The system prompt needs to be meaningful.'),
-  welcomeMessage: z.string().trim().max(2000).optional(),
-  // Image-generation providers (e.g. 'stability') are catalog/admin-config only
-  // this phase — a persona can never actually be assigned one, see docs/21-image-engines.md.
-  aiProvider: z.string().trim().min(1).refine(isChatProvider, 'Not a valid chat provider.'),
-  model: z.string().trim().max(120).optional(),
-  // '' means "follow the suggestion computed from category/audience" — stored as
-  // NULL so the suggestion stays live as the taxonomy changes, rather than being
-  // frozen at whatever it happened to be on the day the persona was saved.
-  chatLayout: z.string().trim().optional(),
-  modelTier: z.enum(['fast', 'balanced', 'advanced']).optional(),
-  temperature: z.coerce.number().min(0).max(2),
-  frequencyPenalty: z.coerce.number().min(-2).max(2).default(0),
-  presencePenalty: z.coerce.number().min(-2).max(2).default(0),
-  maxTokens: z.coerce.number().int().min(64).max(32000).optional(),
-  historyMessages: z.coerce.number().int().min(1).max(30).default(8),
-  audienceType: z.enum(['B2B', 'B2C', 'B2G']).optional(),
-  knowledgeDomains: z.string().trim().optional(),
-  creditsPerMessage: z.coerce.number().int().min(0).default(0),
-  position: z.coerce.number().int().default(0),
-  interactionStyle: z.enum(['formal', 'casual', 'enthusiastic', 'concise', 'socratic']).optional(),
-  approachToUnknown: z.enum(['admit_ignorance', 'educated_guess', 'ask_clarifying']).optional(),
-  promptTechnique: z.enum(['direct', 'chain_of_thought']).default('direct'),
-  blueprintJson: z.string().trim().optional(),
-});
 
 /** Bumps a semver patch — '1.0.0' -> '1.0.1'. Falls back to '1.0.1' if unparseable. */
 function nextPatchVersion(version: string): string {
@@ -77,11 +43,11 @@ function checkbox(formData: FormData, name: string): boolean {
   return formData.get(name) === 'on';
 }
 
-export async function savePersonaAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+export async function savePersonaAction(_prev: PersonaSaveState, formData: FormData): Promise<PersonaSaveState> {
+  const admin = await requireAdmin();
 
   const parsed = personaSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
+  if (!parsed.success) return personaFieldError(parsed.error.issues[0]);
 
   const data = parsed.data;
 
@@ -99,7 +65,7 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     try {
       blueprint = JSON.parse(data.blueprintJson) as PersonaBlueprint;
     } catch {
-      return { error: 'The cognitive blueprint is not valid JSON.' };
+      return { error: 'Cognitive blueprint (Prompt tab): this is not valid JSON.', field: 'blueprintJson', tab: 'prompt' };
     }
   }
 
@@ -221,7 +187,6 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     // deferred-FK trick needed (unlike Phase 1's teams<->users pair) because
     // currentVersionId is nullable by design here — see the schema comment
     // above `personas.currentVersionId` and docs/11-persona-versioning.md.
-    const admin = await requireAdmin();
 
     await db.transaction(async (tx) => {
       const [created] = await tx
@@ -261,9 +226,33 @@ export async function savePersonaAction(_prev: ActionState, formData: FormData):
     );
   }
 
+  // "Save and publish" on a pinned persona: the draft written above goes live
+  // in the same click. Without it, Save on 122 of 124 personas wrote a draft
+  // and returned to the list with no sign that nothing had changed for users.
+  let savedAs: 'live' | 'draft' | 'published' = 'live';
+  if (data.id) {
+    const [after] = await db
+      .select({ pin: personas.pinVersioning, draftVersionId: personas.draftVersionId })
+      .from(personas)
+      .where(eq(personas.id, saved.id))
+      .limit(1);
+    if (after?.pin && after.draftVersionId) {
+      if (formData.get('intent') === 'publish') {
+        const changelog = z.string().trim().max(500).optional().parse(formData.get('changelog') || undefined);
+        await publishDraftVersion(saved.id, admin.id, changelog);
+        savedAs = 'published';
+      } else {
+        savedAs = 'draft';
+      }
+    }
+  }
+
   revalidatePath('/admin/personas');
+  revalidatePath(`/admin/personas/${saved.id}`);
   revalidatePath('/personas');
-  redirect('/admin/personas');
+  // Back to the persona, not the list: the person sees what happened (saved
+  // live, saved as a draft, or published) right where they were working.
+  redirect(`/admin/personas/${saved.id}?saved=${savedAs}`);
 }
 
 export async function togglePersonaAction(formData: FormData) {
@@ -353,6 +342,12 @@ export async function publishPersonaVersionAction(formData: FormData) {
   const personaId = z.coerce.number().int().parse(formData.get('personaId'));
   const changelog = z.string().trim().max(500).optional().parse(formData.get('changelog') || undefined);
 
+  await publishDraftVersion(personaId, admin.id, changelog);
+  revalidatePath(`/admin/personas/${personaId}`);
+}
+
+/** Promotes a persona's draft to its current published version (patch bump). Shared by Publish and "Save and publish". */
+async function publishDraftVersion(personaId: number, adminId: string, changelog: string | undefined) {
   const [persona] = await db.select().from(personas).where(eq(personas.id, personaId)).limit(1);
   if (!persona?.draftVersionId) return;
 
@@ -367,7 +362,7 @@ export async function publishPersonaVersionAction(formData: FormData) {
       status: 'published',
       isImmutable: true,
       changelog: changelog ?? null,
-      createdBy: admin.id,
+      createdBy: adminId,
       publishedAt: new Date(),
     })
     .where(eq(personaVersions.id, persona.draftVersionId));
@@ -376,8 +371,6 @@ export async function publishPersonaVersionAction(formData: FormData) {
     .update(personas)
     .set({ currentVersionId: persona.draftVersionId, draftVersionId: null })
     .where(eq(personas.id, personaId));
-
-  revalidatePath(`/admin/personas/${personaId}`);
 }
 
 /** Starts a fresh draft cloned from an old published version — rollback without erasing history. */

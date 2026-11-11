@@ -17,7 +17,14 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = { title: 'Edit persona' };
 
-export default async function EditPersonaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditPersonaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
+  const { saved } = await searchParams;
   const { id } = await params;
   const personaId = Number(id);
   if (!Number.isFinite(personaId)) notFound();
@@ -65,6 +72,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
 
   return (
     <PersonaForm
+      savedAs={saved}
       suggestedLayout={suggestedLayout}
       suggestedTools={suggestedTools}
       persona={persona}

@@ -117,6 +117,29 @@ forms can't nest, so publish/revert are separate `<form>`s posting to
 `publishPersonaVersionAction`/`revertPersonaVersionAction`) with the draft-publish button and a
 revert list of past published versions.
 
+### Saving from the form (2026-11-11, update #59)
+
+- **Save draft / Save and publish.** For a pinned persona the main form has two submit buttons
+  posting `intent=save` and `intent=publish` to `savePersonaAction`. `publish` writes the draft
+  exactly as Save does and then calls `publishDraftVersion()` — the same function
+  `publishPersonaVersionAction` now wraps — so there is one publish path, not two. Saves redirect to
+  `/admin/personas/[id]?saved=live|draft|published` and the form states which happened. Before, Save
+  returned to the list either way, and a draft that was not live looked exactly like a save that
+  had failed.
+- **Blank optional fields.** The schema lives in `src/lib/persona/form-schema.ts` (a `'use server'`
+  file can only export async functions). Optional numbers and enums are wrapped in a `blank()`
+  preprocess, because an empty input submits `""`: `z.coerce.number()` makes that 0, which failed
+  `maxTokens.min(64)` for every persona the legacy import wrote with `max_tokens = NULL` (all 124),
+  and a "Not set" option failed its enum. Blank now means "use the default", which is what NULL
+  already meant at read time.
+- **Errors name the field.** `personaFieldError()` maps the first zod issue to a label, its tab and
+  how to fix it, and returns `{ field, tab }`; the form switches to that tab and focuses the field.
+  The form is `noValidate`, because the browser's own constraint checks block a submit silently when
+  the offending input sits on a hidden tab (penalties of 0.15 against `step=0.1` did exactly that on
+  22 personas); the inputs now use `step="any"`.
+- **`npm run personas:verify-form`** builds what the browser submits for every stored persona and
+  runs it through the schema — read-only, no AI calls. 124/124 pass.
+
 ## Verifying it
 
 ```sql
