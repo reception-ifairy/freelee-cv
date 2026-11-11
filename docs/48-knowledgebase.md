@@ -212,6 +212,27 @@ repository** — which is the only reason they are written down here):
 The restart cost about seven seconds and affects every database on the host, not only this one.
 `ALTER SYSTEM RESET ALL` plus a restart puts it back.
 
+## Granting shelves in bulk
+
+`scripts/grant-grounding.ts --personas=<slugs> --sources=<keys> [--apply]` grants shelves (or remote
+sources) to many personas in one transaction, following the same rules as the persona form rather
+than writing `grounding_sources` directly:
+
+- **Pinned personas** get a new published, immutable version cloned from the current one with the
+  keys appended (patch bump, changelog line). Published versions are never edited in place — that is
+  what pinning promises.
+- **Unpinned personas** have their current version updated in place, as Save does.
+- A persona with an **unpublished draft is refused**: publishing someone's unfinished draft as a side
+  effect of a grant would ship whatever state it is in.
+- Every key must exist (an active `library_collections` row or an active knowledge source); an
+  unknown key fails the run instead of granting nothing.
+- Dry run by default, idempotent (a second run reports `+0 already has them`).
+
+First used on 2026-11-11 for the business library (three shelves, 132 Markdown documents built from
+the owner's coursework; 97,155 embedding tokens, about $0.002 to index) and the eleven business
+bots. Measured on FinAna-F1, one grounded reply was 2,567 input / 92 output tokens and 48 credits,
+answering the break-even question from the *Break-Even Analysis* passages.
+
 ## Known gaps
 
 - **Grounding still lives in the system prompt**, which mutates it every turn and defeats provider
