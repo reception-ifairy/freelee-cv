@@ -62,7 +62,7 @@ export async function embedPassages(texts: string[]): Promise<EmbedResult> {
   if (!choice) {
     return {
       ok: false,
-      error: 'No embedding model is set up yet. Add one under Admin → Settings → AI models, then try again.',
+      error: 'No embedding model is set up yet. Choose one under Admin → Settings → Models, then try again.',
     };
   }
 
@@ -70,7 +70,7 @@ export async function embedPassages(texts: string[]): Promise<EmbedResult> {
   if (!keys.apiKey && choice.providerId !== 'ollama') {
     return {
       ok: false,
-      error: `The ${choice.providerId} API key is missing. Add it under Admin → Settings → AI, then try again.`,
+      error: `The ${choice.providerId} API key is missing. Add it under Admin → Settings → Providers & keys, then try again.`,
     };
   }
 

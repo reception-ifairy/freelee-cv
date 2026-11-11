@@ -14,6 +14,9 @@ export type ProviderBundle = {
   provider: ProviderCardData;
   chatModels: ModelRowData[];
   imageModels: ModelRowData[];
+  embeddingModels: ModelRowData[];
+  /** Every modality, collapsed into one group on the card. */
+  previewModels: ModelRowData[];
 };
 
 /**
@@ -25,25 +28,19 @@ export type ProviderBundle = {
  * dialog opened from the provider it belongs to, with that provider already
  * chosen.
  */
-export function ModelsManager({
-  bundles,
-  fetchPanels,
-}: {
-  bundles: ProviderBundle[];
-  /** Rendered on the server (they hold their own server actions), keyed by provider key. */
-  fetchPanels: Record<string, React.ReactNode>;
-}) {
+export function ModelsManager({ bundles }: { bundles: ProviderBundle[] }) {
   const [adding, setAdding] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
-      {bundles.map(({ provider, chatModels, imageModels }) => (
+      {bundles.map(({ provider, chatModels, imageModels, embeddingModels, previewModels }) => (
         <ProviderCard
           key={provider.id}
           provider={provider}
           chatModels={chatModels}
           imageModels={imageModels}
-          fetchPanel={fetchPanels[provider.key] ?? null}
+          embeddingModels={embeddingModels}
+          previewModels={previewModels}
           onAddModel={() => setAdding(String(provider.id))}
         />
       ))}
@@ -164,6 +161,7 @@ function AddModelDialog({
               options={[
                 { id: 'text', label: 'Chat / text' },
                 { id: 'image', label: 'Image generation' },
+                { id: 'embedding', label: 'Embedding (Knowledgebase)' },
               ]}
               value={modality}
               onChange={setModality}

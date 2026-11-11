@@ -83,19 +83,44 @@ export async function synthesise(text: string, voiceId?: string): Promise<Speech
 
 export type VoiceOption = { id: string; name: string };
 
-/** Populates the voice picker in settings. Empty list on any failure — never throws. */
-export async function listVoices(): Promise<VoiceOption[]> {
+export type VoicesResult =
+  | { ok: true; voices: VoiceOption[] }
+  | { ok: false; reason: 'no-key' | 'unreachable' }
+  | { ok: false; reason: 'refused'; status: number; detail: string };
+
+/**
+ * The account's voices, or why they could not be read.
+ *
+ * The connection check in Settings is built on this rather than on
+ * `listVoices()`, because "the key was refused" and "the network is down" need
+ * different fixes, and an empty list says neither. Free to call — it lists,
+ * it does not speak.
+ */
+export async function fetchVoices(): Promise<VoicesResult> {
   const apiKey = (await getSettingString('elevenlabs_api_key')) || process.env.ELEVENLABS_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) return { ok: false, reason: 'no-key' };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const response = await fetch(`${API}/voices`, { headers: { 'xi-api-key': apiKey } });
-    if (!response.ok) return [];
+    const response = await fetch(`${API}/voices`, { headers: { 'xi-api-key': apiKey }, signal: controller.signal });
+    if (!response.ok) {
+      return { ok: false, reason: 'refused', status: response.status, detail: (await response.text().catch(() => '')).slice(0, 300) };
+    }
     const body = (await response.json()) as { voices?: { voice_id: string; name: string }[] };
-    return (body.voices ?? []).map((v) => ({ id: v.voice_id, name: v.name }));
+    return { ok: true, voices: (body.voices ?? []).map((v) => ({ id: v.voice_id, name: v.name })) };
   } catch {
-    return [];
+    return { ok: false, reason: 'unreachable' };
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+/** Populates the voice picker in settings. Empty list on any failure — never throws. */
+export async function listVoices(): Promise<VoiceOption[]> {
+  const result = await fetchVoices();
+  return result.ok ? result.voices : [];
 }
 
 /**

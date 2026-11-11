@@ -22,11 +22,20 @@ function SaveButton({ group }: { group: string }) {
   );
 }
 
-type Props = { group: SettingsGroup; values: Record<string, string | boolean> };
+type Props = {
+  group: SettingsGroup;
+  values: Record<string, string | boolean>;
+  /**
+   * Keys rendered elsewhere on the same screen — the Resend key lives in its
+   * connection card above the email form, and showing it twice would mean two
+   * boxes that save the same setting.
+   */
+  omit?: string[];
+};
 
-export function SettingsForm({ group, values }: Props) {
+export function SettingsForm({ group, values, omit = [] }: Props) {
   const [state, formAction] = useActionState<ActionState, FormData>(saveSettingsAction, null);
-  const fields: Field[] = SETTINGS_SCHEMA[group];
+  const fields: Field[] = SETTINGS_SCHEMA[group].filter((field: Field) => !omit.includes(field.key));
 
   return (
     <Card className="p-6">

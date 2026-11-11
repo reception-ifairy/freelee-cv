@@ -8,21 +8,24 @@
 // just not nested.
 
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { aiModels, aiProviders } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { checkProviderHealth } from '@/lib/ai/health';
-import { checkRateLimit } from '@/lib/rate-limit';
-import { fetchProviderModels, type FetchedModel } from '@/lib/ai/fetch-models';
+import { upsertSetting } from '@/lib/settings';
+import { CHAT_PROVIDER_IDS } from '@/lib/ai/provider-ids';
 import type { ActionState } from './auth';
+
+// The model catalogue now lives in Settings → Models. `/admin/ai-models` is
+// only a redirect, so revalidating it refreshed nothing anyone was looking at.
+const SETTINGS_PATH = '/admin/settings';
 
 const tierSchema = z.enum(['fast', 'balanced', 'advanced']).or(z.literal('')).transform((v) => (v === '' ? null : v));
 const statusSchema = z.enum(['preview', 'stable', 'deprecated', 'retired']);
 // 'embedding' joined the enum for the Knowledgebase (drizzle/0035, docs/48).
-// Without it here, importing an embedding model through "Fetch models" would
-// pass the classifier and then be rejected by validation.
+// Without it here, adding an embedding model by hand would be rejected by
+// validation.
 const modalitySchema = z.enum(['text', 'image', 'embedding']);
 
 const newModelSchema = z.object({
@@ -45,87 +48,17 @@ export async function createAiModelAction(_prev: ActionState, formData: FormData
     return { error: `That model id already exists for this provider.` };
   }
 
-  revalidatePath('/admin/ai-models');
+  revalidatePath(SETTINGS_PATH);
   return { success: `Added ${parsed.data.modelId}.` };
 }
 
-/**
- * Live "what does this provider actually have right now" — see
- * src/lib/ai/fetch-models.ts. Returns data (not just a message), so this
- * uses its own local state shape rather than the shared `ActionState`.
+/*
+ * Fetching a provider's live model list and the "Test connection" check used
+ * to live here as three actions behind a checkbox grid. They moved to the
+ * connection cards in Settings → Providers & keys
+ * (src/server/actions/admin-connections.ts), where Fetch adds every new model
+ * as `preview` without ticking — see src/lib/ai/sync-models.ts.
  */
-export type FetchModelsState =
-  | { error?: string; success?: string; providerId?: number; models?: (FetchedModel & { alreadyAdded: boolean })[] }
-  | null;
-
-export async function fetchProviderModelsAction(_prev: FetchModelsState, formData: FormData): Promise<FetchModelsState> {
-  await requireAdmin();
-  const providerId = z.coerce.number().int().parse(formData.get('providerId'));
-
-  const [provider] = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
-  if (!provider) return { error: 'Unknown provider.' };
-
-  const result = await fetchProviderModels(provider);
-  if ('error' in result) return { error: result.error };
-
-  const existing = new Set(
-    (await db.select({ modelId: aiModels.modelId }).from(aiModels).where(eq(aiModels.providerId, providerId))).map(
-      (r) => r.modelId,
-    ),
-  );
-
-  return {
-    providerId,
-    models: result.models.map((m) => ({ ...m, alreadyAdded: existing.has(m.id) })),
-    success: `Found ${result.models.length} model(s).`,
-  };
-}
-
-const importSchema = z.object({
-  providerId: z.coerce.number().int(),
-  modelIds: z.array(z.string().min(1)).min(1, 'Select at least one model to import.'),
-});
-
-/**
- * Re-fetches from the provider rather than trusting label/modality posted
- * back from the browser — the admin only ever selected *which* ids to
- * import in the checkbox grid, so re-resolving their label/modality from the
- * same live call avoids any risk of a tampered or stale form value.
- */
-export async function importFetchedModelsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const parsed = importSchema.safeParse({ providerId: formData.get('providerId'), modelIds: formData.getAll('modelId') });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Nothing to import.' };
-  const { providerId, modelIds } = parsed.data;
-
-  const [provider] = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
-  if (!provider) return { error: 'Unknown provider.' };
-
-  const result = await fetchProviderModels(provider);
-  if ('error' in result) return { error: result.error };
-
-  const wanted = new Set(modelIds);
-  const rows = result.models
-    .filter((m) => wanted.has(m.id))
-    .map((m) => ({
-      providerId,
-      modelId: m.id,
-      label: m.label,
-      modality: m.modality,
-      tier: null,
-      // Freshly fetched, not yet priced/vetted by an admin — 'preview' is a
-      // meaningful use of the existing status enum, not just a default.
-      status: 'preview' as const,
-      creditsPer1k: 5,
-    }));
-
-  if (rows.length === 0) return { error: 'None of the selected models were found — try fetching again.' };
-
-  await db.insert(aiModels).values(rows).onConflictDoNothing();
-
-  revalidatePath('/admin/ai-models');
-  return { success: `Imported ${rows.length} model(s) as preview — set pricing/tier below.` };
-}
 
 const updateModelSchema = z.object({
   id: z.coerce.number().int(),
@@ -143,7 +76,7 @@ export async function updateAiModelAction(formData: FormData) {
   const { id, ...values } = parsed.data;
   await db.update(aiModels).set({ ...values, updatedAt: new Date() }).where(eq(aiModels.id, id));
 
-  revalidatePath('/admin/ai-models');
+  revalidatePath(SETTINGS_PATH);
 }
 
 const updateProviderSchema = z.object({
@@ -160,25 +93,51 @@ export async function updateAiProviderAction(formData: FormData) {
   const { id, ...values } = parsed.data;
   await db.update(aiProviders).set(values).where(eq(aiProviders.id, id));
 
-  revalidatePath('/admin/ai-models');
+  revalidatePath(SETTINGS_PATH);
 }
 
+const embeddingModelSchema = z.object({ modelId: z.string().trim().max(200) });
+
 /**
- * Asks a provider whether it can actually answer.
+ * Picks the model the Knowledgebase embeds with (`library_embedding_model`,
+ * read by src/lib/library/embed.ts). The Knowledgebase page has long said this
+ * is chosen under Settings, but there was no control for it anywhere.
  *
- * Rate-limited because it makes a real (tiny) paid request, and an admin
- * clicking repeatedly should not become a way to spend money.
+ * Blank means "automatic" — the first Stable embedding model, which is what
+ * `findEmbeddingModel()` does without a preference. Anything else must be a
+ * Stable embedding row on a provider that can run it, so the setting can never
+ * point at a model the embedder would skip.
  */
-export async function testProviderAction(formData: FormData): Promise<{ state: string; message: string }> {
-  const admin = await requireAdmin();
-  const providerId = z.coerce.number().int().parse(formData.get('providerId'));
+export async function saveEmbeddingModelAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = embeddingModelSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Pick a model.' };
+  const { modelId } = parsed.data;
 
-  const gate = checkRateLimit({ name: 'provider-test', key: admin.id, limit: 20, windowMs: 60 * 1000 });
-  if (!gate.ok) return { state: 'error', message: 'Too many tests at once. Wait a moment.' };
+  if (modelId) {
+    const [row] = await db
+      .select({ id: aiModels.id })
+      .from(aiModels)
+      .innerJoin(aiProviders, eq(aiProviders.id, aiModels.providerId))
+      .where(
+        and(
+          eq(aiModels.modelId, modelId),
+          eq(aiModels.modality, 'embedding'),
+          eq(aiModels.status, 'stable'),
+          inArray(aiProviders.key, CHAT_PROVIDER_IDS),
+        ),
+      )
+      .limit(1);
+    if (!row) return { error: 'That is not a Stable embedding model. Mark it Stable first.' };
+  }
 
-  const [provider] = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
-  if (!provider) return { state: 'error', message: 'Unknown provider.' };
+  await upsertSetting('library_embedding_model', modelId, 'string', 'ai');
 
-  const health = await checkProviderHealth(provider, provider.defaultModel);
-  return { state: health.state, message: health.message };
+  revalidatePath(SETTINGS_PATH);
+  revalidatePath('/admin/knowledgebase');
+  return {
+    success: modelId
+      ? `The Knowledgebase now embeds with ${modelId}. Documents made with another model need processing again.`
+      : 'The Knowledgebase now uses the first Stable embedding model.',
+  };
 }

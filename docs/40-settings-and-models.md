@@ -41,6 +41,10 @@ answer. Assign one to a customer-facing persona and the experience will be poor.
 
 ## Provider health — "key set" was a claim, not a fact
 
+> **Since #62** the Test and Fetch buttons live on each provider's card under *Providers & keys*,
+> Test appears only after Save and Fetch only after a passing test, and Fetch syncs automatically.
+> See `51-connection-checks.md`. The reasoning below about *what* Test checks still holds.
+
 `src/lib/ai/health.ts` plus a **Test connection** button per provider. It makes the smallest real
 completion the provider offers — deliberately **not** a model list, because listing succeeds in
 exactly the state this is meant to catch — and classifies the result:

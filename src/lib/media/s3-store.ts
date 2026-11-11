@@ -73,6 +73,38 @@ export class S3Store implements MediaStore {
     };
   }
 
+  /**
+   * `HEAD` on the bucket itself — the cheapest signed request S3 has, and it
+   * exercises everything a real upload depends on: endpoint, bucket name,
+   * region and both keys. Used by the connection check in Settings; returns
+   * the status rather than throwing so the check can say which of those is
+   * wrong.
+   */
+  async headBucket(): Promise<{ status: number }> {
+    const endpoint = new URL(this.config.endpoint);
+    const pathStyle = this.config.forcePathStyle ?? true;
+    const host = pathStyle ? endpoint.host : `${this.config.bucket}.${endpoint.host}`;
+    const path = pathStyle ? `/${this.config.bucket}` : '/';
+
+    const { headers } = signRequest({
+      method: 'HEAD',
+      path,
+      host,
+      region: this.config.region,
+      service: 's3',
+      accessKeyId: this.config.accessKeyId,
+      secretAccessKey: this.config.secretAccessKey,
+      payload: '',
+    });
+
+    const response = await fetch(`${endpoint.protocol}//${host}${path}`, {
+      method: 'HEAD',
+      headers,
+      signal: AbortSignal.timeout(15_000),
+    });
+    return { status: response.status };
+  }
+
   async get(name: string): Promise<FetchedObject | null> {
     if (!isValidObjectName(name)) return null;
     const { url, host, path } = this.target(name);

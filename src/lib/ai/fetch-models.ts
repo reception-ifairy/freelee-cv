@@ -12,7 +12,13 @@ import type { AiProviderRow } from '@/db/schema';
  * as src/lib/knowledge/registry.ts's `search()`).
  */
 
-export type FetchedModel = { id: string; label: string; modality: 'text' | 'image' };
+/**
+ * 'embedding' is a real outcome: the OpenAI fetcher has classified
+ * `text-embedding-*` as embedding since the Knowledgebase (docs/48), but the
+ * type still said text-or-image, so the filter below quietly narrowed those
+ * rows away from the compiler's view while letting them through at runtime.
+ */
+export type FetchedModel = { id: string; label: string; modality: 'text' | 'image' | 'embedding' };
 export type FetchModelsResult = { models: FetchedModel[] } | { error: string };
 
 async function resolveApiKey(providerKey: string, apiKeyEnv: string): Promise<string | undefined> {
@@ -20,7 +26,12 @@ async function resolveApiKey(providerKey: string, apiKeyEnv: string): Promise<st
   return fromSettings || process.env[apiKeyEnv] || undefined;
 }
 
-async function resolveBaseUrl(
+/**
+ * Settings, then the provider's env var, then the row's fallback — the same
+ * order `getModel()` uses. Exported so the health check asks the server a chat
+ * would actually talk to, rather than a hardcoded one.
+ */
+export async function resolveBaseUrl(
   providerKey: string,
   baseUrlEnv: string | null,
   fallbackBaseUrl: string | null,
@@ -45,13 +56,23 @@ async function fetchJson(url: string, headers: Record<string, string>): Promise<
   }
 }
 
-/** OpenAI's `/v1/models` has no capability flag — id prefixes are the only signal, so this is a heuristic, not authoritative. */
-function classifyOpenAiModel(id: string): 'text' | 'image' | 'embedding' | null {
-  if (/^(gpt-image|dall-e)/.test(id)) return 'image';
+/**
+ * OpenAI's `/v1/models` has no capability flag — id prefixes are the only
+ * signal, so this is a heuristic, not authoritative.
+ *
+ * Tighter than it was, because "Fetch models" now adds everything it finds
+ * (as preview) instead of waiting for someone to tick boxes: an audio,
+ * realtime or speech model filed as `text` would sit in the catalogue looking
+ * like a chat model it cannot be.
+ */
+function classifyOpenAiModel(id: string): FetchedModel['modality'] | null {
+  if (/^(gpt-image|dall-e|chatgpt-image)/.test(id)) return 'image';
   // Kept out until the Knowledgebase existed, since nothing could consume one.
   // Now they are the thing that indexes the library (docs/48).
   if (/^text-embedding-/.test(id)) return 'embedding';
-  if (/^(gpt-|o1-|o3-|o4-|chatgpt-)/.test(id)) return 'text';
+  if (/(audio|realtime|transcribe|tts)/.test(id)) return null;
+  // `o1`, `o3` exist as bare ids as well as `o3-mini`, so the dash is optional.
+  if (/^(gpt-|o\d(-|$)|chatgpt-)/.test(id)) return 'text';
   return null; // whisper/tts/moderation/etc — still not a model this platform runs
 }
 
@@ -85,7 +106,7 @@ async function fetchOpenAiModels(provider: AiProviderRow): Promise<FetchModelsRe
 
     const models = (body.data ?? [])
       .map((m) => ({ id: m.id, modality: classifyOpenAiModel(m.id) }))
-      .filter((m): m is { id: string; modality: 'text' | 'image' } => m.modality !== null)
+      .filter((m): m is { id: string; modality: FetchedModel['modality'] } => m.modality !== null)
       .map((m) => ({ id: m.id, label: m.id, modality: m.modality }));
 
     return { models };
@@ -140,7 +161,10 @@ async function fetchGoogleModels(provider: AiProviderRow): Promise<FetchModelsRe
       .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
       .map((m) => {
         const id = m.name.replace(/^models\//, '');
-        return { id, label: m.displayName ?? id, modality: 'text' as const };
+        // Gemini's image models also advertise `generateContent` (that is how
+        // src/lib/ai/generate-image.ts calls them), so the id is the only tell.
+        const modality: FetchedModel['modality'] = /-image(-|$)/.test(id) ? 'image' : 'text';
+        return { id, label: m.displayName ?? id, modality };
       });
 
     return { models };
@@ -158,10 +182,14 @@ async function fetchOpenRouterModels(provider: AiProviderRow): Promise<FetchMode
     const headers: Record<string, string> = {};
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     const body = (await fetchJson(`${baseUrl.replace(/\/$/, '')}/models`, headers)) as {
-      data?: { id: string; name?: string }[];
+      data?: { id: string; name?: string; architecture?: { output_modalities?: string[] } }[];
     };
 
-    const models = (body.data ?? []).map((m) => ({ id: m.id, label: m.name ?? m.id, modality: 'text' as const }));
+    // Only models that answer in text: this platform has no OpenRouter image
+    // or audio driver, so anything else would be a catalogue row nothing can run.
+    const models = (body.data ?? [])
+      .filter((m) => !m.architecture?.output_modalities || m.architecture.output_modalities.includes('text'))
+      .map((m) => ({ id: m.id, label: m.name ?? m.id, modality: 'text' as const }));
     return { models };
   } catch {
     return { error: 'Could not reach OpenRouter — check the base URL and try again.' };

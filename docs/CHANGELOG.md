@@ -34,7 +34,37 @@ Conventions used throughout:
 
 ## 2026-11-11
 
-### #61 · `pending` — Type the grant script's rows, so the typecheck passes again
+### #62 · `pending` — Every key gets Save, then Test, then Fetch — and Fetch updates the models by itself
+
+Setting up a provider took two screens that never referred to each other: the key
+under *Providers & keys*, Test and Fetch under *Models*. Fetch did not need a
+passing test, then asked for boxes to be ticked. Google, Tavily and ElevenLabs keys
+had no input at all, Stability had no setting, and nothing outside AI could be
+tested. Now every key or outside service is one card that follows the owner's rule.
+Test appears after Save and only for what is stored, Fetch appears only after a
+passing test (and the server refuses it otherwise), and editing a field hides both
+until the next save.
+
+Fetch for AI providers is a sync with no ticking. New models arrive as preview,
+never offered to customers until someone marks them Stable. Existing rows are never
+touched. Models the provider no longer lists are only counted, not deprecated,
+because provider lists use dated ids where the catalogue keeps aliases, and
+automatic deprecation could switch off a model live bots use. Tools (Tavily,
+ElevenLabs with a voice picker), email (Resend) and knowledge sources use the same
+card. Stripe, PayPal and S3 stay in the env file by decision, so their cards only
+test. Test results are kept as state + time, never the key, and nothing runs on page
+load.
+
+Fixed on the way: the health check ignored the Ollama/OpenRouter base URL settings,
+revalidation pointed at a redirect, the defaults form crashed without OpenAI tiers,
+embedding models were invisible and had no picker, and knowledge-source saves gave
+no feedback and silently dropped an unticked *Active*. Verified live: OpenAI Test
+passed and Fetch added 56 preview models with the stable catalogue unchanged at 7.
+Stripe/PayPal report *Not set* (their env values are empty).
+
+📄 `51-connection-checks.md` · handbook *AI models*, *Settings*, *Knowledge sources*, *When something looks wrong*
+
+### #61 · `dc8cbe0` — Type the grant script's rows, so the typecheck passes again
 
 #60 merged an earlier copy of `scripts/grant-grounding.ts`. The version that
 typed the rows its query returns had been edited after staging and was left

@@ -6,11 +6,10 @@ import { Search } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input, Label, Hint, Checkbox } from '@/components/ui/field';
-import { createKnowledgeSourceAction, updateKnowledgeSourceAction, deleteKnowledgeSourceAction } from '@/server/actions/admin-knowledge-sources';
-import { TestButton } from './test-button';
+import { Card } from '@/components/ui/card';
+import { Input, Label, Hint } from '@/components/ui/field';
+import { createKnowledgeSourceAction } from '@/server/actions/admin-knowledge-sources';
+import { SourceCard } from './source-card';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Knowledge sources' };
@@ -30,7 +29,7 @@ export default async function KnowledgeSourcesPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           {sources.length === 0 ? (
             <Card className="p-6">
               <EmptyState
@@ -42,105 +41,25 @@ export default async function KnowledgeSourcesPage() {
             </Card>
           ) : (
             sources.map((source) => (
-              <Card key={source.id}>
-                <CardContent className="space-y-3 p-5">
-                  <form action={updateKnowledgeSourceAction} className="space-y-3">
-                    <input type="hidden" name="id" value={source.id} />
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold">{source.label}</p>
-                        <p className="text-xs text-slate-400">
-                          key: <code className="font-mono">{source.key}</code>
-                        </p>
-                      </div>
-                      <Badge tone={source.isActive ? 'green' : 'slate'}>{source.isActive ? 'active' : 'inactive'}</Badge>
-                    </div>
-
-                    {/* Two fieldsets, because these are two unrelated jobs:
-                        reaching the API, and reading what it sends back. The
-                        card used to be ten inputs in two anonymous grids, and
-                        the only thing distinguishing them was that one had four
-                        columns and the other two. */}
-                    <fieldset className="grid gap-3 sm:grid-cols-2">
-                      <legend className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                        Connection
-                      </legend>
-                      <div>
-                        <Label htmlFor={`baseUrl-${source.id}`}>Base URL</Label>
-                        <Input id={`baseUrl-${source.id}`} name="baseUrl" defaultValue={source.baseUrl} className="text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`path-${source.id}`}>Path</Label>
-                        <Input id={`path-${source.id}`} name="path" defaultValue={source.path} className="text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`label-${source.id}`}>Label</Label>
-                        <Input id={`label-${source.id}`} name="label" defaultValue={source.label} className="text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`apiKey-${source.id}`}>API key</Label>
-                        <Input
-                          id={`apiKey-${source.id}`}
-                          name="apiKey"
-                          type="password"
-                          placeholder={source.apiKey ? '•••••••• (leave blank to keep)' : 'not set'}
-                          className="text-xs"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`grant-${source.id}`}>Grant (optional)</Label>
-                        <Input id={`grant-${source.id}`} name="grant" placeholder={source.grant ? '•••••••• (leave blank to keep)' : 'not set'} className="text-xs" />
-                      </div>
-                      <label className="flex items-center gap-2 self-end pb-2 text-xs text-slate-500">
-                        <Checkbox name="isActive" value="true" defaultChecked={source.isActive} />
-                        Active (selectable on personas)
-                      </label>
-                    </fieldset>
-
-                    <fieldset className="grid gap-3 sm:grid-cols-4">
-                      <legend className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                        Response mapping
-                      </legend>
-                      <div>
-                        <Label htmlFor={`resultsPath-${source.id}`}>Results path</Label>
-                        <Input id={`resultsPath-${source.id}`} name="resultsPath" defaultValue={source.resultsPath} className="font-mono text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`titlePath-${source.id}`}>Title path</Label>
-                        <Input id={`titlePath-${source.id}`} name="titlePath" defaultValue={source.titlePath} className="font-mono text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`textPath-${source.id}`}>Text path</Label>
-                        <Input id={`textPath-${source.id}`} name="textPath" defaultValue={source.textPath} className="font-mono text-xs" />
-                      </div>
-                      <div>
-                        <Label htmlFor={`citationPath-${source.id}`}>Citation path</Label>
-                        <Input id={`citationPath-${source.id}`} name="citationPath" defaultValue={source.citationPath} className="font-mono text-xs" />
-                      </div>
-                    </fieldset>
-                    <Hint>
-                      Dot-paths into each hit in the response, e.g. a hit shaped <code className="font-mono">{'{ chunk: { text, title } }'}</code> needs
-                      text path <code className="font-mono">chunk.text</code>.
-                    </Hint>
-
-                    <div className="flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <button type="submit" className="h-8 rounded-lg bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700">
-                        Save
-                      </button>
-                    </div>
-                  </form>
-
-                  <TestButton sourceKey={source.key} />
-
-                  <form action={deleteKnowledgeSourceAction} className="border-t border-slate-100 pt-3 dark:border-slate-800">
-                    <input type="hidden" name="id" value={source.id} />
-                    <button type="submit" className="text-xs font-medium text-rose-500 hover:underline">
-                      Delete
-                    </button>
-                  </form>
-                </CardContent>
-              </Card>
+              <SourceCard
+                key={source.id}
+                source={{
+                  id: source.id,
+                  key: source.key,
+                  label: source.label,
+                  baseUrl: source.baseUrl,
+                  path: source.path,
+                  // Booleans only: the card is a client component, and a key
+                  // passed as a prop would be in the page's HTML.
+                  hasApiKey: Boolean(source.apiKey),
+                  hasGrant: Boolean(source.grant),
+                  resultsPath: source.resultsPath,
+                  titlePath: source.titlePath,
+                  textPath: source.textPath,
+                  citationPath: source.citationPath,
+                  isActive: source.isActive,
+                }}
+              />
             ))
           )}
         </div>

@@ -46,6 +46,8 @@ ordinary server-component-fetches-then-passes-to-client-component, not a new pat
    fetched, not yet priced/vetted) for the admin to tier/price via the existing inline edit row.
    This directly replaces hand-typing model ids — provider catalogs change often enough that
    nobody should be maintaining that list by hand, including Claude.
+   *Superseded again in #62: Fetch runs from the provider's card after a passing Test and adds new
+   models as preview automatically, with no import step — see `51-connection-checks.md`.*
 4. **`ai_model_team` and `provider_credentials` are parked** — tables exist (so Phase 5 doesn't need
    another migration), but nothing reads or writes them yet. BYOK and per-team model
    allowlist/markup are Phase 5's job.

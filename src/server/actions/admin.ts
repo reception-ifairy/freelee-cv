@@ -7,10 +7,11 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import {
   personas, personaVersions, personaCategories, categories, sectors, creditPacks, promptModifiers,
-  posts, pages, menuItems, settings, users,
+  posts, pages, menuItems, users,
   PERSONALITY_TRAITS, type PersonaCapabilities, type PersonaPersonality, type PersonaBlueprint,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
+import { upsertSetting, type SettingKind } from '@/lib/settings';
 import { groundingOptions } from '@/lib/knowledge/grounding';
 import { isGuardrailCode } from '@/lib/persona/guardrails';
 import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
@@ -801,8 +802,6 @@ export async function deleteMenuItemAction(formData: FormData) {
 
 /* ------------------------------- Settings ------------------------------- */
 
-type SettingKind = (typeof settings.$inferInsert)['type'];
-
 const SETTING_KINDS: readonly SettingKind[] = ['string', 'text', 'bool', 'int', 'float', 'json', 'secret'];
 
 function isSettingKind(value: string | undefined): value is SettingKind {
@@ -838,13 +837,6 @@ export async function saveSettingsAction(_prev: ActionState, formData: FormData)
   revalidatePath('/admin/settings');
   revalidatePath('/', 'layout');
   return { success: 'Settings saved.' };
-}
-
-async function upsertSetting(key: string, value: string, type: SettingKind, group: string) {
-  await db
-    .insert(settings)
-    .values({ key, value, type, group })
-    .onConflictDoUpdate({ target: settings.key, set: { value, type, group } });
 }
 
 /* ------------------------------- Customers ------------------------------ */

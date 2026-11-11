@@ -56,3 +56,24 @@ export async function getSettingInt(key: string, fallback = 0): Promise<number> 
 export async function getSettingsGroup(group: string) {
   return db.select().from(settings).where(eq(settings.group, group)).orderBy(settings.position);
 }
+
+export type SettingKind = (typeof settings.$inferInsert)['type'];
+
+/**
+ * Writes one setting, creating it if it does not exist yet.
+ *
+ * Lives here rather than in src/server/actions/admin.ts, where it started:
+ * every export of a `'use server'` file is a callable endpoint, so sharing it
+ * from there with the connection checks would have published an unguarded
+ * "write any setting" action. Callers authorise first; this only writes.
+ */
+export async function upsertSetting(key: string, value: string, type: SettingKind, group: string) {
+  await db
+    .insert(settings)
+    .values({ key, value, type, group })
+    .onConflictDoUpdate({ target: settings.key, set: { value, type, group } });
+}
+
+export async function deleteSetting(key: string) {
+  await db.delete(settings).where(eq(settings.key, key));
+}

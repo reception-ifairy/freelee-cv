@@ -1,6 +1,7 @@
 # AI models
 
-**AI → AI models.** Which providers you're connected to and which models your personas can use.
+**Settings → Models.** Which models your personas can use, at what tier and price. Keys, and
+the **Test** and **Fetch models** buttons, are one tab up in **Settings → Providers & keys**.
 
 ## Providers
 
@@ -12,20 +13,29 @@
 | **Ollama** | A local server | Models on your own machine. No per-message cost, slower. |
 | **Stability AI** | API key | Image generation only — catalogue only for now, see below. |
 
-Keys go in **Settings → AI**. A key set there overrides one in the environment, so you can rotate
-a key without a deploy.
+Keys go in **Settings → Providers & keys**, one card per provider. A key saved there overrides one
+in the environment, so you can rotate a key without a deploy.
 
-## Fetch models
+## Save, Test, Fetch
 
-Each provider card has a **Fetch models** button. It asks the provider what models it currently
-offers and shows them as a checkable grid. Tick the ones you want and import.
+Every provider card works the same way:
 
-Use it rather than typing model names. Provider catalogues change constantly, and a hand-typed
+1. **Save** the key. Editing a box hides the other buttons until you save.
+2. **Test** makes the smallest real request the provider offers and says, in plain words, whether
+   it works — or whether the key was rejected, or the account has no credit left. The last answer
+   is remembered, so you see it next time without paying for another test.
+3. **Fetch models** appears once the test passes. It asks the provider what it offers right now and
+   adds every model you don't have yet — no ticking.
+
+Use Fetch rather than typing model names. Provider catalogues change constantly, and a hand-typed
 model ID that's since been retired fails at the worst moment — mid-conversation, in front of a
 customer.
 
-Imported models arrive as **Preview**. That's deliberate: they're in your catalogue but not yet
-priced or assigned a tier. You do that next.
+Fetched models arrive as **Preview**, collapsed under "N preview models (not offered to
+customers)" on the Models tab. That's deliberate: they're in your catalogue but not yet priced or
+assigned a tier, and customers never see them. Fetch never changes a model you already have. If a
+model you have is missing from the provider's list, Fetch only tells you — provider lists use dated
+names while your catalogue often uses the short one, so it would be wrong to switch it off.
 
 ## Per-model settings
 
@@ -41,7 +51,7 @@ Balanced resolves to.
 
 ## A safe way to introduce a new model
 
-1. Fetch and import it — it arrives as Preview, invisible to personas
+1. Fetch it — it arrives as Preview, invisible to personas
 2. Set credits per 1k and a sort position
 3. Set status to **Stable** but leave the tier empty — now selectable by name, but no persona
    switches to it automatically
