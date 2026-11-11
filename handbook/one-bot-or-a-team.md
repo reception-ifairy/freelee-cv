@@ -6,7 +6,7 @@ undo, so it's worth five minutes now.
 
 ## The short version
 
-| | **Chat** | **Room** | **Crew** |
+| | **Chat** | **Room** | **Bot team** |
 |---|---|---|---|
 | Who is there | One person, one persona | Several people and several personas | Personas only |
 | Who speaks | Both, taking turns | Anyone, and personas when @mentioned | The personas, to each other |
@@ -45,13 +45,14 @@ what to do about it.
 Rooms don't stream word by word. Each mentioned persona thinks, then its whole reply appears. With
 three personas mentioned, you wait for the slowest one. That's normal.
 
-## Crew — personas working without you
+## Bot team — bots working without you
 
-A crew — **"bot team"** in the admin panel — is a set of personas with a task and a running order.
-You press start; they work through it between themselves and hand you the result.
+A bot team is a few bots with one task between them. You press start; they work through it between
+themselves and hand you the result. (On the customer side of the site, and in the code, a bot team is
+called a **crew** — same thing.)
 
 **You do not wait.** Starting a run hands you straight to a page that updates itself as the team
-works: which member is acting, what each step cost, how long it took, and the conversation as it
+works: which bot is replying, what each reply cost, how long it took, and the conversation as it
 appears. If a run is going somewhere you did not intend, press **Stop run**. It finishes the reply
 currently being written and then stops — a request already sent to the AI cannot be taken back, so
 expect one more paragraph, not an instant halt.
@@ -61,25 +62,29 @@ it happens. Every team has a **credit budget** and a **maximum number of turns**
 reason. Set both. A team that loops on a confusing task will happily spend everything you allow it
 to, and the caps are what stop that being a real number on a real bill.
 
-There are three ways a team can work, and the admin panel names them for what they do rather than
-what they are called in the code:
+There are three ways a team can work together:
 
 | | What happens | Use it when |
 |---|---|---|
-| **Pipeline** | Each member acts once, in order, seeing everything before it | The task has stages — research, then draft, then check |
-| **Fan-out** | Every member answers the same task at once, independently | You want several separate takes to compare |
-| **Delegating** | One member decides who acts next, each turn, until it says the work is done | The path is not known up front |
+| **One after another** | The bots take turns in a set order; each builds on the previous answer | The task has stages — research, then draft, then check |
+| **All at once** | Every bot answers the same task on its own, at the same time | You want several separate takes to compare |
+| **A lead bot delegates** | One bot — the lead — hands work to the others and decides when it is done | The path is not known up front |
 
-In a pipeline the order *is* the behaviour, so the members list is drag-to-reorder.
+In *One after another* the order *is* the behaviour, so you set it yourself — drag the bots, or use
+the arrows. Each bot can also be given a **role on this team** ("check for legal risks, don't
+rewrite"), which applies on that team only. Before a run starts, the team's page checks for free
+that every bot is published and the wallet has credits, so a team that cannot work never gets as far
+as spending anything.
 
 **Use it when:** the task has clear stages, and you'd rather review the finished thing than
 supervise the middle.
 
 > **Example.** "Research this company, draft a one-page brief, then check it for anything legally
-> risky." Researcher, writer, compliance persona — in that order, no human in between.
+> risky." Researcher, writer, compliance bot — one after another, in that order, no human in
+> between.
 
-**Where to build one:** Admin → Teamwork → Bot teams. See *[Bot teams](/admin/handbook/bot-teams)*
-for the full walkthrough.
+**Where to build one:** Admin → Teamwork → Bot teams → **New bot team**. See
+*[Bot teams](/admin/handbook/bot-teams)* for the full walkthrough.
 
 ## How to choose
 
@@ -87,7 +92,7 @@ Ask yourself one question: **do I need to be involved while this happens?**
 
 - Yes, and it's one topic → **Chat**
 - Yes, and I want several opinions → **Room**
-- No, I just want the outcome → **Crew**
+- No, I just want the outcome → **Bot team**
 
 If you're unsure, start with a chat. Turning a chat into a room later costs you nothing. Starting
 with a team and discovering you needed to steer it costs you the credits it spent getting the wrong

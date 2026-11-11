@@ -25,7 +25,7 @@ export const HANDBOOK: HandbookPart[] = [
       {
         slug: 'one-bot-or-a-team',
         title: 'One assistant, or a team?',
-        summary: 'The three ways of working — a single chat, a room, and a crew — and when each one is right.',
+        summary: 'The three ways of working — a single chat, a room, and a bot team — and when each one is right.',
       },
       {
         slug: 'first-persona',
@@ -44,21 +44,22 @@ export const HANDBOOK: HandbookPart[] = [
       { slug: 'persona-capabilities', title: 'Capabilities tab', summary: 'Buttons, voice, suggestions, and the chat layout.' },
       { slug: 'persona-publishing', title: 'Publishing tab', summary: 'Drafts, versions, and putting a persona live.' },
       { slug: 'taxonomy', title: 'Taxonomy and the workbench', summary: 'The twenty fields your bots work in, who they serve, and where new bots get designed.' },
-      { slug: 'persona-cards', title: 'How a persona looks', summary: 'The generated mark instead of a face, the flip card, categories and sectors, and dragging personas onto a team.' },
+      { slug: 'persona-cards', title: 'How a persona looks', summary: 'The generated mark instead of a face, the flip card, categories and sectors, and ordering a team.' },
     ],
   },
   {
     title: 'Teamwork',
+    // Same order as the sidebar's Teamwork section: bot teams first.
     pages: [
+      {
+        slug: 'bot-teams',
+        title: 'Bot teams',
+        summary: 'Building a team of bots, test-running it, watching it work and stopping it.',
+      },
       {
         slug: 'projects',
         title: 'Projects',
         summary: 'Grouping the work for one job, and seeing what it cost.',
-      },
-      {
-        slug: 'bot-teams',
-        title: 'Bot teams',
-        summary: 'Building a team of personas, running it, watching it work and stopping it.',
       },
     ],
   },

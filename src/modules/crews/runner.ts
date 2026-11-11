@@ -5,7 +5,8 @@ import {
   crews, crewMembers, crewRuns, crewRunSteps, conversationParticipants,
   type Crew, type CrewMember, type CrewRun, type ConversationParticipant, type ConversationMessage,
 } from '@/db/schema';
-import { runPersonaTurn, parseMentions } from '@/modules/group-chat/mentions';
+import { runPersonaTurn } from '@/modules/group-chat/mentions';
+import { firstMentionedHandle, leadSaysDone, parallelBatch, statusForStopReason, type StopReason } from './rules';
 
 /**
  * The execution engine for a crew run. Every step is a call to Phase 6's
@@ -124,7 +125,7 @@ async function cancelled(state: RunState): Promise<boolean> {
   return state.cancelled === true;
 }
 
-async function runSequential(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<string> {
+async function runSequential(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<StopReason> {
   for (const member of members) {
     if (await cancelled(state)) return 'cancelled';
     if (state.turnCount >= run.maxTurns) return 'max_turns_reached';
@@ -137,24 +138,57 @@ async function runSequential(run: CrewRun, crew: Crew, members: CrewMember[], st
   return 'sequential_complete';
 }
 
-async function runParallel(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<string> {
+async function runParallel(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<StopReason> {
   if (await cancelled(state)) return 'cancelled';
   // Budget used to be checked only *after* the fan-out, so a run that was
   // already over budget still spent a whole extra round before noticing.
   if (state.creditsSpent >= run.budgetCredits) return 'budget_exceeded';
-  const budgeted = members.slice(0, Math.max(0, run.maxTurns - state.turnCount));
-  await Promise.all(budgeted.map((member) => step(run, crew, member, member.personaId, state, crewNote(crew, member))));
+  // Every member answers. This used to be `members.slice(0, maxTurns)`, so a
+  // five-bot team with the default limit of 6 was fine and a seven-bot one
+  // quietly lost its seventh member — reported as `parallel_complete`, with
+  // nothing on any screen saying someone had been skipped. See rules.ts.
+  const batch = parallelBatch(members, run.maxTurns, state.turnCount);
+  await Promise.all(batch.map((member) => step(run, crew, member, member.personaId, state, crewNote(crew, member))));
   return state.creditsSpent >= run.budgetCredits ? 'budget_exceeded' : 'parallel_complete';
 }
 
-async function runSupervisor(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<string> {
+async function runSupervisor(run: CrewRun, crew: Crew, members: CrewMember[], state: RunState): Promise<StopReason> {
+  // The admin builder will not save a lead team without a lead, and its
+  // pre-check will not start one. The fallback stays for teams saved before
+  // that and for the customer form, which still allows "None".
   const supervisor = members.find((m) => m.isSupervisor) ?? members[0];
   const delegates = members.filter((m) => m.id !== supervisor.id);
 
+  // Participants do not change during a run, so they are read once rather
+  // than on every lap of the loop.
+  const participants = await db
+    .select()
+    .from(conversationParticipants)
+    .where(eq(conversationParticipants.conversationId, run.conversationId));
+  const participantFor = (member: CrewMember) =>
+    participants.find((p) => p.participantType === 'persona' && p.participantId === String(member.personaId));
+
+  // The lead was told to reply "with exactly one @handle" and never told what
+  // the handles were — it had to guess them from the transcript, where its
+  // teammates only appear once they have spoken, which in this mode is only
+  // after the lead has named them. Each teammate's role goes in too: it is
+  // the one thing the lead needs to choose well.
+  const roster = delegates
+    .map((member) => {
+      const participant = participantFor(member);
+      if (!participant) return null;
+      const role = member.instructions ? ` — ${member.instructions}` : '';
+      return `- @${participant.mentionHandle} (${participant.displayName})${role}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
   const supervisorNote =
     crewNote(crew, supervisor) +
-    '\n\nDecide which teammate should act next. Reply with exactly one `@handle` to delegate to them, ' +
-    'or reply with the single word DONE once the task is complete. Do not do the delegated work yourself.';
+    `\n\nYou lead this team. Your teammates:\n${roster}\n\n` +
+    'Decide which teammate should act next and reply with exactly one `@handle` from the list above, ' +
+    'saying what you want from them. Once the task is complete, reply with DONE on a line by itself. ' +
+    'Do not do the delegated work yourself.';
 
   for (;;) {
     if (await cancelled(state)) return 'cancelled';
@@ -163,36 +197,26 @@ async function runSupervisor(run: CrewRun, crew: Crew, members: CrewMember[], st
 
     const supervisorMsg = await step(run, crew, supervisor, supervisor.personaId, state, supervisorNote);
     if (supervisorMsg.status === 'failed') return 'step_failed';
-    if (/\bdone\b/i.test(supervisorMsg.content)) return 'supervisor_done';
+    // A line that is DONE, not any "done" anywhere — see rules.ts.
+    if (leadSaysDone(supervisorMsg.content)) return 'supervisor_done';
 
-    const allParticipants = await db
-      .select()
-      .from(conversationParticipants)
-      .where(eq(conversationParticipants.conversationId, run.conversationId));
-    const [delegateParticipant] = parseMentions(supervisorMsg.content, allParticipants, 1)
-      .filter((p) => p.participantId !== String(supervisor.personaId));
-    if (!delegateParticipant) return 'supervisor_no_delegate';
+    const delegateHandles = delegates.map((m) => participantFor(m)?.mentionHandle).filter((h): h is string => Boolean(h));
+    const handle = firstMentionedHandle(supervisorMsg.content, delegateHandles);
+    const delegateMember = handle
+      ? delegates.find((m) => participantFor(m)?.mentionHandle.toLowerCase() === handle)
+      : undefined;
+    // Not a success: the task was not finished, the lead just stopped
+    // delegating. rules.ts maps this to a stopped run, not a completed one.
+    if (!delegateMember) return 'supervisor_no_delegate';
 
     if (state.turnCount >= run.maxTurns) return 'max_turns_reached';
-    const delegateMember = delegates.find((m) => String(m.personaId) === delegateParticipant.participantId);
     const delegateMsg = await step(
-      run, crew, delegateMember, Number(delegateParticipant.participantId), state, crewNote(crew, delegateMember),
+      run, crew, delegateMember, delegateMember.personaId, state, crewNote(crew, delegateMember),
     );
     if (delegateMsg.status === 'failed') return 'step_failed';
     if (matchesStopCondition(delegateMsg.content, crew.stopConditions)) return 'stop_condition_matched';
   }
 }
-
-const TERMINAL_STATUS: Record<string, CrewRun['status']> = {
-  max_turns_reached: 'max_turns_reached',
-  budget_exceeded: 'budget_exceeded',
-  step_failed: 'failed',
-  no_members: 'failed',
-  // A run somebody stopped is neither completed nor failed. Without this the
-  // map's fall-through would record it as 'completed' — a small lie, told
-  // every single time anyone cancels.
-  cancelled: 'cancelled',
-};
 
 export type ExecuteOptions = {
   /**
@@ -212,13 +236,19 @@ export async function executeCrewRun(crewRunId: string, options: ExecuteOptions 
 
   const [crew] = await db.select().from(crews).where(eq(crews.id, run.crewId)).limit(1);
   if (!crew) throw new Error(`Crew ${run.crewId} not found.`);
-  const members = await db.select().from(crewMembers).where(eq(crewMembers.crewId, crew.id)).orderBy(crewMembers.position);
+  // `id` breaks ties, so two members saved at the same position (only
+  // possible in rows written before the builder) still run in a stable order.
+  const members = await db
+    .select()
+    .from(crewMembers)
+    .where(eq(crewMembers.crewId, crew.id))
+    .orderBy(crewMembers.position, crewMembers.id);
 
   await db.update(crewRuns).set({ status: 'running', startedAt: new Date() }).where(eq(crewRuns.id, run.id));
 
   const state: RunState = { turnCount: 0, creditsSpent: 0, shouldCancel: options.shouldCancel };
 
-  let stopReason: string;
+  let stopReason: StopReason;
   try {
     if (members.length === 0) {
       stopReason = 'no_members';
@@ -247,7 +277,10 @@ export async function executeCrewRun(crewRunId: string, options: ExecuteOptions 
 
   const [finished] = await db
     .update(crewRuns)
-    .set({ status: TERMINAL_STATUS[stopReason] ?? 'completed', stopReason, completedAt: new Date() })
+    // Total mapping, no fall-through: the old partial map defaulted anything
+    // it forgot — a cancel once, a lead that named nobody until now — to
+    // 'completed'.
+    .set({ status: statusForStopReason(stopReason), stopReason, completedAt: new Date() })
     .where(eq(crewRuns.id, run.id))
     .returning();
 

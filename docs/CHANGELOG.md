@@ -34,7 +34,39 @@ Conventions used throughout:
 
 ## 2026-11-11
 
-### #62 · `pending` — Every key gets Save, then Test, then Fetch — and Fetch updates the models by itself
+### #63 · `pending` — Bot teams get one simple builder, and run in the order you chose
+
+Building a bot team meant two different member pickers: a checkbox list of
+every active persona to create, and a drag board with no search to edit. A
+separate settings form held the only supervisor select, which listed every
+persona rather than the members. The create hint promised "the order you tick
+them is the order they run in", but checkboxes submit in page order, so a
+one-after-another team ran alphabetically. Each member's role had no input, and
+every Save wiped it. The screens spoke in Pipeline / Fan-out / Delegating and
+raw stop reasons.
+
+One builder now creates and edits a team on one page: what it is for, who is on
+it (search, add, drag or arrow to reorder, a role per bot, a lead chosen only
+from the members), and folded limits. Save stores the order shown and keeps the
+roles. The team page has Build and Runs tabs. Runs opens with a pre-check
+(enabled, published bots, wallet balance), enforced again when a run starts.
+Modes and outcomes are plain words: one after another, all at once, a lead bot
+delegates.
+
+The runner had three real bugs, fixed for customers too:
+- all-at-once dropped every member past the turn limit;
+- a lead finished on any reply containing "done";
+- a lead that named nobody was recorded as completed.
+
+The lead is now also given its teammates' handles and roles, which it was told
+to use but never shown. Rooms no longer lists team runs, and Teamwork reads Bot
+teams → Rooms → Projects. `scripts/verify-crew-runner.ts` (57 checks) joins
+`blocks:verify`. Verified live with a two-bot one-after-another test run that
+finished in the chosen order (80 credits, 15 s).
+
+📄 `45-teamwork-and-projects.md` · handbook *Bot teams*, *One bot or a team?*
+
+### #62 · `59da6c1` — Every key gets Save, then Test, then Fetch — and Fetch updates the models by itself
 
 Setting up a provider took two screens that never referred to each other: the key
 under *Providers & keys*, Test and Fetch under *Models*. Fetch did not need a

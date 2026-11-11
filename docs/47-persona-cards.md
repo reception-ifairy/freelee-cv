@@ -84,6 +84,11 @@ than nesting `Card`, because `backdrop-blur` and `transform-style: preserve-3d` 
 
 ## Drag to assign
 
+> **Retired in the builder rework (#63, 2026-11-11).** The two-column board was replaced by
+> `src/components/admin/team-builder.tsx` — search to add, one sortable list to reorder — and the
+> file was deleted. The lessons below still apply to any future cross-container drag. See
+> `docs/45-teamwork-and-projects.md`.
+
 `src/components/admin/team-assign.tsx` — the first **cross-container** drag here. Every existing
 `DndContext` sorts one vertical list with `restrictToVerticalAxis`/`restrictToParentElement`, both of
 which actively prevent moving an item between containers.
