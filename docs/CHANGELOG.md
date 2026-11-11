@@ -32,9 +32,33 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-11
+
+### #59 · `pending` — Bot edits save again, and say which field is wrong
+
+No persona could be saved from the admin since the legacy import (#58). That
+import never set max_tokens, the form submitted the empty box as `""`, and
+`z.coerce.number()` turned it into 0, so every one of the 124 personas failed
+`maxTokens.min(64)`. The owner saw a raw zod message ("Too small: expected number
+to be >=64") above six tabs, with the field on a hidden one. Optional numbers and
+enums now go through a `blank()` preprocess: empty means "use the default", which
+is what NULL already meant when a chat reads the version. A further 22 personas
+were stopped by the browser itself (penalties of 0.15 against `step=0.1`, on a
+hidden tab, so the submit died silently). The form is now `noValidate` and the
+server names the field, its tab and the fix, then the form jumps there.
+
+Pinned personas (122 of 124) wrote a draft and went back to the list, which
+looked exactly like a failed save. They now offer **Save draft** and **Save and
+publish**, and every save lands back on the persona saying whether the change is
+live. The schema moved to `src/lib/persona/form-schema.ts` so that
+`npm run personas:verify-form` can run every stored persona through it the way
+the browser submits it. It is read-only with no AI calls, and passes 124/124.
+
+📄 `11-persona-versioning.md` · handbook *Publishing tab*, *When something looks wrong*
+
 ## 2026-09-18
 
-### #58 · `pending` — Import the legacy character catalog without gambling the live database
+### #58 · `37876c5` — Import the legacy character catalog without gambling the live database
 
 The supplied personattest.json was six MySQL INSERT blocks wearing a JSON file
 extension: 126 rows, repeated ids and four duplicate target characters. A
