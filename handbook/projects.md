@@ -29,7 +29,8 @@ its project automatically.
 Be clear about what the budget does, because the word promises more than it delivers here.
 
 **It is a warning line, not a wall.** The project page shows what has been spent against it and
-turns amber past 70% and red past 90%. It is checked before a bot team run starts.
+turns amber past 70% and red past 90%. Nothing checks it before a bot team run starts — the
+team's own **budget** (under *Limits* in the team builder) is the cap a run actually obeys.
 
 **It cannot stop a message mid-conversation.** Credits come out of one wallet shared by everyone on
 the team, and that wallet is what actually runs out. A project budget tells you a piece of work is

@@ -72,7 +72,11 @@ show; **System → Documentation** has the details.
 
 ## Nothing can be bought
 
-No payment gateway is configured. The pricing page will say so. Add Stripe or PayPal keys.
+No payment gateway is configured. The pricing page will say so.
+
+Stripe and PayPal keys live in the server's env file on purpose — they are never typed into the
+admin. **Settings → Billing** shows a card for each: *Not set* means the env values are empty; once
+they are filled in on the server, press **Test** to confirm the keys work (nothing is charged).
 
 ## Still stuck
 
