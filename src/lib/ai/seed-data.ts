@@ -20,7 +20,7 @@ export const PROVIDER_SEED = [
     //
     // ⚠️ Registered but NOT verified end to end: the account authenticates and
     // lists 200+ models, yet every completion returns "You have no credits
-    // remaining." Use "Test connection" in Settings → Models once it is funded.
+    // remaining." Use Test in Settings → Providers & keys once it is funded.
     models: [
       { modelId: 'gpt-5.4-nano', label: 'GPT-5.4 nano', tier: null, creditsPer1k: 1 },
       { modelId: 'gpt-5.4-mini', label: 'GPT-5.4 mini', tier: 'fast', creditsPer1k: 3 },

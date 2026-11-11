@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CircleAlert, CircleCheck, CircleX, FlaskConical, Loader2, Plus, Stethoscope } from 'lucide-react';
-import { testProviderAction, updateAiProviderAction } from '@/server/actions/admin-ai-models';
-import { useAdminAction } from '@/components/admin/use-admin-action';
+import { ChevronDown, FlaskConical, Loader2, Plus } from 'lucide-react';
+import { updateAiProviderAction } from '@/server/actions/admin-ai-models';
 import { ModelRow, type ModelRowData } from './model-row';
 import { GridSelect } from '@/components/ui/grid-select';
 import { Badge } from '@/components/ui/badge';
 import { HelpTip } from '@/components/ui/help-tip';
 import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export type ProviderCardData = {
   id: number;
@@ -31,40 +31,37 @@ export type ProviderCardData = {
  * this provider, not a free-text box. Typing an id that does not exist there
  * was silent — every chat then failed at request time with the provider's own
  * error, which is a poor place to learn about a typo.
+ *
+ * Test and Fetch used to sit at the bottom of this card. They moved to the
+ * provider's connection card in Providers & keys, next to the key they check:
+ * this card is now only about which models are offered and at what price.
  */
 export function ProviderCard({
   provider,
   chatModels,
   imageModels,
-  fetchPanel,
+  embeddingModels,
+  previewModels,
   onAddModel,
 }: {
   provider: ProviderCardData;
+  /** Not preview — those have their own collapsed group below. */
   chatModels: ModelRowData[];
   imageModels: ModelRowData[];
-  fetchPanel: React.ReactNode;
+  embeddingModels: ModelRowData[];
+  previewModels: ModelRowData[];
   onAddModel: () => void;
 }) {
-  const { run } = useAdminAction();
   const [defaultModel, setDefaultModel] = useState(provider.defaultModel);
   const [, startTransition] = useTransition();
   const [saving, setSaving] = useState(false);
-  const [health, setHealth] = useState<{ state: string; message: string } | null>(null);
-  const [testing, setTesting] = useState(false);
 
-  function test() {
-    setTesting(true);
-    setHealth(null);
-    startTransition(async () => {
-      const formData = new FormData();
-      formData.set('providerId', String(provider.id));
-      setHealth(await testProviderAction(formData));
-      setTesting(false);
-    });
-  }
-
-  const options = chatModels
-    .filter((model) => model.status !== 'retired')
+  // Preview models are left out on purpose: the default model is used by
+  // every bot without a model of its own, so picking an unvetted one would
+  // offer it to customers through the back door. The current default stays
+  // listed whatever its status, so the control never shows an empty value.
+  const options = [...chatModels, ...previewModels.filter((model) => model.modelId === provider.defaultModel)]
+    .filter((model) => model.modality === 'text' && (model.status !== 'retired' || model.modelId === provider.defaultModel))
     .map((model) => ({ id: model.modelId, label: model.modelId, meta: model.label }));
 
   function saveDefault(next: string) {
@@ -104,14 +101,14 @@ export function ProviderCard({
           <p className="mt-0.5 text-xs text-slate-400">
             {chatModels.length} chat {chatModels.length === 1 ? 'model' : 'models'}
             {provider.supportsImages ? ` · ${imageModels.length} image` : ''}
-            {' · key from '}
-            <code className="font-mono">{provider.apiKeyEnv}</code>
+            {embeddingModels.length > 0 ? ` · ${embeddingModels.length} embedding` : ''}
+            {previewModels.length > 0 ? ` · ${previewModels.length} preview` : ''}
           </p>
         </div>
 
         {!provider.isImageOnly ? (
-          <div className="flex items-end gap-2">
-            <div className="w-52">
+          <div className="flex w-full items-end gap-2 sm:w-auto">
+            <div className="w-full sm:w-52">
               <div className="mb-1 flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Default model</span>
                 <HelpTip
@@ -129,8 +126,6 @@ export function ProviderCard({
           </div>
         ) : null}
       </div>
-
-      {health ? <HealthBanner state={health.state} message={health.message} /> : null}
 
       {provider.isLocal ? (
         <div className="border-b border-slate-100 bg-brand-50/40 p-4 text-xs leading-relaxed dark:border-slate-800 dark:bg-brand-500/5">
@@ -153,30 +148,32 @@ export function ProviderCard({
         {!provider.isImageOnly ? (
           <Section
             title="Chat models"
-            empty="No chat models registered yet — fetch this provider's live catalog below."
+            empty="No chat models yet — Fetch models under Providers & keys, then mark the ones you want Stable."
             models={chatModels}
           />
         ) : null}
 
-        {provider.supportsImages ? (
+        {/* Also when the provider row does not claim image support but has
+            image models anyway (a Gemini image model fetched and marked
+            Stable) — otherwise a Stable row would be invisible here. */}
+        {provider.supportsImages || imageModels.length > 0 ? (
           <Section
             title="Image models"
-            empty="No image models registered yet — fetch the live catalog below."
+            empty="No image models yet — Fetch models under Providers & keys, then mark one Stable."
             models={imageModels}
           />
         ) : null}
 
+        {/* Only when there are some: most providers have no embedding API
+            this platform can use, and an empty heading on each would suggest
+            otherwise. */}
+        {embeddingModels.length > 0 ? (
+          <Section title="Embedding models" empty="" models={embeddingModels} />
+        ) : null}
+
+        <PreviewGroup models={previewModels} />
+
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-          {fetchPanel}
-          <button
-            type="button"
-            onClick={test}
-            disabled={testing}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            {testing ? <Loader2 className="size-3.5 animate-spin" /> : <Stethoscope className="size-3.5" />}
-            {testing ? 'Testing…' : 'Test connection'}
-          </button>
           <button
             type="button"
             onClick={onAddModel}
@@ -207,27 +204,43 @@ function Section({ title, empty, models }: { title: string; empty: string; model
   );
 }
 
-const HEALTH_STYLES: Record<string, { tone: string; Icon: typeof CircleCheck }> = {
-  ok: { tone: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300', Icon: CircleCheck },
-  'no-credit': { tone: 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300', Icon: CircleAlert },
-  'no-key': { tone: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', Icon: CircleAlert },
-  'bad-key': { tone: 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300', Icon: CircleX },
-  error: { tone: 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300', Icon: CircleX },
-};
-
 /**
- * The result of a real request to the provider.
+ * Everything fetched from the provider that nobody has vetted yet.
  *
- * "no credit" gets its own state on purpose: the key is valid and the model
- * list loads, so every other signal says the provider is fine while nothing
- * can actually run.
+ * Collapsed, and its rows only rendered when opened: one Fetch on OpenRouter
+ * adds a few hundred models, and listing them inline buried the handful that
+ * customers can actually use. A preview model is never offered — the registry
+ * reads Stable rows only — so this is a to-do list, not a catalogue.
  */
-function HealthBanner({ state, message }: { state: string; message: string }) {
-  const style = HEALTH_STYLES[state] ?? HEALTH_STYLES.error;
+function PreviewGroup({ models }: { models: ModelRowData[] }) {
+  const [open, setOpen] = useState(false);
+  if (models.length === 0) return null;
+
   return (
-    <p role="status" className={`flex items-start gap-2 border-b border-slate-100 px-4 py-2.5 text-xs dark:border-slate-800 ${style.tone}`}>
-      <style.Icon className="mt-px size-3.5 shrink-0" />
-      {message}
-    </p>
+    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">
+            {models.length} preview {models.length === 1 ? 'model' : 'models'} (not offered to customers)
+          </span>
+          <span className="block text-xs text-slate-400">
+            Fetched from the provider, not vetted yet. Set a price, then mark one Stable to offer it.
+          </span>
+        </span>
+        <ChevronDown className={cn('size-4 shrink-0 text-slate-400 transition', open && 'rotate-180')} />
+      </button>
+      {open ? (
+        <div className="space-y-2 border-t border-dashed border-slate-200 p-3 dark:border-slate-700">
+          {models.map((model) => (
+            <ModelRow key={model.id} model={model} showModality />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

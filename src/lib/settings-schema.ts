@@ -39,6 +39,11 @@ export const SETTINGS_SCHEMA = {
     { key: 'openrouter_api_key', label: 'OpenRouter API key', type: 'secret' },
     { key: 'openrouter_default_model', label: 'OpenRouter default model', type: 'string' },
     { key: 'ollama_base_url', label: 'Ollama base URL', type: 'string', help: 'e.g. http://localhost:11434/v1' },
+    // Stability was env-only (STABILITY_API_KEY) although every reader already
+    // looked in settings first — `${provider}_api_key` — so it only lacked a
+    // place to be typed in. Listed here so a key saved from the admin has a
+    // known type and group like every other provider's.
+    { key: 'stability_api_key', label: 'Stability AI API key', type: 'secret' },
     { key: 'guest_free_messages', label: 'Free messages before signup', type: 'int' },
     { key: 'signup_bonus_credits', label: 'Signup bonus credits', type: 'int' },
     { key: 'tavily_api_key', label: 'Tavily API key (web search tool)', type: 'secret' },

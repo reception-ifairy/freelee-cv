@@ -246,6 +246,15 @@ function mapStripeStatus(status: Stripe.Subscription.Status): (typeof subscripti
 
 /* -------------------------------- PayPal -------------------------------- */
 
+/**
+ * Sandbox unless `PAYPAL_MODE=live`. Exported so the connection check in
+ * Settings asks the same PayPal the checkout does — credentials from one mode
+ * are refused by the other, which is the most likely PayPal mistake there is.
+ */
+export function paypalApiBase() {
+  return process.env.PAYPAL_MODE === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+}
+
 class PayPalGateway implements PaymentGateway {
   readonly id = 'paypal' as const;
   readonly label = 'PayPal';
@@ -255,9 +264,7 @@ class PayPalGateway implements PaymentGateway {
   }
 
   private baseUrl() {
-    return process.env.PAYPAL_MODE === 'live'
-      ? 'https://api-m.paypal.com'
-      : 'https://api-m.sandbox.paypal.com';
+    return paypalApiBase();
   }
 
   private async token(): Promise<string> {

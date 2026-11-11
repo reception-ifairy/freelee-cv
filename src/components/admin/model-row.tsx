@@ -13,6 +13,7 @@ export type ModelRowData = {
   label: string;
   tier: string | null;
   status: 'preview' | 'stable' | 'deprecated' | 'retired';
+  modality: 'text' | 'image' | 'embedding';
   creditsPer1k: number;
   sort: number;
   isDefault: boolean;
@@ -43,7 +44,16 @@ const STATUS_TONE = { stable: 'green', preview: 'brand', deprecated: 'amber', re
  * same `GridSelect` used everywhere else, and saving is automatic on change —
  * there is nothing to submit and nothing to forget.
  */
-export function ModelRow({ model, disabled }: { model: ModelRowData; disabled?: boolean }) {
+export function ModelRow({
+  model,
+  disabled,
+  showModality,
+}: {
+  model: ModelRowData;
+  disabled?: boolean;
+  /** For mixed lists (the preview group), where the section heading no longer says what kind of model a row is. */
+  showModality?: boolean;
+}) {
   const [tier, setTier] = useState(model.tier ?? '');
   const [status, setStatus] = useState(model.status);
   const [credits, setCredits] = useState(String(model.creditsPer1k));
@@ -74,9 +84,10 @@ export function ModelRow({ model, disabled }: { model: ModelRowData; disabled?: 
       )}
     >
       <div className="min-w-0">
-        <p className="flex items-center gap-2 truncate font-mono text-sm">
-          {model.modelId}
+        <p className="flex items-center gap-2 font-mono text-sm">
+          <span className="min-w-0 truncate">{model.modelId}</span>
           {model.isDefault ? <Badge tone="brand">default</Badge> : null}
+          {showModality && model.modality !== 'text' ? <Badge tone="slate">{model.modality}</Badge> : null}
         </p>
         <p className="truncate text-xs text-slate-400">{model.label}</p>
       </div>

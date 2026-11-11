@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {
-  Bot, ChartNoAxesColumn, CreditCard, Cpu, Globe, Layers, Mail, Palette, SlidersHorizontal,
+  Bot, ChartNoAxesColumn, CreditCard, Cpu, Globe, HardDrive, Layers, Mail, Palette, SlidersHorizontal,
 } from 'lucide-react';
 import { SETTINGS_MAP, type SettingsSection } from '@/lib/admin/settings-sections';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ const ICONS = {
   sliders: SlidersHorizontal,
   globe: Globe,
   chart: ChartNoAxesColumn,
+  storage: HardDrive,
   cpu: Cpu,
   layers: Layers,
   bot: Bot,

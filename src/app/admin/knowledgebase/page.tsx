@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { BookOpen, Layers, Quote, Coins } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { StatTile } from '@/components/ui/stat-tile';
@@ -31,7 +32,11 @@ export default async function KnowledgebasePage() {
         <Card padding="md" className="mb-6 border-amber-300 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20">
           <p className="text-sm">
             <strong>No embedding model is set up yet.</strong> Documents can be found and read, but not
-            made searchable until one is chosen under <em>Settings → AI models</em>.
+            made searchable until one is chosen under{' '}
+            <Link href="/admin/settings?section=models" className="font-medium underline underline-offset-2">
+              Settings → Models
+            </Link>
+            .
           </p>
         </Card>
       ) : null}

@@ -37,11 +37,15 @@ then you'd set: results `data.results`, title `title`, text `chunk.text`, citati
 Nested keys use dots. Array indices and wildcards are **not** supported — this handles the ordinary
 case, not every possible API shape.
 
-## Test connection
+## Test
 
-Type a query and press Test. It runs the real search through the same code a live chat uses, so if
-it works here it works in a conversation. Do this before attaching the source to a persona —
-otherwise a wrong dot-path shows up as a persona that mysteriously never cites anything.
+Save the source, then press **Test**. It searches for the source's own label through the same code a
+live chat uses, and shows how many results came back and the first three titles — so if it works
+here it works in a conversation. It works on inactive sources too, so you can check one before
+switching it on. Do this before attaching the source to a persona — otherwise a wrong dot-path shows
+up as a persona that mysteriously never cites anything.
+
+When it fails it says why: no key, key rejected, not reachable, or which dot-path found nothing.
 
 ## Attaching to a persona
 

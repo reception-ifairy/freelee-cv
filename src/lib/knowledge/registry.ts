@@ -56,8 +56,21 @@ function mapHit(source: KnowledgeSourceRow, hit: unknown): KnowledgeChunk | null
   };
 }
 
-async function search(source: KnowledgeSourceRow, query: string, k: number): Promise<KnowledgeResult> {
-  if (!source.apiKey || !source.baseUrl) return emptyResult(source.key);
+export type SourceProbe =
+  | { ok: true; chunks: KnowledgeChunk[]; hits: number }
+  | { ok: false; reason: 'no-key' | 'unreachable' | 'not-json' | 'no-list' }
+  | { ok: false; reason: 'refused'; status: number };
+
+/**
+ * One source, one query, and — unlike `search()` — the reason when it fails.
+ *
+ * A chat turn only needs "something or nothing", but the admin's Test button
+ * needs to say *which* of several things is wrong, and the fix for each is
+ * different. `search()` is built on this, so the test still exercises exactly
+ * the request a chat turn sends.
+ */
+export async function probeKnowledgeSource(source: KnowledgeSourceRow, query: string, k: number): Promise<SourceProbe> {
+  if (!source.apiKey || !source.baseUrl) return { ok: false, reason: 'no-key' };
 
   try {
     const controller = new AbortController();
@@ -73,17 +86,25 @@ async function search(source: KnowledgeSourceRow, query: string, k: number): Pro
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    if (!response.ok) return emptyResult(source.key);
+    if (!response.ok) return { ok: false, reason: 'refused', status: response.status };
 
-    const body = (await response.json()) as unknown;
+    // Parsed separately so "answered, but not with JSON" (usually a wrong
+    // path landing on an HTML page) is not reported as "could not reach".
+    const body = (await response.json().catch(() => undefined)) as unknown;
+    if (body === undefined) return { ok: false, reason: 'not-json' };
     const results = resolvePath(body, source.resultsPath);
-    if (!Array.isArray(results)) return emptyResult(source.key);
+    if (!Array.isArray(results)) return { ok: false, reason: 'no-list' };
 
     const chunks = results.map((hit) => mapHit(source, hit)).filter((c): c is KnowledgeChunk => c !== null);
-    return { ok: true, chunks, sourceKey: source.key };
+    return { ok: true, chunks, hits: results.length };
   } catch {
-    return emptyResult(source.key);
+    return { ok: false, reason: 'unreachable' };
   }
+}
+
+async function search(source: KnowledgeSourceRow, query: string, k: number): Promise<KnowledgeResult> {
+  const probe = await probeKnowledgeSource(source, query, k);
+  return probe.ok ? { ok: true, chunks: probe.chunks, sourceKey: source.key } : emptyResult(source.key);
 }
 
 /**

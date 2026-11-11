@@ -33,7 +33,7 @@ In order:
 
 ## A knowledge source cites nothing
 
-Use **Test connection** on the source. If the test returns nothing, the problem is the connection
+Use **Test** on the source. If the test returns nothing, the problem is the connection
 or the dot-paths, not the persona. Check the results path points at the array of hits, and that
 the text path points at where the actual text lives inside each hit.
 
