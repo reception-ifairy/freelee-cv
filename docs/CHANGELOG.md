@@ -34,7 +34,16 @@ Conventions used throughout:
 
 ## 2026-11-11
 
-### #60 · `pending` — Give many bots the same shelves in one step, starting with the business library
+### #61 · `pending` — Type the grant script's rows, so the typecheck passes again
+
+#60 merged an earlier copy of `scripts/grant-grounding.ts`. The version that
+typed the rows its query returns had been edited after staging and was left
+out, so `npm run typecheck` failed on `main` (`pin_versioning`/`version` not on
+the inferred row type). The script ran correctly. Only the declared types were
+missing. This adds them and changes no behaviour: a dry run still reports
+`+0 already has them` for every bot granted in #60.
+
+### #60 · `3109e08` — Give many bots the same shelves in one step, starting with the business library
 
 The business library is live: 132 English Markdown documents on three shelves
 (`strategy-frameworks`, `business-plan-method`, `ai-adoption-research`), built from

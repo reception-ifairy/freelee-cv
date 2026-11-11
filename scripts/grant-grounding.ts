@@ -62,7 +62,11 @@ try {
   const unknown = sources.filter((s) => !known.has(s));
   if (unknown.length) throw new Error(`Unknown source key(s): ${unknown.join(', ')}. Known: ${[...known].join(', ')}`);
 
-  const personas = await sql`
+  type Row = {
+    id: number; slug: string; name: string; pin_versioning: boolean; draft_version_id: number | null;
+    current_version_id: number; version: string; grounding_sources: unknown;
+  };
+  const personas = await sql<Row[]>`
     select p.id, p.slug, p.name, p.pin_versioning, p.draft_version_id, p.current_version_id,
            v.version, v.grounding_sources
       from personas p
@@ -77,7 +81,7 @@ try {
   }
 
   const plan = personas.map((p) => {
-    const current: string[] = Array.isArray(p.grounding_sources) ? p.grounding_sources : [];
+    const current: string[] = Array.isArray(p.grounding_sources) ? (p.grounding_sources as string[]) : [];
     const added = sources.filter((s) => !current.includes(s));
     return { ...p, next: [...current, ...added], added };
   });
