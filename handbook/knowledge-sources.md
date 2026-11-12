@@ -9,7 +9,9 @@ Out of the box, a persona knows what its model was trained on — broad, undated
 about *your* business. A knowledge source points it at a search API you control, so it can look
 things up and cite them.
 
-Typical uses: your product documentation, your policies, a curriculum, a research archive.
+Typical uses: your product documentation, your policies, a research archive. For the UK curriculum
+there is a dedicated connection instead — see
+[Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
 
 ## What you need
 

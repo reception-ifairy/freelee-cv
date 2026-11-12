@@ -21,7 +21,8 @@ import { getPlatformTeamId } from '@/lib/teams';
 import { isChatLayoutKey } from '@/lib/chat/layouts';
 import { isToolKey } from '@/lib/tools/catalog';
 import type { ActionState } from './auth';
-import { personaSchema, personaFieldError, type PersonaSaveState } from '@/lib/persona/form-schema';
+import { personaSchema, personaFieldError, parseCurriculumForm, type PersonaSaveState } from '@/lib/persona/form-schema';
+import { KEY_STAGE_SEGMENT, isKeyStage } from '@/lib/curriculum/scope';
 
 const riskLevelSchema = z.enum(['R0', 'R1', 'R2', 'R3']);
 const narrativeFitSchema = z.enum(['low', 'medium', 'high', 'very_high']);
@@ -51,6 +52,27 @@ export async function savePersonaAction(_prev: PersonaSaveState, formData: FormD
   if (!parsed.success) return personaFieldError(parsed.error.issues[0]);
 
   const data = parsed.data;
+
+  // Repeated checkboxes, so read with getAll rather than through the schema —
+  // see parseCurriculumForm (docs/52-curriculum-tutors.md).
+  const curriculum = parseCurriculumForm({
+    enabled: checkbox(formData, 'curriculumEnabled'),
+    keyStages: formData.getAll('curriculumKeyStages').map(String),
+    subjects: formData.getAll('curriculumSubjects').map(String),
+    year: String(formData.get('curriculumYear') ?? ''),
+  });
+  if (!curriculum.ok) return curriculum.state;
+  const curriculumScope = curriculum.scope;
+
+  // A tutor's key stages name its learners, so the matching audience segments
+  // are added (never removed — the admin may have ticked more). And the
+  // Audience section of the prompt only renders with an audience type, so an
+  // empty one becomes B2C: without that the segments would reach nothing.
+  const audienceSegments = new Set(formData.getAll('audienceSegments').map(String).filter(isAudienceSegmentCode));
+  for (const stage of curriculumScope?.keyStages ?? []) {
+    if (isKeyStage(stage)) audienceSegments.add(KEY_STAGE_SEGMENT[stage]);
+  }
+  const audienceType = data.audienceType ?? (curriculumScope ? 'B2C' : null);
 
   // Async (a real DB read now, since sources are admin-managed data — see
   // docs/18-knowledge-sources.md), so resolved once here into a plain Set
@@ -127,12 +149,13 @@ export async function savePersonaAction(_prev: PersonaSaveState, formData: FormD
     presencePenalty: data.presencePenalty,
     maxTokens: data.maxTokens ?? null,
     historyMessages: data.historyMessages,
-    audienceType: data.audienceType ?? null,
+    audienceType,
     personality,
     knowledgeDomains: (data.knowledgeDomains ?? '').split(',').map((d) => d.trim()).filter(Boolean),
     groundingSources: formData.getAll('groundingSources').map(String).filter((key) => validSourceKeys.has(key)),
     guardrails: formData.getAll('guardrails').map(String).filter(isGuardrailCode),
-    audienceSegments: formData.getAll('audienceSegments').map(String).filter(isAudienceSegmentCode),
+    audienceSegments: [...audienceSegments],
+    curriculumScope,
     capabilities,
     interactionStyle: data.interactionStyle ?? null,
     approachToUnknown: data.approachToUnknown ?? null,

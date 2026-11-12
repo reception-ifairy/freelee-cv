@@ -116,6 +116,9 @@ export async function installListing(
         groundingSources: sourceVersion.groundingSources,
         guardrails: sourceVersion.guardrails,
         audienceSegments: sourceVersion.audienceSegments,
+        // A tutor stays a tutor when installed: without its scope the copy
+        // would lose its curriculum tools and teach from memory.
+        curriculumScope: sourceVersion.curriculumScope,
         blueprint: sourceVersion.blueprint,
         interactionStyle: sourceVersion.interactionStyle,
         approachToUnknown: sourceVersion.approachToUnknown,

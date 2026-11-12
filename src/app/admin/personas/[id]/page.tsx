@@ -9,6 +9,8 @@ import { sectorOptions } from '@/lib/taxonomy/queries';
 import { PersonaForm } from '@/components/admin/persona-form';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { suggestedToolsFor } from '@/lib/tools/catalog';
+import { getSettings } from '@/lib/settings';
+import { CURRICULUM_SCOPE_CACHE_KEY, readScopeCache } from '@/lib/curriculum/stored';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -29,7 +31,7 @@ export default async function EditPersonaPage({
   const personaId = Number(id);
   if (!Number.isFinite(personaId)) notFound();
 
-  const [[persona], categoryRows, links, providers, knowledgeSourceRows, sectorRows] = await Promise.all([
+  const [[persona], categoryRows, links, providers, knowledgeSourceRows, sectorRows, settings] = await Promise.all([
     db.select().from(personas).where(eq(personas.id, personaId)).limit(1),
     db.select().from(categories).orderBy(asc(categories.position)),
     db
@@ -39,6 +41,7 @@ export default async function EditPersonaPage({
     getProviderRegistry(),
     groundingOptions(),
     sectorOptions(),
+    getSettings(),
   ]);
 
   if (!persona) notFound();
@@ -83,6 +86,7 @@ export default async function EditPersonaPage({
       providers={providers}
       knowledgeSources={knowledgeSourceRows}
       sectors={sectorRows.map((s) => ({ id: s.id, name: s.name, categoryName: s.categoryName }))}
+      curriculumCache={readScopeCache(settings.get(CURRICULUM_SCOPE_CACHE_KEY))}
     />
   );
 }

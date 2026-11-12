@@ -107,13 +107,13 @@ try {
               ai_provider, model, model_tier, temperature, top_p, frequency_penalty, presence_penalty, max_tokens,
               history_messages, audience_type, personality, knowledge_domains, capabilities, grounding_sources,
               guardrails, audience_segments, blueprint, interaction_style, approach_to_unknown, prompt_technique,
-              thinking_mode, published_at, authored_by_team_id, chat_layout, tools)
+              thinking_mode, published_at, authored_by_team_id, chat_layout, tools, curriculum_scope)
             select persona_id, ${nextPatchVersion(p.version)}, ${changelog}, 'published', true, system_prompt,
                    welcome_message, suggestions, ai_provider, model, model_tier, temperature, top_p,
                    frequency_penalty, presence_penalty, max_tokens, history_messages, audience_type, personality,
                    knowledge_domains, capabilities, ${grounding}, guardrails, audience_segments, blueprint,
                    interaction_style, approach_to_unknown, prompt_technique, thinking_mode, now(),
-                   authored_by_team_id, chat_layout, tools
+                   authored_by_team_id, chat_layout, tools, curriculum_scope
               from persona_versions where id = ${p.current_version_id}
             returning id`;
           await tx`update personas set current_version_id = ${created.id}, grounding_sources = ${grounding}, updated_at = now() where id = ${p.id}`;

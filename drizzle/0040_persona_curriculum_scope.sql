@@ -1,0 +1,22 @@
+-- Curriculum tutors: which part of the UK curriculum a persona version teaches.
+--
+-- A tutor on freelee is a "mindset" persona — character, voice and the way it
+-- teaches — and its subject knowledge comes live from curriculum.ifairy.co.uk
+-- through two tools, curriculum_search and curriculum_objectives
+-- (docs/52-curriculum-tutors.md). This column is the scope those tools are
+-- built from on every request: the key stages and subjects the tutor may look
+-- up, and optionally the learner's year.
+--
+--   {"keyStages": ["KS2"], "subjects": ["mathematics"], "year": "Y4"}
+--
+-- NULL means "not a curriculum tutor". That is every existing persona, so the
+-- column is nullable with no default and needs no backfill.
+--
+-- On persona_versions, not personas, because it changes what the bot does: it
+-- has to be drafted, pinned and published together with the prompt it sits
+-- beside (docs/11-persona-versioning.md). jsonb rather than three columns, the
+-- same as `tools` and `audience_segments`: the shape is validated in the server
+-- action (src/lib/persona/form-schema.ts), and the subject names are the
+-- curriculum's vocabulary, not ours to enumerate in a CHECK.
+
+ALTER TABLE "persona_versions" ADD COLUMN IF NOT EXISTS "curriculum_scope" jsonb;

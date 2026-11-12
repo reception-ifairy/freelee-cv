@@ -105,3 +105,14 @@ another, joined server-side.**
 `web_search` is registered with `needsKey: true`. With no Tavily key it is still offered to the
 model, but returns a refusal string rather than throwing — so the persona says "live web search is
 currently unavailable" instead of the chat erroring out. Verified live.
+
+---
+
+## Curriculum tutors (added 2026-11-12)
+
+`curriculum_search` and `curriculum_objectives` are the first tools that are **not** in
+`TOOL_CATALOG` and not ticked per persona: a version's `curriculum_scope` switches them on, and they
+are built per request by `curriculumTools()` as closures over that scope, with the scope's key
+stages and subjects as the only values their schemas accept. Unlike `web_search` they are not
+offered without a key — the prompt says the curriculum cannot be checked instead. See
+`52-curriculum-tutors.md`.

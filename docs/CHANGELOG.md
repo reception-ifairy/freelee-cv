@@ -32,9 +32,41 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-12
+
+### #65 · `pending` — Tutors teach from the live UK curriculum, within a scope set on both sides
+
+The imported AI tutors are to carry only a mindset (voice, character, way of
+teaching), with their subject knowledge coming live from curriculum.ifairy.co.uk.
+That API is far richer than anything in their prompts: 1,924 documents, 1,464
+statutory learning objectives and 641 SATs questions. freelee had a curriculum
+source once, removed in #7, and nothing replaced it.
+
+- **Curriculum card:** a Save → Test → Fetch card (`docs/51`). Test checks the key with
+  one small search, and Fetch stores the stages and subjects this key may see.
+- **Curriculum section on a persona:** turns a persona into a tutor with
+  `persona_versions.curriculum_scope` (migration 0040, nullable, NULL = not a tutor).
+  It sets the matching audience segments.
+- **Two tools, not grounding:** `curriculum_search` and `curriculum_objectives` are built
+  per request around that scope, so the model can only narrow it. They have an
+  8 s timeout, a 10-minute cache, a character budget and citations. Tools rather
+  than grounding means nothing is paid on turns that teach nothing, the model
+  writes the query, and the system prompt stays cacheable.
+- **Two-sided scope:** curriculum enforces its own scope on freelee's key too
+  (curriculum PR #30), and logs what it served, never the question.
+
+Verified live: Test and Fetch on the real key; Pan Kleks set to KS1–KS2
+(mathematics, English, science) answered a Year 4 fractions question citing
+`MA-Y3-020`. The curriculum panel in T1000 shows the served objectives with no
+query text. Measured: one such turn made four tool calls and cost 232 credits.
+That is too much, and it is written up to tune before the tutors import.
+`personas:verify-form` passes 124/124 after the migration.
+
+📄 `52-curriculum-tutors.md` · handbook *Tutors that teach from the curriculum*
+
 ## 2026-11-11
 
-### #64 · `pending` — Bring the README, handbook and doc index in line with today's updates
+### #64 · `3373956` — Bring the README, handbook and doc index in line with today's updates
 
 Each of #59–#63 updated the pages it touched. A read-through of everything
 else found places that now described the old behaviour.

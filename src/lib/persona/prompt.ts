@@ -1,8 +1,9 @@
-import type { Persona, PersonaVersion, PersonaBlueprint, PromptModifier } from '@/db/schema';
+import type { CurriculumScope, Persona, PersonaVersion, PersonaBlueprint, PromptModifier } from '@/db/schema';
 import { PERSONALITY_TRAITS, type PersonalityTrait } from '@/db/schema';
 import type { KnowledgeChunk } from '@/lib/knowledge/types';
 import { GUARDRAILS, isGuardrailCode } from '@/lib/persona/guardrails';
 import { AUDIENCE_SEGMENTS, isAudienceSegmentCode } from '@/lib/persona/audience-segments';
+import { YEARS_BY_KEY_STAGE, isKeyStage, yearLabel } from '@/lib/curriculum/scope';
 
 /**
  * The grounding budget.
@@ -162,6 +163,54 @@ function compileBlueprintSection(blueprint: PersonaBlueprint): string {
   return lines.join('\n');
 }
 
+/** "KS2 (Years 3–6)" — the stage named the way a teacher would, with its years. */
+function describeKeyStage(stage: string): string {
+  if (!isKeyStage(stage)) return stage;
+  const years = YEARS_BY_KEY_STAGE[stage];
+  return `${stage} (Years ${years[0].slice(1)}–${years[years.length - 1].slice(1)})`;
+}
+
+/**
+ * The curriculum tutor's standing orders (docs/52-curriculum-tutors.md).
+ *
+ * Short on purpose: the tool descriptions already say what each tool returns,
+ * and the persona's own prompt — above everything else here — already says how
+ * it teaches. What only this section can say is *where the facts come from* and
+ * *where the edges are*.
+ *
+ * When the tools are not offered this turn (no key saved), the tutor is told
+ * so rather than told to call tools it does not have — a model instructed to
+ * use a missing tool tends to pretend it did.
+ */
+function curriculumSection(curriculum: { scope: CurriculumScope; tools: string[] }): string {
+  const { scope, tools } = curriculum;
+  const stages = scope.keyStages.map(describeKeyStage).join(' and ');
+  const learner = scope.year ? ` The learner is in ${yearLabel(scope.year)}.` : '';
+  const subjects = scope.subjects.join(', ');
+
+  if (tools.length === 0) {
+    return (
+      '## Teaching from the curriculum\n' +
+      `You teach ${subjects} at ${stages} from the UK curriculum, but it cannot be checked right now.${learner} ` +
+      'Stay at that level. Tell the learner plainly that you cannot check the curriculum at the moment, and do not ' +
+      'present curriculum facts from memory as certain.'
+    );
+  }
+
+  return [
+    '## Teaching from the curriculum',
+    `The subject knowledge you teach comes from the UK curriculum, through your ${tools.length === 1 ? 'tool' : 'tools'} ` +
+      `${tools.map((key) => `\`${key}\``).join(' and ')} — not from memory.`,
+    `- Check with ${tools.length === 1 ? 'it' : 'them'} before you teach a new topic or state a curriculum fact (a ` +
+      'definition, a method, what a learner at this stage should know).',
+    `- Stay at the learner's key stage: ${stages}.${learner} Subjects: ${subjects}. If asked for something outside ` +
+      'these, say it is not what you cover.',
+    '- Cite the source titles you used.',
+    '- If the curriculum has nothing on it, say so plainly instead of inventing an answer.',
+    '- Your own instructions above define your voice and how you teach; the curriculum defines what you teach.',
+  ].join('\n');
+}
+
 /**
  * Assembles the final system prompt: base instruction + blueprint (if any) +
  * identity + personality + audience + cognitive overrides + modifiers.
@@ -182,6 +231,13 @@ export function buildSystemPrompt(
     >,
   modifiers: Pick<PromptModifier, 'type' | 'value'>[] = [],
   groundingChunks: KnowledgeChunk[] = [],
+  /**
+   * Passed by the one-to-one chat route only, which is where the curriculum
+   * tools exist. Deliberately not read from `persona.curriculumScope`: rooms
+   * spread the whole version into this function too, and have no tools, so a
+   * tutor there must not be told to use them.
+   */
+  options: { curriculum?: { scope: CurriculumScope; tools: string[] } } = {},
 ): string {
   const sections: string[] = [persona.systemPrompt.trim()];
 
@@ -274,6 +330,8 @@ export function buildSystemPrompt(
       sections.push(`## Guardrails\nApply these safety and compliance guardrails at all times:\n${lines.join('\n')}`);
     }
   }
+
+  if (options.curriculum) sections.push(curriculumSection(options.curriculum));
 
   if (groundingChunks.length > 0) {
     /*

@@ -16,7 +16,8 @@
  */
 import { config } from 'dotenv';
 import postgres from 'postgres';
-import { personaSchema, personaFieldError } from '../src/lib/persona/form-schema';
+import { personaSchema, personaFieldError, parseCurriculumForm } from '../src/lib/persona/form-schema';
+import { yearsFor } from '../src/lib/curriculum/scope';
 
 config({ path: '.env.local', quiet: true });
 config({ quiet: true });
@@ -31,7 +32,10 @@ const rows = await sql`
          v.system_prompt, v.welcome_message, v.ai_provider, v.model, v.model_tier, v.temperature,
          v.frequency_penalty, v.presence_penalty, v.max_tokens, v.history_messages, v.audience_type,
          v.knowledge_domains, v.interaction_style, v.approach_to_unknown, v.prompt_technique,
-         v.chat_layout, v.blueprint
+         v.chat_layout, v.blueprint,
+         -- Read through to_jsonb so this check also runs on a database where
+         -- migration 0040 is not applied yet (the key is simply absent → null).
+         to_jsonb(v) -> 'curriculum_scope' as curriculum_scope
     from personas p
     join persona_versions v on v.id = coalesce(p.draft_version_id, p.current_version_id)
    order by p.id`;
@@ -72,6 +76,26 @@ for (const row of rows) {
   if (!parsed.success) {
     failures += 1;
     process.stdout.write(`FAIL: #${row.id} ${row.name} — ${personaFieldError(parsed.error.issues[0])?.error}\n`);
+    continue;
+  }
+
+  // The Curriculum section (src/components/admin/persona-curriculum-section.tsx):
+  // the toggle is ticked when a scope is stored, every stored key stage and
+  // subject renders ticked (stored values are offered even when the last Fetch
+  // no longer lists them), and the year select can only hold a year inside the
+  // ticked key stages — anything else renders as "Any year".
+  const scope = (row.curriculum_scope ?? null) as { keyStages?: unknown; subjects?: unknown; year?: unknown } | null;
+  const keyStages = Array.isArray(scope?.keyStages) ? scope.keyStages.map(String) : [];
+  const year = typeof scope?.year === 'string' && yearsFor(keyStages).includes(scope.year) ? scope.year : '';
+  const curriculum = parseCurriculumForm({
+    enabled: scope !== null,
+    keyStages,
+    subjects: Array.isArray(scope?.subjects) ? scope.subjects.map(String) : [],
+    year,
+  });
+  if (!curriculum.ok) {
+    failures += 1;
+    process.stdout.write(`FAIL: #${row.id} ${row.name} — ${curriculum.state?.error}\n`);
   }
 }
 
