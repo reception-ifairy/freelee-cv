@@ -16,9 +16,17 @@ export const authConfig = {
   session: { strategy: 'jwt' },
   providers: [],
   callbacks: {
-    authorized({ auth, request }: { auth: Session | null; request: NextRequest }): boolean {
+    authorized({ auth, request }: { auth: Session | null; request: NextRequest }): boolean | Response {
       const isLoggedIn = Boolean(auth?.user);
       const { pathname } = request.nextUrl;
+
+      // Child mode (docs/54): while a parent has handed the device to a child, only
+      // the child's home and a lesson open; everything else goes back to /learn.
+      // Presence only here (edge) — the cookie's signature is checked by the pages.
+      if (isLoggedIn && request.cookies.has('freelee_child')) {
+        const allowed = pathname === '/learn' || pathname.startsWith('/learn/') || /^\/chat\/[^/]+$/.test(pathname) || pathname === '/login';
+        if (!allowed) return Response.redirect(new URL('/learn', request.nextUrl));
+      }
 
       if (pathname.startsWith('/admin')) return isLoggedIn && auth?.user?.isAdmin === true;
       // /rooms (Phase 6), /crews (Phase 7), and /marketplace (Phase 9) have
@@ -27,7 +35,9 @@ export const authConfig = {
       // than left to requireUser() to throw uncaught.
       if (
         pathname.startsWith('/dashboard') || pathname.startsWith('/rooms') ||
-        pathname.startsWith('/crews') || pathname.startsWith('/marketplace')
+        pathname.startsWith('/crews') || pathname.startsWith('/marketplace') ||
+        // Child mode lives under a parent's account (docs/54).
+        pathname === '/learn' || pathname.startsWith('/learn/')
       ) {
         return isLoggedIn;
       }

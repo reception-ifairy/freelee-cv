@@ -12,6 +12,8 @@ import { currentUser } from '@/lib/auth';
 import { resolveChatTeamId } from '@/lib/teams';
 import { getSiteAssistant } from '@/lib/assistant/config';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { activeChildId, childContext } from '@/lib/children/child-mode';
+import { lessonTutorsFor } from '@/lib/children/tutors';
 
 const GUEST_COOKIE = 'aigency_guest';
 
@@ -160,7 +162,8 @@ export async function deleteChatAction(formData: FormData) {
 export async function shareChatAction(formData: FormData) {
   const chatId = z.string().min(1).parse(formData.get('chatId'));
   const chat = await assertChatAccess(chatId);
-  if (!chat) return;
+  // A child's lesson is never shared (docs/54).
+  if (!chat || chat.childProfileId) return;
 
   const token = chat.shareToken ?? randomUUID().replace(/-/g, '');
   await db.update(chats).set({ isShared: true, shareToken: token }).where(eq(chats.id, chatId));
@@ -218,3 +221,31 @@ export async function setChatControlsAction(formData: FormData) {
 export async function setChatModifiersAction(formData: FormData) {
   return setChatControlsAction(formData);
 }
+
+/**
+ * Starts a lesson in child mode (docs/54): a chat with a curriculum tutor,
+ * marked with the active child's profile so its messages are sealed with the
+ * child's key and the tutor reads the child's plan. Only tutors with a
+ * curriculum scope covering the child's key stage; inactive ones (the
+ * Baseline Tutor) only for a platform admin.
+ */
+export async function startLessonAction(formData: FormData) {
+  const user = await currentUser();
+  if (!user) redirect('/login');
+  const childId = await activeChildId(user.id);
+  const ctx = childId ? await childContext(user.id, childId) : null;
+  if (!ctx) redirect('/dashboard/children');
+
+  const slug = z.string().min(1).parse(formData.get('persona'));
+  const allowed = await lessonTutorsFor(ctx.profile.year, user.isAdmin);
+  const tutor = allowed.find((t) => t.slug === slug);
+  if (!tutor) redirect('/learn');
+  const [persona] = await db.select().from(personas).where(eq(personas.id, tutor.id)).limit(1);
+  if (!persona) redirect('/learn');
+
+  const { chat } = await createChatForPersona(persona);
+  // A generic title: the usual one is the first message, which is the child's own words.
+  await db.update(chats).set({ childProfileId: ctx.row.id, title: `Lesson with ${persona.name}` }).where(eq(chats.id, chat.id));
+  redirect(`/chat/${chat.id}`);
+}
+

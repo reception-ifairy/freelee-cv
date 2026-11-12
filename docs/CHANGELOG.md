@@ -34,7 +34,19 @@ Conventions used throughout:
 
 ## 2026-11-12
 
-### #67 · `pending` — Adult accounts with encrypted child profiles, and sign-up works again
+### #68 · `pending` — One learning plan per child, child mode, and lessons sealed with the child's key
+
+The plan is built once from curriculum's plan pack (year, subjects, GCSE settings only), sealed with
+the child's key and shared by every tutor; progress comes back through a hidden `[PROGRESS: …]` tag
+with spaced reviews. Child mode (signed cookie, parent password to leave) shows only `/learn` and the
+child's lessons, with a standing "your grown-up can read our chats" notice. A lesson's messages are
+sealed, its title generic, its tutor reads the learner and plan sections, may look up at most once
+and has two steps. For every chat: the last allowed step can no longer call a tool, so a turn always
+ends in an answer; `usage_events` records steps and tool calls.
+
+📄 `54-children-data.md`, `52-curriculum-tutors.md`, handbook `child-profiles.md` · 🗄 `0042_child_plans`
+
+### #67 · `3857eaf` — Adult accounts with encrypted child profiles, and sign-up works again
 
 Owner decisions: freelee is for adults; a child learns through a profile under a parent's account;
 the parent decides what to give and every field says why, where it goes and how long it is kept;

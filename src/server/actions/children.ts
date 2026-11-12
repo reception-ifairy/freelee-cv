@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { consents, users } from '@/db/schema';
@@ -8,6 +10,7 @@ import { requireUser } from '@/lib/auth';
 import { childFeaturesAvailable } from '@/lib/crypto/envelope';
 import { childProfileSchema, createChild, deleteChild, profileFromForm, updateChild } from '@/lib/children/store';
 import { sendVerificationEmail } from '@/lib/children/verify-email';
+import { childContext, enterChildMode, ensurePlan, leaveChildMode } from '@/lib/children/child-mode';
 import { CONSENT_TEXT_VERSION } from '@/lib/children/profile';
 import type { ActionState } from './auth';
 
@@ -34,14 +37,20 @@ export async function saveChildAction(_prev: ActionState, formData: FormData): P
     return { error: 'Please confirm that you are this child’s parent or guardian and agree to how the profile is used.' };
   }
 
-  const id = String(formData.get('id') ?? '');
-  if (id) {
-    if (!(await updateChild(user.id, id, parsed.data))) return { error: 'That profile was not found.' };
+  const existingId = String(formData.get('id') ?? '');
+  let id = existingId;
+  if (existingId) {
+    if (!(await updateChild(user.id, existingId, parsed.data))) return { error: 'That profile was not found.' };
   } else {
-    await createChild(user.id, user.defaultTeamId, parsed.data);
+    id = await createChild(user.id, user.defaultTeamId, parsed.data);
   }
+  // The plan is built once, here — year, subjects and GCSE settings go to the curriculum, nothing else.
+  // A failure leaves the profile saved; the plan is built on the next try (button, or the first lesson).
+  const ctx = await childContext(user.id, id);
+  const built = ctx ? await ensurePlan(ctx, { rebuild: true }).catch(() => ({ plan: null, error: 'unreachable' })) : null;
   revalidatePath('/dashboard/children');
-  return { success: id ? 'Profile saved.' : `Profile for ${parsed.data.pseudonym} created.` };
+  const saved = existingId ? 'Profile saved.' : `Profile for ${parsed.data.pseudonym} created.`;
+  return built?.plan ? { success: `${saved} Learning plan ready.` } : { success: `${saved} The learning plan could not be built just now — use “Build plan” later.` };
 }
 
 export async function deleteChildAction(formData: FormData): Promise<void> {
@@ -70,3 +79,32 @@ export async function declareAdultAction(_prev: ActionState, formData: FormData)
   revalidatePath('/dashboard/children');
   return { success: 'Thank you.' };
 }
+
+/** Builds (or refreshes) a child's plan from the curriculum — keeps progress. */
+export async function refreshPlanAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const ctx = await childContext(user.id, String(formData.get('id') ?? ''));
+  if (ctx) await ensurePlan(ctx, { rebuild: true }).catch(() => undefined);
+  revalidatePath('/dashboard/children');
+}
+
+/** Hands the device to the child: child mode for one profile (docs/54). */
+export async function startLearningAction(formData: FormData): Promise<void> {
+  const { user, error } = await parentOrError();
+  if (error) redirect('/dashboard/children');
+  const ctx = await childContext(user.id, String(formData.get('id') ?? ''));
+  if (!ctx) redirect('/dashboard/children');
+  await enterChildMode(user.id, ctx.row.id);
+  redirect('/learn');
+}
+
+/** Leaving child mode needs the parent's password, so the child cannot wander into the account. */
+export async function exitChildModeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const [row] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, user.id)).limit(1);
+  const password = String(formData.get('password') ?? '');
+  if (!row?.passwordHash || !(await bcrypt.compare(password, row.passwordHash))) return { error: 'That password is not right.' };
+  await leaveChildMode();
+  redirect('/dashboard/children');
+}
+

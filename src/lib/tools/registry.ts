@@ -432,7 +432,13 @@ function formatHits(hits: SearchHit[]) {
  * Empty when the connection has no key: the tools are not offered at all,
  * rather than offered and failing on every call.
  */
-export async function curriculumTools(scope: CurriculumScope): Promise<ToolDefinition[]> {
+/**
+ * `maxCalls` (child lessons, docs/54): the child's plan is already in the
+ * prompt, so a look-up is an exception — one per turn. Further calls in the
+ * same turn are answered without asking the curriculum, telling the tutor to
+ * teach from the plan; each wasted round trip re-sends the whole prompt.
+ */
+export async function curriculumTools(scope: CurriculumScope, options: { maxCalls?: number } = {}): Promise<ToolDefinition[]> {
   const config = await curriculumConfig();
   if (!config) return [];
 
@@ -632,7 +638,20 @@ export async function curriculumTools(scope: CurriculumScope): Promise<ToolDefin
 
   // Listing objectives is the "objective" kind of material; a key that may not
   // see it would be refused on every call.
-  return offeredTypes.includes('objective') ? [search, objectives] : [search];
+  const tools = offeredTypes.includes('objective') ? [search, objectives] : [search];
+  if (options.maxCalls === undefined) return tools;
+  let calls = 0;
+  const limit = options.maxCalls;
+  return tools.map((t) => ({
+    ...t,
+    execute: (async (input: never) => {
+      calls += 1;
+      if (calls > limit) {
+        return { error: `Look-up limit reached for this reply (${limit}). Teach from the learning plan in your instructions, or say you will check next time.` };
+      }
+      return (t.execute as (input: never) => Promise<unknown>)(input);
+    }) as ToolDefinition['execute'],
+  }));
 }
 
 export { isToolKey, suggestedToolsFor, TOOL_CATALOG } from './catalog';

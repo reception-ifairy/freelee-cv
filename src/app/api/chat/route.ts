@@ -21,6 +21,10 @@ import { hasActiveEntitlement } from '@/lib/billing/entitlements';
 import { getSettingInt, getSettingString } from '@/lib/settings';
 import { moderateInput } from '@/lib/moderation/filter';
 import { storeDataUrl } from '@/lib/media/store';
+import { childContext, ensurePlan, type ChildContext } from '@/lib/children/child-mode';
+import { applyProgress, learnerSection, parseProgress, savePlan, type Plan } from '@/lib/children/plan';
+import { sealText, openText } from '@/lib/crypto/envelope';
+import { childProfiles } from '@/db/schema';
 
 /** A hard cap so one message can't post a hundred images at the model (or at the disk). */
 const MAX_IMAGES_PER_MESSAGE = 4;
@@ -93,6 +97,16 @@ export async function POST(request: Request) {
 
   if (!providerIsConfigured(registry, providerId, providerKeys.apiKey ?? null)) {
     return fail('No AI provider is configured yet. Add an API key in the admin settings.', 503);
+  }
+
+  // A lesson (docs/54): the child's own key, profile and plan. Only the parent who owns
+  // the profile can post to it (assertChatAccess already matched the chat's user).
+  let child: ChildContext | null = null;
+  let childPlan: Plan | null = null;
+  if (chat.childProfileId) {
+    child = user ? await childContext(user.id, chat.childProfileId) : null;
+    if (!child) return fail('This lesson is not available.', 403);
+    childPlan = (await ensurePlan(child).catch(() => ({ plan: null }))).plan;
   }
 
   // Tutors for children (a curriculum scope) talk only to a signed-in adult's account —
@@ -206,7 +220,8 @@ export async function POST(request: Request) {
   await db.insert(messages).values({
     chatId,
     role: 'user',
-    content: userText,
+    // A child's words are sealed with the child's key before they are stored (docs/54).
+    content: child ? sealText(child.key, 'message', userText) : userText,
     attachments: stored,
     position: nextPosition,
     status: 'complete',
@@ -244,7 +259,8 @@ export async function POST(request: Request) {
   // other, never both). Empty when no curriculum key is saved; the prompt then
   // tells the tutor it cannot check, rather than to call tools it lacks.
   const curriculumScope = readCurriculumScope(version?.curriculumScope);
-  const curriculumToolDefs = curriculumScope ? await curriculumTools(curriculumScope) : [];
+  // In a lesson the plan is in the prompt, so at most one look-up per turn (docs/53, docs/54).
+  const curriculumToolDefs = curriculumScope ? await curriculumTools(curriculumScope, child ? { maxCalls: 1 } : {}) : [];
 
   const system =
     persona && version
@@ -260,9 +276,10 @@ export async function POST(request: Request) {
           },
           selectedModifiers,
           groundingChunks,
-          curriculumScope
-            ? { curriculum: { scope: curriculumScope, tools: curriculumToolDefs.map((t) => t.key) } }
-            : {},
+          {
+            ...(curriculumScope ? { curriculum: { scope: curriculumScope, tools: curriculumToolDefs.map((t) => t.key), plan: Boolean(child) } } : {}),
+            ...(child ? { learner: learnerSection(child.profile, childPlan, curriculumScope?.subjects ?? []) } : {}),
+          },
         ) + narrativePromptFragment(layoutKey)
       : undefined;
 
@@ -292,6 +309,11 @@ export async function POST(request: Request) {
       )
     : undefined;
 
+  // Each step is one model round trip. On the last allowed step the model may not
+  // call a tool any more, so a turn always ends in an answer: before this, a tutor
+  // could spend every step looking things up and leave the learner with nothing
+  // (docs/53, first "before" run). Lessons get two steps: one look-up, one answer.
+  const maxSteps = child ? 2 : 5;
   const result = streamText({
     model: getModel(registry, providerId, modelId, providerKeys),
     system,
@@ -299,7 +321,8 @@ export async function POST(request: Request) {
     // Without this the model calls a tool and the turn ends there — the user
     // sees nothing. Each step is one model round trip, so the cap bounds both
     // latency and cost; 4 is enough for call → read → call again → answer.
-    stopWhen: toolSet ? stepCountIs(5) : undefined,
+    stopWhen: toolSet ? stepCountIs(maxSteps) : undefined,
+    prepareStep: toolSet ? ({ stepNumber }) => (stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined) : undefined,
     messages: await convertToModelMessages(history),
     temperature: version?.temperature ?? 0.8,
     topP: version?.topP ?? undefined,
@@ -311,7 +334,9 @@ export async function POST(request: Request) {
      * Billing happens here, after the stream completes, using the usage the
      * provider actually reported — never an estimate made up front.
      */
-    onFinish: async ({ text, usage }) => {
+    onFinish: async ({ text: rawText, usage, steps }) => {
+      // Lesson progress tags are applied to the child's plan and never stored or shown.
+      const { text, marks } = child ? parseProgress(rawText) : { text: rawText, marks: [] };
       const inputTokens = usage.inputTokens ?? 0;
       const outputTokens = usage.outputTokens ?? Math.ceil(text.length / 4);
       const cost = flatCost > 0 ? flatCost : costForTokens(registry, providerId, modelId, inputTokens, outputTokens);
@@ -321,7 +346,7 @@ export async function POST(request: Request) {
         .values({
           chatId,
           role: 'assistant',
-          content: text,
+          content: child ? sealText(child.key, 'message', text) : text,
           model: modelId,
           aiProvider: providerId,
           inputTokens,
@@ -375,7 +400,14 @@ export async function POST(request: Request) {
         creditsCharged,
         coveredByPass,
         latencyMs: Date.now() - startedAt,
+        steps: steps.length,
+        toolCalls: steps.reduce((n, step) => n + step.toolCalls.length, 0),
       });
+
+      if (child) {
+        if (childPlan && marks.length && applyProgress(childPlan, marks)) await savePlan(child.row, child.key, childPlan);
+        await db.update(childProfiles).set({ lastActiveAt: new Date() }).where(eq(childProfiles.id, child.row.id));
+      }
 
       await db
         .update(chats)
@@ -384,7 +416,8 @@ export async function POST(request: Request) {
           creditsSpent: chat.creditsSpent + creditsCharged,
           tokensUsed: chat.tokensUsed + inputTokens + outputTokens,
           lastMessageAt: new Date(),
-          title: chat.title ?? truncate(userText, 48),
+          // A lesson keeps its generic title: the usual one is the child's own first words.
+          title: chat.title ?? (child ? 'Lesson' : truncate(userText, 48)),
         })
         .where(eq(chats.id, chatId));
 
@@ -425,6 +458,14 @@ export async function GET(request: Request) {
     .from(messages)
     .where(eq(messages.chatId, chatId))
     .orderBy(asc(messages.position));
+
+  // A lesson's messages are sealed; only the owning parent (this session) gets them in clear.
+  if (chat.childProfileId) {
+    const user = await currentUser();
+    const child = user ? await childContext(user.id, chat.childProfileId) : null;
+    if (!child) return fail('You do not have access to this conversation.', 403);
+    return Response.json({ messages: rows.map((row) => ({ ...row, content: openText(child.key, 'message', row.content) })) });
+  }
 
   return Response.json({ messages: rows });
 }

@@ -57,10 +57,32 @@ Open the child on the Children page (**Edit profile**) to change anything.
 **Delete profile** removes the profile, the learning plan and the chats at once. The child's key is
 deleted with them, so nothing can be read back.
 
+## The learning plan
+
+When you save a profile, freelee builds your child's **learning plan** from the UK curriculum:
+- the topics for their school year, in order, for each subject;
+- how a tutor should talk to a child of that age.
+
+Only the school year and subjects are sent to the curriculum.
+
+Every tutor your child talks to uses the **same plan**, so changing tutor never means starting
+again. The Children page shows what each subject is on now. **Refresh plan** picks up curriculum
+updates and keeps your child's progress.
+
+## Lessons: handing the device to your child
+
+1. On the Children page, click **Start learning as <nickname>**.
+2. Your child sees their tutors and what they are learning now, with a note that you can read the
+   chats and that tutors are AI, not people.
+3. While child mode is on, the rest of your account is hidden: billing, settings and other bots.
+4. To leave, click **Grown-ups: leave** and enter your password.
+
+Lessons are encrypted with your child's key, never shared, and deleted together with the profile.
+
 ## Coming next
 
-- A learning plan for each child, shared by every tutor.
-- Child mode with a visible note that a grown-up can read the chats.
-- Full chat transcripts, export and automatic clean-up of old chats.
+- Reading full lesson transcripts from the Children page.
+- Export of everything about a child.
+- Automatic clean-up of old lessons.
 
 Engineering details: `docs/54-children-data.md`.

@@ -1,8 +1,9 @@
 # 54 · Children's data — adult accounts, child profiles, encryption
 
-**Status:** accounts, profiles, consents and encryption live since update #67 (2026-11-12). The
-learning plan, child mode and encrypted chats follow in #68; the parent dashboard (export,
-transcripts), retention job and the full DPIA in #69.
+**Status:**
+- **#67 (2026-11-12):** accounts, profiles, consents and encryption.
+- **#68:** the learning plan per child, child mode and encrypted lessons.
+- **#69:** the parent dashboard (export, transcripts), the retention job and the full DPIA.
 
 ## Owner decisions (2026-11-12)
 
@@ -100,6 +101,75 @@ details.
   - rotation;
   - a clear message for a key from another version.
 
+## The learning plan (#68, `src/lib/children/plan.ts`)
+
+**How a plan is built**
+- **One plan per child, shared by every tutor.** It is built once, when the parent saves the profile
+  (or with **Build plan / Refresh plan**), from curriculum's `POST /v1/plan-pack`.
+- **What the curriculum receives:** only the year, the subjects, the GCSE settings and the PSHE
+  opt-in.
+- **Storage:** sealed with the child's key in `child_plans.data`.
+- **What the plan holds:** units in order per subject, the current unit, progress per objective code
+  and unit id, review dates, the developmental level profile and, from Year 9, the study strategy.
+  `curriculum_version` stays plain so a programme update can be noticed without decrypting.
+- **Refresh:** keeps progress (it is keyed by code) and the current unit while that unit still
+  exists.
+- **When the curriculum cannot answer:** the profile is saved anyway. The plan is built later, on
+  the button or at the first lesson. Until then a lesson runs without a plan.
+
+**Progress**
+- The tutor ends a reply with `[PROGRESS: CODE learning|secure]`. The tag is never shown: it is
+  stripped in `parseSuggestions` for display (even mid-stream) and removed before the reply is
+  stored.
+- `applyProgress` records it. Only codes that are in the plan count.
+- A secure item comes back for review after 1, 3, 7 and 21 days. A subject moves on when its
+  current unit (or all its objectives) is secure.
+
+## Child mode and lessons (#68)
+
+**Entering and leaving**
+- **Start learning as <nickname>** on the Children page sets a signed cookie `freelee_child`. The
+  signature is an HMAC over parent id and profile id with `AUTH_SECRET`, so the cookie cannot be
+  moved to another account and says nothing about the child.
+- While the cookie is set, only `/learn` and the child's own lessons open. `src/lib/auth.config.ts`
+  sends everything else back to `/learn`, and the chat page refuses another child's chat.
+- **Leaving** (`/learn/exit`) needs the parent's password.
+
+**What the child sees**
+- `/learn` shows the child's current units and the tutors for their key stage (personas whose
+  curriculum scope covers it; the inactive Baseline Tutor only for a platform admin).
+- A standing notice: "Your grown-up can read our chats. Tutors are computer programs (AI), not
+  people."
+
+**A lesson** is a chat with `chats.child_profile_id`:
+- **Encryption:** the child's messages and the tutor's replies are sealed with the child's key
+  (`enc:v1:`). They are opened only for the parent who owns the profile (the chat page, and `GET
+  /api/chat`).
+- **Title:** generic ("Lesson with …") instead of the child's first words.
+- **Never shared.** Deleting the profile deletes its lessons.
+
+**The prompt**, in this order:
+1. the tutor's own prompt (voice and world);
+2. "Teaching from the curriculum" in plan mode: teach from the plan, look up only what it does not
+   cover, at most once;
+3. **Your learner** — `learnerSection`:
+   - nickname, interests, focus and adaptations;
+   - how to talk at this age, from the level profile;
+   - the plan slice for the tutor's subjects: the current unit, up to 10 objectives with their
+     state, the next unit and reviews due;
+   - how to record progress.
+
+**Tools and steps**
+- At most one curriculum look-up per turn. A second call is answered locally: "teach from the
+  plan".
+- Two model steps.
+
+**For every chat, not only lessons**
+- On the last allowed step the model may not call a tool (`prepareStep` → `toolChoice: 'none'`), so
+  a turn always ends in an answer. The first "before" measurement (docs/53) had two turns end
+  empty.
+- `usage_events.steps` and `tool_calls` record what each turn spent on look-ups.
+
 ## Tutors for children: no guests
 
 `POST /api/chat` answers 403 to a guest talking to a persona with a curriculum scope. Children learn
@@ -119,3 +189,19 @@ through a parent's account. #68 adds child mode, the per-child plan and encrypte
   `pg_dump` of it.
 - **Consents:** `terms`, `adult_declaration` and `child_profile` were recorded.
 - Test accounts were removed afterwards.
+
+### Lessons (#68), verified live 2026-11-12
+
+- Migration `0042_child_plans.sql` was applied after a full `pg_dump` (`pre-0042-full-*.dump`).
+- **Browser test**, on a test account:
+  1. sign-up, email confirmed, a Y4 profile created. The plan was "could not be built just now",
+     because curriculum's plan pack was not deployed yet (that case is handled).
+  2. **Start learning** → `/learn` with the notice and 1 tutor.
+  3. `/dashboard` → sent back to `/learn`.
+  4. A lesson with Pan Kleks: one turn of 2 steps, 1 look-up, 152 credits. The reply was complete
+     and no progress tag was visible.
+  5. In the database the child's message and the reply are `enc:v1:…` and the title is "Lesson with
+     Pan Kleks".
+  6. `/learn/exit` with the parent's password → Children page.
+- The test account and its data were removed afterwards.
+
