@@ -34,7 +34,17 @@ Conventions used throughout:
 
 ## 2026-11-12
 
-### #69 · `pending` — Parents read lessons and export everything, notes used once, retention, account deletion, DPIA
+### #70 · `pending` — Measured: a lesson with the child's plan costs half, and never loops
+
+The bench gains `--lesson`: each case runs as a real child lesson (temporary profile, plan from
+curriculum's plan pack, sealed chat), cleaned up afterwards. Same 8 cases, same model: 111 → 59
+credits per turn on average, worst turn 216 → 82, tool calls 2.1 → 0.44, input tokens 5,567 →
+2,678, checks 42/45 → 44/45, no empty replies. Norms now come only from curriculum `/v1/levels`
+(the local copy is gone); Baseline Tutor names the objective it teaches from its plan.
+
+📄 `53-tutor-measurement.md`
+
+### #69 · `0909a45` — Parents read lessons and export everything, notes used once, retention, account deletion, DPIA
 
 The Children page lists each child's lessons (full transcripts for the parent) and exports everything
 about a child as one JSON file. "Anything else?" lets a parent describe needs in their own words: one

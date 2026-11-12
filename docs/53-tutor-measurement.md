@@ -1,6 +1,6 @@
 # 53 · Measuring tutors — Baseline Tutor and the bench
 
-**Status:** live since update #66 (2026-11-12). First "before" run recorded below.
+**Status:** live since update #66 (2026-11-12). "Before" (#66) and "after" (#70) runs below.
 
 ## Why
 
@@ -42,6 +42,7 @@ no comparisons with other children; a final `Objective: CODE` line when it check
 ```
 npx tsx scripts/tutor-bench.ts --label=before            # dry run — lists the cases, calls nothing
 npx tsx scripts/tutor-bench.ts --label=before --apply    # paid: one model call per turn
+npx tsx --conditions=react-server scripts/tutor-bench.ts --label=after --lesson --apply
   --persona=<slug>  --only=<case,...>  --max-turns=10  --keep  --base=https://freelee.cv
 ```
 
@@ -53,10 +54,13 @@ npx tsx scripts/tutor-bench.ts --label=before --apply    # paid: one model call 
   are deleted afterwards (`--keep` keeps them); billing rows stay, as for any chat.
 - **Cost numbers** come from the assistant row the route itself writes (`messages`): what a
   customer would be billed. Steps and tool calls are counted from the response stream.
-- **Norms** come from curriculum `GET /v1/levels` once it exists; until then from
-  `scripts/bench/levels-fallback.json`, a copy of the measurable norms per developmental level
-  (levels 0–4 from *Designing an Adaptive Educational Engine*, level 5 from the GCSE guides). The
-  fallback is removed when the curriculum serves the levels.
+- **Norms** come from curriculum `GET /v1/levels`, the measurable `checks` of each developmental
+  level (levels 0–4 from *Designing an Adaptive Educational Engine*, level 5 from the GCSE guides;
+  English phrases). The temporary local copy used for the "before" run was removed in #70.
+- **`--lesson`** measures the child-centred architecture (docs/54). Each case gets a temporary child
+  profile under the admin account with the case's year and subject, and its plan is built from
+  curriculum's plan pack (the same code path as a parent's save). The chat is that child's lesson.
+  Profiles, plans and lessons are deleted afterwards. Run it with `npx tsx --conditions=react-server`.
 - **Results** — `scripts/bench/results/<date>-<label>.json` (not in git: replies are kept for
   reading). The summary goes into this document by hand.
 
@@ -108,7 +112,47 @@ Average latency 14 s. Pan Kleks on the Y4 question, for reference: 232 credits, 
 
 Spend for the three runs (smoke, cap-350, before): 19 turns, about 113,000 tokens on gpt-5.5.
 
-### Targets for "after" (update #70, same model, same cases)
+### 2026-11-12 · after (#70: lessons — the child's plan and level in the prompt, at most one look-up, two steps)
+
+| Case | Input tokens | Output | Credits | Steps | Tool calls | Checks |
+|---|---|---|---|---|---|---|
+| Y1 phonics | 1,792 | 412 | 40 | 1 | 0 | 5/5 |
+| Y2 addition | 1,778 | 565 | 43 | 1 | 0 | 5/5 |
+| Y2 wrong answer | 1,888 | 469 | 43 | 1 | 0 | 5/5 |
+| Y4 fractions | 3,803 | 539 | 79 | 2 | 1 | 5/5 |
+| Y4 science | 3,665 | 728 | 80 | 2 | 1 | 5/5 |
+| Y6 grammar | 3,651 | 760 | 80 | 2 | 1 | 4/5 |
+| Y8 science | 3,936 | 613 | 82 | 2 | 1 | 5/5 |
+| Y10 quadratics | 1,813 | 598 | 44 | 1 | 0 | 5/5 |
+| Y11 essay | 1,779 | 516 | 42 | 1 | 0 | 5/5 |
+| **Average** | **2,678** | **578** | **59** | **1.4** | **0.44** | **44/45** |
+
+**Before → after**
+
+| Per turn | Before | After | Change |
+|---|---|---|---|
+| Credits, average | 111 | 59 | −47% |
+| Credits, worst turn | 216 | 82 | −62% |
+| Input tokens | 5,567 | 2,678 | −52% |
+| Tool calls | 2.1 | 0.44 | −79% |
+| Model steps | 3.1 | 1.4 | −55% |
+| Checks passed | 42/45 | 44/45 | |
+| Empty or cut replies | 2 (cap-350 run) | 0 | |
+
+**What it shows**
+- Five of nine turns needed no look-up at all: the plan already held the objective.
+- The four that looked once (Y4, Y6, Y8) cost about 80 credits, which is still under half of the
+  old loops.
+- No turn went over 100 credits; the targets were met.
+- The one failed check (Y6) is a missing `Objective:` line.
+
+**Fixture change between the runs.** Baseline Tutor's objective rule now reads "end every reply with
+`Objective: CODE` — from your learning plan if you have one, otherwise check once". The old wording
+tied the line to a look-up, and in a lesson a look-up is no longer needed.
+
+**Spend for the after run:** 9 turns plus one aborted turn, about 31,000 gpt-5.5 tokens.
+
+### Targets for "after" (set in #66; met in #70)
 
 - at most one curriculum look-up per turn, usually none (the child's plan is already in the prompt);
 - input ≤ 5,000 tokens per turn, credits ≤ 80 per turn on average, no turn over 100;
