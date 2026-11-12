@@ -97,3 +97,26 @@ Looking something up costs the curriculum almost nothing. What costs your custom
 tutor reads: each look-up adds up to about 750 tokens to that reply, billed like any other input. A
 tutor only looks things up when it is about to teach something, not on every message, so a
 "yes, I get it" costs the same as with any persona.
+
+## Measuring tutors
+
+To compare tutors fairly there is **Baseline Tutor**: a plain teacher with no world, no voice and a
+short prompt. It is not listed and customers never see it. It is used only to measure.
+
+A measurement sends the same eight short learner messages (Year 1 to Year 11) through the normal
+chat and records for each reply:
+
+- what it cost (tokens and credits);
+- how many times the tutor looked something up;
+- whether the reply suits the child's age: sentence and reply length, no "it's easy" or "wrong",
+  exactly one question at the end;
+- whether it named a real curriculum objective for that year.
+
+The first measurement (12 November 2026) found that a reply costs about 62 credits when the tutor
+looks something up once, and 120–216 when it keeps looking things up. Sometimes it looked things up
+so many times that the child got no answer at all. The next updates give each child a learning plan
+that the tutor already has in front of it, so it rarely needs to look anything up. The same
+measurement will show whether that worked.
+
+Ask Claude to run a measurement; it costs only the tutor's own replies (about 1,000 credits for the
+full set today). Engineering details: `docs/53-tutor-measurement.md`.

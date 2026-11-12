@@ -34,7 +34,20 @@ Conventions used throughout:
 
 ## 2026-11-12
 
-### #65 · `pending` — Tutors teach from the live UK curriculum, within a scope set on both sides
+### #66 · `pending` — A plain Baseline Tutor and a bench that measures tutor turns through the real chat
+
+Before giving each child one learning plan shared by every tutor, the current architecture needed
+measuring, and Pan Kleks could not do it: his 232-credit turn mixed the cost of the architecture
+with the cost of a long character. Baseline Tutor is a plain teacher (inactive, private, ~150-word
+prompt in which every rule is checkable); `scripts/tutor-bench.ts` sends 8 fixed learner messages
+(Y1–Y11, 9 turns) through `/api/chat` and checks each reply with plain code against the learner's
+developmental level — no AI judge. "Before": 111 credits and 2.1 look-ups per turn on average; four
+turns looped through the curriculum tools for 120–216 credits, and with a 350-token cap two turns
+ran out of steps and left the child with an empty reply.
+
+📄 `53-tutor-measurement.md`, handbook `curriculum-tutors.md`
+
+### #65 · `29c8d16` — Tutors teach from the live UK curriculum, within a scope set on both sides
 
 The imported AI tutors are to carry only a mindset (voice, character, way of
 teaching), with their subject knowledge coming live from curriculum.ifairy.co.uk.
