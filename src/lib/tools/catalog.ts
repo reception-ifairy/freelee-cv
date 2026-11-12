@@ -85,6 +85,33 @@ export const TOOL_CATALOG: ToolMeta[] = [
   },
 ];
 
+/**
+ * The curriculum tutor's two tools (docs/52-curriculum-tutors.md).
+ *
+ * Deliberately **not** in `TOOL_CATALOG`, so they never appear among the
+ * tickable tools and can never land in `persona_versions.tools`. They are
+ * switched on by a version's `curriculum_scope` and built per request around
+ * it — a curriculum tool without a scope would have nothing to stay inside,
+ * and one ticked without a scope would search every key stage for a
+ * seven-year-old. Listed here so the persona form can name them.
+ */
+export const CURRICULUM_TOOL_CATALOG: ToolMeta[] = [
+  {
+    key: 'curriculum_search',
+    label: 'Search the curriculum',
+    summary: 'Passages from official documents, learning objectives and test questions — only within the tutor’s key stages and subjects.',
+    suggestFor: [],
+    needsKey: true,
+  },
+  {
+    key: 'curriculum_objectives',
+    label: 'Curriculum objectives',
+    summary: 'What a learner in a given year and subject is expected to know, straight from the National Curriculum.',
+    suggestFor: [],
+    needsKey: true,
+  },
+];
+
 export const TOOL_KEYS = TOOL_CATALOG.map((t) => t.key);
 
 export function isToolKey(key: string): boolean {

@@ -42,6 +42,7 @@ States: `ok` · `no-key` · `bad-key` · `no-credit` · `error`, shown with the 
 | Stability AI | Providers & keys | `/v1/user/balance` (free) | Engine list |
 | Tavily | Providers & keys → Tools | One search (one Tavily credit) | — |
 | ElevenLabs | Providers & keys → Tools | Lists voices | Voices, with a picker that sets `elevenlabs_voice_id` (checked against the live list) |
+| Curriculum | Providers & keys → Knowledge | `GET /v1/health`, then a 1-result search for "fractions" with the grant | What this key may see (`/v1/scope`), kept as `curriculum_scope_cache` for the persona form — see `52-curriculum-tutors.md` |
 | Resend | Email | `GET /domains` | Verified sender domains |
 | Stripe | Billing (env only) | Counts products/prices — nothing charged | — |
 | PayPal | Billing (env only) | OAuth client-credentials token | — |

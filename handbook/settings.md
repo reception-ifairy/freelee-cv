@@ -20,9 +20,11 @@ bucket answers.
 ## Providers & keys
 
 One card per service — OpenAI, Anthropic, Google, OpenRouter, Ollama, Stability, then the tools
-(Tavily web search, ElevenLabs voice). Each works the same way: **Save** the key, press **Test**,
-and once the test passes, **Fetch** what the service offers (models, or voices for ElevenLabs —
-pick one to make it the default voice). See [AI models](/admin/handbook/ai-models).
+(Tavily web search, ElevenLabs voice), then under *Knowledge* the Curriculum that tutor bots teach
+from. Each works the same way: **Save** the key, press **Test**, and once the test passes, **Fetch**
+what the service offers (models; voices for ElevenLabs — pick one to make it the default voice; the
+key stages and subjects the curriculum key may see). See [AI models](/admin/handbook/ai-models) and
+[Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
 
 Below the cards, **Defaults**:
 

@@ -1,8 +1,12 @@
 import 'server-only';
 import { z } from 'zod';
 import { evaluateExpression } from './expression';
-import { getSettingString } from '@/lib/settings';
-import { TOOL_CATALOG, type ToolMeta } from './catalog';
+import { getSettings, getSettingString } from '@/lib/settings';
+import type { CurriculumScope } from '@/db/schema';
+import { curriculumConfig, curriculumRequest, failureForModel } from '@/lib/curriculum/client';
+import { describeScope, keyStageOfYear, normaliseSubject, yearLabel, yearsFor } from '@/lib/curriculum/scope';
+import { CURRICULUM_SCOPE_CACHE_KEY, readScopeCache } from '@/lib/curriculum/stored';
+import { CURRICULUM_TOOL_CATALOG, TOOL_CATALOG, type ToolMeta } from './catalog';
 
 /**
  * Tools a persona can actually invoke mid-conversation.
@@ -311,6 +315,324 @@ export const TOOLS: ToolDefinition[] = IMPLEMENTATIONS.flatMap((impl) => {
 
 export function findTool(key: string): ToolDefinition | undefined {
   return TOOLS.find((t) => t.key === key);
+}
+
+/* --------------------------- curriculum tutors --------------------------- */
+
+/**
+ * How much one curriculum tool call may hand the model, in characters.
+ *
+ * Like `GROUNDING_MAX_CHARS` in src/lib/persona/prompt.ts this is a price, not
+ * a size: ~3,000 characters is ~750 input tokens billed to the customer, and
+ * with `stepCountIs(5)` a tool result is resent on every later step of the same
+ * turn, so it is paid again for each step that follows it.
+ */
+const CURRICULUM_MAX_CHARS = 3000;
+const CURRICULUM_ITEM_CHARS = 900;
+const SEARCH_RESULTS = 4;
+/**
+ * When the scope has several key stages or subjects and the model picked none,
+ * the request goes out without that filter and the hits are narrowed here —
+ * so more are asked for, or narrowing could leave nothing.
+ */
+const SEARCH_RESULTS_WIDE = 10;
+const OBJECTIVES_PER_PAGE = 50;
+
+/** In the order offered, so the first one is the default — passages. */
+const ITEM_TYPES = ['chunk', 'objective', 'question'] as const;
+type ItemType = (typeof ITEM_TYPES)[number];
+const ITEM_TYPE_MEANING: Record<ItemType, string> = {
+  chunk: 'passages from official curriculum documents',
+  objective: 'learning objectives',
+  question: 'past test questions',
+};
+
+type SearchHit = {
+  itemType?: string;
+  title?: string | null;
+  sourceUrl?: string | null;
+  subject?: string | null;
+  keyStage?: string | null;
+  text?: string | null;
+  withheld?: string | null;
+};
+
+type Objective = {
+  loCode?: string;
+  keyStage?: string | null;
+  yearGroup?: string | null;
+  strand?: string | null;
+  statement?: string | null;
+  statutory?: boolean | number | null;
+};
+
+type ObjectivesPage = { total?: number; objectives?: Objective[] };
+
+function clip(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > max ? `${flat.slice(0, max).replace(/\s+\S*$/, '')}…` : flat;
+}
+
+/**
+ * A hit's key stage is a tag — "KS2", "KS1|KS2|KS3", "cross" — matched by
+ * containment, as the curriculum's own filter does. "cross" documents apply to
+ * every stage (the contract's rule); an untagged one is dropped, because it
+ * could be anything and the learner is a child at a known stage.
+ */
+function keyStageInScope(tag: string | null | undefined, keyStages: readonly string[]): boolean {
+  const value = (tag ?? '').toUpperCase();
+  if (value.includes('CROSS')) return true;
+  return keyStages.some((stage) => value.includes(stage));
+}
+
+/** Whole items, dropped from the end — the same rule the grounding section follows. */
+function formatHits(hits: SearchHit[]) {
+  let budget = CURRICULUM_MAX_CHARS;
+  const results: Record<string, unknown>[] = [];
+
+  for (const hit of hits) {
+    const title = clip(hit.title || 'Untitled document', 160);
+    const item: Record<string, unknown> = { title };
+    if (hit.sourceUrl) item.link = hit.sourceUrl;
+    if (hit.keyStage) item.keyStage = hit.keyStage;
+    if (hit.subject) item.subject = hit.subject;
+    if (hit.itemType && hit.itemType !== 'chunk') item.type = hit.itemType;
+
+    // Licence-restricted documents keep their title and link and lose their
+    // text (`withheld: "licence"`). The model is told why, so it cites the
+    // document instead of paraphrasing text it never saw.
+    if (hit.withheld || !hit.text) {
+      item.note = hit.withheld
+        ? 'Text withheld under its licence: mention the title and link, do not quote or summarise it.'
+        : 'No text available: mention the title and link only.';
+      budget -= title.length + (hit.sourceUrl?.length ?? 0);
+      results.push(item);
+      continue;
+    }
+
+    if (budget < 200) break;
+    item.text = clip(hit.text, Math.min(CURRICULUM_ITEM_CHARS, budget));
+    budget -= (item.text as string).length + title.length;
+    results.push(item);
+  }
+
+  return results;
+}
+
+/**
+ * The two curriculum tools for one persona version, built for this request as
+ * closures over its scope (docs/52-curriculum-tutors.md).
+ *
+ * The scope is enforced twice, on purpose. The input schema is built from it —
+ * a tutor with several key stages or subjects gets an enum of exactly those, so
+ * the model is never told a value outside them exists — and `execute` checks
+ * again, because a schema is what the model is shown, not a guarantee. The
+ * curriculum then applies the key's own scope on its side.
+ *
+ * Empty when the connection has no key: the tools are not offered at all,
+ * rather than offered and failing on every call.
+ */
+export async function curriculumTools(scope: CurriculumScope): Promise<ToolDefinition[]> {
+  const config = await curriculumConfig();
+  if (!config) return [];
+
+  const { keyStages, subjects } = scope;
+  const years = yearsFor(keyStages);
+  const scopeText = describeScope(scope);
+  const meta = (key: string) => CURRICULUM_TOOL_CATALOG.find((item) => item.key === key)!;
+  const oneOf = (values: readonly string[]) => z.enum(values as [string, ...string[]]);
+
+  // The kinds of material freelee's key may see, from the last Fetch. A kind
+  // the key cannot see is a guaranteed 403, so it is not offered; with no
+  // Fetch yet, all three are, and the curriculum refuses what it must.
+  const fetchedTypes = readScopeCache((await getSettings()).get(CURRICULUM_SCOPE_CACHE_KEY))?.itemTypes ?? [];
+  const itemTypes = ITEM_TYPES.filter((type) => fetchedTypes.length === 0 || fetchedTypes.some((row) => row.itemType === type));
+  const offeredTypes = itemTypes.length > 0 ? itemTypes : [...ITEM_TYPES];
+  // Search defaults to passages; a key that may not see passages gets its first allowed kind instead.
+  const defaultType = offeredTypes.includes('chunk') ? undefined : offeredTypes[0];
+
+  const searchShape: Record<string, z.ZodTypeAny> = {
+    query: z
+      .string()
+      .trim()
+      .min(2)
+      .max(300)
+      .describe('The topic only, in a few words — e.g. "equivalent fractions". Never the learner\'s name or other personal details.'),
+  };
+  if (offeredTypes.length > 1) {
+    searchShape.itemType = oneOf(offeredTypes)
+      .optional()
+      .describe(
+        offeredTypes
+          .map((type, index) => `${type}${index === 0 ? ' (default)' : ''}: ${ITEM_TYPE_MEANING[type]}`)
+          .join('. ') + '.',
+      );
+  }
+  if (keyStages.length > 1) {
+    searchShape.keyStage = oneOf(keyStages).optional().describe(`Narrow to one key stage; leave out to search ${keyStages.join(' and ')}.`);
+  }
+  if (subjects.length > 1) {
+    searchShape.subject = oneOf(subjects).optional().describe(`Narrow to one subject; leave out to search ${subjects.join(', ')}.`);
+  }
+
+  const objectivesShape: Record<string, z.ZodTypeAny> = {
+    subject: oneOf(subjects).optional().describe(subjects.length > 1 ? `One of: ${subjects.join(', ')}.` : `Always ${subjects[0]}.`),
+    year: oneOf(years)
+      .optional()
+      .describe(`A school year, ${years[0]} to ${years[years.length - 1]}.${scope.year ? ` Leave out for ${scope.year}, the learner's year.` : ''}`),
+    strand: z.string().trim().max(120).optional().describe('Narrow to one strand, e.g. "Number – fractions". Leave out to see every strand.'),
+  };
+  if (keyStages.length > 1) {
+    objectivesShape.keyStage = oneOf(keyStages).optional().describe('Which key stage, when no year is given.');
+  }
+
+  const search: ToolDefinition = {
+    ...meta('curriculum_search'),
+    description:
+      `Look things up in the UK curriculum for this tutor's learners (${scopeText}). Use it before teaching a new topic or ` +
+      'stating a curriculum fact — a definition, a method, what a learner at this stage should know. Returns short passages ' +
+      'with their source title and link: cite the titles you use. Results never go outside this tutor\'s key stages and subjects.',
+    inputSchema: z.object(searchShape),
+    execute: async (input: { query: string; itemType?: string; keyStage?: string; subject?: string }) => {
+      if (input.keyStage && !keyStages.includes(input.keyStage)) {
+        return { error: `This tutor only covers ${keyStages.join(', ')}.` };
+      }
+      if (input.itemType && !offeredTypes.includes(input.itemType as ItemType)) {
+        return { error: `Search one of: ${offeredTypes.join(', ')}.` };
+      }
+      const itemType = input.itemType ?? defaultType;
+      const chosenSubject = input.subject ? normaliseSubject(input.subject) : undefined;
+      if (chosenSubject && !subjects.includes(chosenSubject)) {
+        return { error: `This tutor only covers ${subjects.join(', ')}.` };
+      }
+
+      const keyStage = input.keyStage ?? (keyStages.length === 1 ? keyStages[0] : undefined);
+      const subject = chosenSubject ?? (subjects.length === 1 ? subjects[0] : undefined);
+      const filters: Record<string, string> = {};
+      if (keyStage) filters.key_stage = keyStage;
+      if (subject) filters.subject = subject;
+
+      const result = await curriculumRequest<{ results?: SearchHit[] }>(
+        config,
+        {
+          method: 'POST',
+          path: '/v1/rag/search',
+          body: {
+            query: input.query,
+            grant: config.grant,
+            k: keyStage && subject ? SEARCH_RESULTS : SEARCH_RESULTS_WIDE,
+            ...(itemType ? { itemType } : {}),
+            filters,
+          },
+        },
+        { cached: true },
+      );
+      if (!result.ok) return { error: failureForModel('/v1/rag/search', result) };
+
+      const hits = (Array.isArray(result.data?.results) ? result.data.results : [])
+        .filter((hit) => keyStageInScope(hit.keyStage, keyStage ? [keyStage] : keyStages))
+        .filter((hit) => subjects.includes(normaliseSubject(hit.subject)))
+        .slice(0, SEARCH_RESULTS);
+
+      if (hits.length === 0) {
+        return {
+          results: [],
+          note: `The curriculum has nothing on this for ${scopeText}. Tell the learner so plainly rather than inventing an answer.`,
+        };
+      }
+      return { results: formatHits(hits), cite: 'Name the title (and link, if any) of each source you use.' };
+    },
+  };
+
+  const objectives: ToolDefinition = {
+    ...meta('curriculum_objectives'),
+    description:
+      `List the National Curriculum learning objectives for this tutor's learners (${scopeText}) — what a learner is ` +
+      'expected to know in a subject and year. Use it to pitch a lesson at the right level, or to check whether a topic ' +
+      'belongs to this stage at all.',
+    inputSchema: z.object(objectivesShape),
+    execute: async (input: { subject?: string; year?: string; strand?: string; keyStage?: string }) => {
+      const subject = input.subject ? normaliseSubject(input.subject) : subjects.length === 1 ? subjects[0] : undefined;
+      if (!subject || !subjects.includes(subject)) return { error: `Name a subject: ${subjects.join(', ')}.` };
+      if (input.year && !years.includes(input.year)) return { error: `Pick a year from ${years.join(', ')}.` };
+      if (input.keyStage && !keyStages.includes(input.keyStage)) {
+        return { error: `This tutor only covers ${keyStages.join(', ')}.` };
+      }
+
+      // The learner's own year is the default, unless the model asked about a
+      // different key stage on purpose.
+      const year =
+        input.year ??
+        (scope.year && (!input.keyStage || keyStageOfYear(scope.year) === input.keyStage) ? scope.year : undefined);
+      const keyStage = year ? keyStageOfYear(year) : input.keyStage ?? (keyStages.length === 1 ? keyStages[0] : undefined);
+      if (!keyStage) return { error: `Name a year or a key stage: ${keyStages.join(', ')}.` };
+
+      const ask = (withYear?: string) =>
+        curriculumRequest<ObjectivesPage>(
+          config,
+          {
+            method: 'GET',
+            path: '/v1/objectives',
+            query: { key_stage: keyStage, subject, year: withYear, strand: input.strand, per: OBJECTIVES_PER_PAGE },
+          },
+          { cached: true },
+        );
+
+      let result = await ask(year);
+      let note: string | undefined;
+      // Only maths and science objectives are tagged to single years; the rest
+      // are tagged to a pair of years or the whole key stage. An empty answer
+      // for "Y4 history" means "ask for KS2", not "there is no history".
+      if (result.ok && year && !(result.data?.objectives?.length)) {
+        const wider = await ask(undefined);
+        if (wider.ok && wider.data?.objectives?.length) {
+          result = wider;
+          note = `No ${subject} objectives are tagged ${yearLabel(year)} on their own; these cover ${keyStage} as a whole.`;
+        }
+      }
+      if (!result.ok) return { error: failureForModel('/v1/objectives', result) };
+
+      const rows = (Array.isArray(result.data?.objectives) ? result.data.objectives : []).filter((row) =>
+        keyStages.includes(String(row.keyStage ?? '').toUpperCase()),
+      );
+      if (rows.length === 0) {
+        return {
+          objectives: [],
+          note: input.strand
+            ? `Nothing in a strand called "${input.strand}". Call again without a strand to see which strands exist.`
+            : `The curriculum lists no ${subject} objectives for ${keyStage}. Say so plainly rather than inventing them.`,
+        };
+      }
+
+      let budget = CURRICULUM_MAX_CHARS;
+      const kept: Record<string, unknown>[] = [];
+      for (const row of rows) {
+        const item: Record<string, unknown> = { code: row.loCode, statement: clip(row.statement ?? '', 400) };
+        if (row.yearGroup) item.year = row.yearGroup;
+        if (row.strand) item.strand = row.strand;
+        if (row.statutory !== undefined && row.statutory !== null) item.statutory = Boolean(row.statutory);
+        const size = JSON.stringify(item).length;
+        if (size > budget) break;
+        budget -= size;
+        kept.push(item);
+      }
+
+      const total = typeof result.data?.total === 'number' ? result.data.total : rows.length;
+      const more = total > kept.length ? `Showing ${kept.length} of ${total}. Pass a strand to see the rest of one area.` : undefined;
+      return {
+        keyStage,
+        subject,
+        ...(year && !note ? { year } : {}),
+        objectives: kept,
+        ...(note || more ? { note: [note, more].filter(Boolean).join(' ') } : {}),
+        cite: 'Cite these as National Curriculum learning objectives, with the code.',
+      };
+    },
+  };
+
+  // Listing objectives is the "objective" kind of material; a key that may not
+  // see it would be refused on every call.
+  return offeredTypes.includes('objective') ? [search, objectives] : [search];
 }
 
 export { isToolKey, suggestedToolsFor, TOOL_CATALOG } from './catalog';

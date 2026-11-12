@@ -14,7 +14,10 @@ the **Test** and **Fetch models** buttons, are one tab up in **Settings → Prov
 | **Stability AI** | API key | Image generation only — catalogue only for now, see below. |
 
 Keys go in **Settings → Providers & keys**, one card per provider. A key saved there overrides one
-in the environment, so you can rotate a key without a deploy.
+in the environment, so you can rotate a key without a deploy. The same page holds the services bots
+use while they answer — web search, voice, and the Curriculum for tutors (see
+[Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors)) — with the same three
+buttons.
 
 ## Save, Test, Fetch
 

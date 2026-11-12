@@ -107,6 +107,14 @@ export type PersonaPersonality = Partial<Record<PersonalityTrait, number>>;
 export type ThemeTokens = Record<string, string>;
 
 /**
+ * The slice of the UK curriculum a tutor teaches (docs/52-curriculum-tutors.md).
+ * Key stages are the curriculum's canonical labels (`KS1`…`KS5`), subjects its
+ * normalised lower-case names (`mathematics`, `english`), year a `Y1`…`Y13`
+ * label inside one of the key stages. Validated by `parseCurriculumForm`.
+ */
+export type CurriculumScope = { keyStages: string[]; subjects: string[]; year?: string };
+
+/**
  * Deep persona blueprint ported from the Personat.AI cognitive-architecture
  * engine. Optional and additive: when present it is compiled into the system
  * prompt ahead of the flat fields (name/expertise/personality) rather than
@@ -710,6 +718,14 @@ export const personaVersions = pgTable(
      */
     tools: jsonb('tools').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     audienceSegments: jsonb('audience_segments').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Set only on curriculum tutors (migration 0040, docs/52-curriculum-tutors.md):
+     * the key stages and subjects the `curriculum_search` / `curriculum_objectives`
+     * tools are confined to, built per request from this value. NULL = not a
+     * curriculum tutor. Not in `tools` on purpose — the tools mean nothing
+     * without a scope, so the scope is what switches them on.
+     */
+    curriculumScope: jsonb('curriculum_scope').$type<CurriculumScope | null>(),
 
     blueprint: jsonb('blueprint').$type<PersonaBlueprint>(),
     interactionStyle: interactionStyle('interaction_style'),

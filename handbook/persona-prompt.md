@@ -48,6 +48,13 @@ Make them *specific things a real user wants*, not categories:
 - Good: *"Check my notice period clause"*
 - Weak: *"Ask about contracts"*
 
+## Curriculum
+
+For tutors only. Tick **Teaches from the curriculum**, then the key stages and subjects, and the
+persona looks its subject knowledge up in the UK curriculum instead of relying on memory — the
+prompt above stays the character and the way it teaches. See
+[Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
+
 ## Cognitive blueprint (advanced)
 
 An optional structured JSON block for very detailed personas. Leave it empty unless you have a

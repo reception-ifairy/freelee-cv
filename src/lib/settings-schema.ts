@@ -52,6 +52,19 @@ export const SETTINGS_SCHEMA = {
       key: 'elevenlabs_voice_id', label: 'ElevenLabs voice ID', type: 'string',
       help: 'Leave blank for the default voice. Only used when an ElevenLabs key is set — without one, read-aloud falls back to the browser voice.',
     },
+    // The curriculum connection (docs/52-curriculum-tutors.md). Edited on its
+    // card, listed here so a value saved there has a known type and group.
+    // Fetch also writes `curriculum_scope_cache` (json, group "connections"),
+    // which is not a setting anyone types and so is not listed.
+    {
+      key: 'curriculum_base_url', label: 'Curriculum API address', type: 'string',
+      help: 'Leave blank for https://curriculum.ifairy.co.uk.',
+    },
+    { key: 'curriculum_api_key', label: 'Curriculum API key (cur_…)', type: 'secret' },
+    {
+      key: 'curriculum_grant', label: 'Curriculum grant', type: 'string',
+      help: 'Leave blank for curriculum-rag.',
+    },
     {
       key: 'moderation_mode', label: 'Input moderation', type: 'string',
       help: "'wordlist' (default, free), 'ai' (a classifier call per message — catches meaning, costs a little), or 'off'. Only applies to personas with \"Filter offensive input\" ticked.",

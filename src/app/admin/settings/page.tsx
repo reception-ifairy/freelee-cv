@@ -90,6 +90,12 @@ async function SectionBody({ section, settings }: { section: SettingsSection; se
           <Block heading="Tools" blurb="Services bots call on while they answer.">
             <Connections ids={['tavily', 'elevenlabs']} settings={settings} />
           </Block>
+          <Block
+            heading="Knowledge"
+            blurb="Outside libraries bots look things up in. The curriculum is what tutor bots teach from."
+          >
+            <Connections ids={['curriculum']} settings={settings} />
+          </Block>
           <Block heading="Defaults" blurb="What bots fall back to, what visitors get for free, and how input is checked.">
             <SchemaSection sectionId="ai" settings={settings} />
           </Block>

@@ -11,7 +11,8 @@ import { getModel, resolveProviderId, resolveProviderKeys, resolveTierModel, pro
 import { searchGrounding } from '@/lib/knowledge/grounding';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { narrativePromptFragment } from '@/lib/chat/layouts';
-import { findTool } from '@/lib/tools/registry';
+import { curriculumTools, findTool } from '@/lib/tools/registry';
+import { readCurriculumScope } from '@/lib/curriculum/stored';
 import { buildSystemPrompt } from '@/lib/persona/prompt';
 import {
   costForTokens, spendCredits, getBalanceForTeam, MINIMUM_CHARGE, InsufficientCreditsError,
@@ -230,6 +231,15 @@ export async function POST(request: Request) {
     ? await resolveLayoutForPersona(persona.id, version?.chatLayout, version?.audienceType, version?.audienceSegments)
     : 'default';
 
+  // A curriculum tutor's subject knowledge comes from two tools built for this
+  // request around its scope (docs/52-curriculum-tutors.md). Tools, not
+  // grounding: the tutor asks when it needs to, instead of every turn paying
+  // for passages fetched on the learner's last words (docs/48 — one or the
+  // other, never both). Empty when no curriculum key is saved; the prompt then
+  // tells the tutor it cannot check, rather than to call tools it lacks.
+  const curriculumScope = readCurriculumScope(version?.curriculumScope);
+  const curriculumToolDefs = curriculumScope ? await curriculumTools(curriculumScope) : [];
+
   const system =
     persona && version
       ? buildSystemPrompt(
@@ -244,6 +254,9 @@ export async function POST(request: Request) {
           },
           selectedModifiers,
           groundingChunks,
+          curriculumScope
+            ? { curriculum: { scope: curriculumScope, tools: curriculumToolDefs.map((t) => t.key) } }
+            : {},
         ) + narrativePromptFragment(layoutKey)
       : undefined;
 
@@ -259,9 +272,10 @@ export async function POST(request: Request) {
   // Tools the persona is allowed to invoke. An unknown key in the column is
   // skipped rather than throwing — a tool removed from the registry must not
   // break every persona that still lists it.
-  const enabledTools = (version?.tools ?? [])
-    .map(findTool)
-    .filter((t): t is NonNullable<typeof t> => Boolean(t));
+  const enabledTools = [
+    ...(version?.tools ?? []).map(findTool).filter((t): t is NonNullable<typeof t> => Boolean(t)),
+    ...curriculumToolDefs,
+  ];
 
   const toolSet = enabledTools.length
     ? Object.fromEntries(

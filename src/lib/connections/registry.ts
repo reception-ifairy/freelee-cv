@@ -13,6 +13,15 @@ import { DEFAULT_VOICE_ID, fetchVoices } from '@/lib/voice/elevenlabs';
 import { paypalApiBase } from '@/lib/billing/gateways';
 import { S3Store, s3ConfigFromEnv } from '@/lib/media/s3-store';
 import {
+  CURRICULUM_DEFAULT_BASE_URL,
+  CURRICULUM_DEFAULT_GRANT,
+  curriculumConfig,
+  curriculumRequest,
+  type CurriculumResult,
+} from '@/lib/curriculum/client';
+import { isKeyStage } from '@/lib/curriculum/scope';
+import { CURRICULUM_SCOPE_CACHE_KEY, readScopeCache, type CurriculumScopeCache } from '@/lib/curriculum/stored';
+import {
   TEST_STATES,
   type ConnectionField,
   type ConnectionFieldView,
@@ -39,7 +48,7 @@ import {
 
 export const CONNECTION_IDS = [
   'openai', 'anthropic', 'google', 'openrouter', 'ollama', 'stability',
-  'tavily', 'elevenlabs', 'resend',
+  'tavily', 'elevenlabs', 'curriculum', 'resend',
   'stripe', 'paypal', 's3',
 ] as const;
 
@@ -259,6 +268,180 @@ async function chooseElevenLabsVoice(voiceId: string): Promise<{ error?: string;
 
   await upsertSetting('elevenlabs_voice_id', voice.id, 'string', groupFor('elevenlabs_voice_id'));
   return { success: `${voice.name} now reads replies aloud. Bots with a voice of their own keep it.` };
+}
+
+/* ------------------------------- knowledge ------------------------------- */
+
+type CurriculumFailure = Extract<CurriculumResult<unknown>, { ok: false }>;
+
+/**
+ * The curriculum's refusals in plain words (contract: docs/52-curriculum-tutors.md).
+ * Its own error text is quoted where it says more than a paraphrase would —
+ * "Daily limit of 5000 requests reached for this key." is already the answer.
+ */
+function classifyCurriculum(result: CurriculumFailure, config: { baseUrl: string; grant: string }, path: string): TestResult {
+  const said = result.error && result.error !== 'unreachable' ? ` The curriculum said: "${result.error.slice(0, 160)}"` : '';
+
+  if (result.status === null) return unreachable('the curriculum');
+  if (result.status === 401) {
+    return {
+      state: 'bad-key',
+      message:
+        "Key rejected. Check it was copied in full (it starts with cur_), has not been rotated in T1000, and that this client is enabled there — and, if the client is pinned to an address, that it is this server's.",
+    };
+  }
+  if (result.status === 403 && /grant/i.test(result.error)) {
+    return {
+      state: 'bad-key',
+      message: `The key works but may not use the grant "${config.grant}". Check the grant box here, or allow that grant for this client in T1000's curriculum panel.`,
+    };
+  }
+  if (result.status === 403) return { state: 'bad-key', message: `The key works but this request was refused.${said}` };
+  if (result.status === 400 && /unknown grant/i.test(result.error)) {
+    return {
+      state: 'error',
+      message: `The curriculum has no grant called "${config.grant}". Leave the grant box blank to use ${CURRICULUM_DEFAULT_GRANT}.`,
+    };
+  }
+  if (result.status === 429) {
+    // A used-up daily allowance is the "accepted, but cannot be served" case
+    // that `no-credit` exists for; a per-minute limit is only "wait a moment".
+    if (/day|daily/i.test(result.error)) {
+      return {
+        state: 'no-credit',
+        message: `The key is fine, but today's allowance for it is used up.${said} It resets tomorrow, or the limit can be raised in T1000's curriculum panel.`,
+      };
+    }
+    const wait = result.retryAfter ? ` Wait ${result.retryAfter} seconds and test again.` : ' Wait a moment and test again.';
+    return { state: 'error', message: `Too many requests a minute for this key just now.${wait}` };
+  }
+  if (result.status === 404) {
+    return {
+      state: 'error',
+      message: `Nothing answered at ${config.baseUrl}${path}. Check the address — normally ${CURRICULUM_DEFAULT_BASE_URL}.`,
+    };
+  }
+  if (result.status >= 200 && result.status < 300) {
+    return { state: 'error', message: `Something answered at ${config.baseUrl}, but not the curriculum API. Check the address.` };
+  }
+  return { state: 'error', message: `The curriculum answered with an error (HTTP ${result.status}).${said}` };
+}
+
+async function testCurriculum(): Promise<TestResult> {
+  const config = await curriculumConfig();
+  if (!config) return NO_KEY;
+
+  const health = await curriculumRequest<{ documents?: number }>(
+    config,
+    { method: 'GET', path: '/v1/health' },
+    { timeoutMs: 15_000 },
+  );
+  if (!health.ok) return classifyCurriculum(health, config, '/v1/health');
+
+  // Health proves the key; only a search proves the grant, and the grant is
+  // what every tutor turn uses. "fractions" exists at every primary key stage,
+  // so an empty answer means a scope problem rather than an unlucky word.
+  const search = await curriculumRequest<{ results?: unknown[] }>(
+    config,
+    { method: 'POST', path: '/v1/rag/search', body: { query: 'fractions', grant: config.grant, k: 1 } },
+    { timeoutMs: 15_000 },
+  );
+  if (!search.ok) return classifyCurriculum(search, config, '/v1/rag/search');
+
+  const documents = typeof health.data?.documents === 'number'
+    ? ` The curriculum holds ${health.data.documents.toLocaleString('en-GB')} documents.`
+    : '';
+  const found = Array.isArray(search.data?.results) ? search.data.results.length : 0;
+  return ok(
+    found > 0
+      ? `Works — key accepted.${documents} A test search for "fractions" with the ${config.grant} grant found a result.`
+      : `Works — key accepted.${documents} A test search for "fractions" found nothing, so this key's scope may not include maths — check it with Fetch.`,
+  );
+}
+
+type CurriculumScopeAnswer = {
+  consumer?: { id?: unknown; label?: unknown };
+  scope?: { commercialOnly?: unknown };
+  limits?: { perMinute?: unknown; perDay?: unknown };
+  usageToday?: { requests?: unknown };
+  available?: { keyStages?: unknown; subjects?: unknown; itemTypes?: unknown };
+};
+
+const asArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null) : [];
+const asCount = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
+const asLimit = (value: unknown) => (typeof value === 'number' && value > 0 ? value : null);
+
+/**
+ * Fetch = what this key may see, kept as `curriculum_scope_cache` for the
+ * persona form. A compact copy (labels and counts), rebuilt on every Fetch:
+ * the scope is set in T1000, and freelee only ever mirrors it.
+ */
+async function fetchCurriculumScope(): Promise<FetchResult> {
+  const config = await curriculumConfig();
+  if (!config) return { ok: false, summary: NO_KEY.message };
+
+  const result = await curriculumRequest<CurriculumScopeAnswer>(config, { method: 'GET', path: '/v1/scope' }, { timeoutMs: 15_000 });
+  if (!result.ok) {
+    if (result.status === 404) {
+      return { ok: false, summary: 'This curriculum server does not offer /v1/scope yet, so there is nothing to fetch. Update it, then Fetch again.' };
+    }
+    return { ok: false, summary: classifyCurriculum(result, config, '/v1/scope').message };
+  }
+
+  const data = result.data ?? {};
+  const consumerId = typeof data.consumer?.id === 'string' ? data.consumer.id : null;
+  const cache: CurriculumScopeCache | null = readScopeCache({
+    fetchedAt: new Date().toISOString(),
+    consumer: consumerId ? { id: consumerId, label: typeof data.consumer?.label === 'string' ? data.consumer.label : consumerId } : null,
+    keyStages: asArray(data.available?.keyStages)
+      .filter((row) => typeof row.keyStage === 'string')
+      .map((row) => ({ keyStage: String(row.keyStage).toUpperCase(), documents: asCount(row.documents), objectives: asCount(row.objectives), questions: asCount(row.questions) })),
+    subjects: asArray(data.available?.subjects)
+      .filter((row) => typeof row.subject === 'string' && row.subject.trim() !== '')
+      .map((row) => ({ subject: String(row.subject).trim().toLowerCase(), documents: asCount(row.documents), objectives: asCount(row.objectives) })),
+    itemTypes: asArray(data.available?.itemTypes)
+      .filter((row) => typeof row.itemType === 'string')
+      .map((row) => ({ itemType: String(row.itemType), count: asCount(row.count) })),
+    commercialOnly: data.scope?.commercialOnly === true,
+    limits: { perMinute: asLimit(data.limits?.perMinute), perDay: asLimit(data.limits?.perDay) },
+  });
+  if (!cache) return { ok: false, summary: 'The curriculum answered, but not in the shape expected. Nothing was saved.' };
+
+  await upsertSetting(CURRICULUM_SCOPE_CACHE_KEY, JSON.stringify(cache), 'json', 'connections');
+
+  const stages = cache.keyStages.filter((row) => isKeyStage(row.keyStage));
+  if (stages.length === 0 || cache.subjects.length === 0) {
+    return {
+      ok: false,
+      summary: 'This key may not see any key stage or subject yet, so no tutor can be scoped. Set its scope in T1000’s curriculum panel, then Fetch again.',
+    };
+  }
+
+  const objectives = cache.subjects.reduce((sum, row) => sum + row.objectives, 0);
+  const usedToday = asCount(data.usageToday?.requests);
+  const parts = [
+    stages.map((row) => row.keyStage).join(', '),
+    `${cache.subjects.length} ${cache.subjects.length === 1 ? 'subject' : 'subjects'}`,
+    `${objectives.toLocaleString('en-GB')} objectives`,
+    cache.limits.perDay ? `${usedToday.toLocaleString('en-GB')} of ${cache.limits.perDay.toLocaleString('en-GB')} requests used today` : null,
+    cache.commercialOnly ? 'text of licence-restricted documents withheld (title and link only)' : null,
+  ].filter(Boolean);
+
+  return {
+    ok: true,
+    summary: `${parts.join(' · ')}. Saved — the persona form now offers these to tutors.`,
+    items: [
+      ...stages.map((row) => ({
+        id: `ks:${row.keyStage}`,
+        label: `${row.keyStage} — ${row.documents} documents, ${row.objectives} objectives`,
+      })),
+      ...cache.subjects.map((row) => ({
+        id: `subject:${row.subject}`,
+        label: `${row.subject} — ${row.documents} documents, ${row.objectives} objectives`,
+      })),
+    ],
+  };
 }
 
 /* --------------------------------- email --------------------------------- */
@@ -529,6 +712,35 @@ const CONNECTIONS: Record<ConnectionId, Connection> = {
     fetch: fetchElevenLabsVoices,
     choose: chooseElevenLabsVoice,
   },
+  curriculum: {
+    id: 'curriculum',
+    title: 'Curriculum — UK curriculum for tutors',
+    description:
+      'Tutor bots look up passages and learning objectives here, within their own key stages and subjects, instead of teaching from memory. Test checks the key and runs one small search; Fetch reads what this key may see.',
+    fields: [
+      { key: 'curriculum_api_key', label: 'API key', type: 'secret', hint: 'Starts with cur_. Issued for freelee in T1000’s curriculum panel.' },
+      {
+        key: 'curriculum_base_url',
+        label: 'Address',
+        type: 'string',
+        format: 'url',
+        placeholder: CURRICULUM_DEFAULT_BASE_URL,
+        hint: 'Leave blank for the default.',
+      },
+      {
+        key: 'curriculum_grant',
+        label: 'Grant',
+        type: 'string',
+        placeholder: CURRICULUM_DEFAULT_GRANT,
+        hint: `Leave blank for ${CURRICULUM_DEFAULT_GRANT}.`,
+      },
+    ],
+    env: [{ name: 'CURRICULUM_API_KEY' }],
+    primary: { setting: 'curriculum_api_key', env: 'CURRICULUM_API_KEY' },
+    fetchLabel: 'Fetch scope',
+    test: testCurriculum,
+    fetch: fetchCurriculumScope,
+  },
   resend: {
     id: 'resend',
     title: 'Resend — email',
@@ -610,8 +822,9 @@ export function readStoredTest(settings: Map<string, SettingValue>, id: Connecti
 function scrub(message: string): string {
   // The shapes real keys take here: sk-/sk_ (OpenAI, Anthropic, OpenRouter,
   // ElevenLabs, Stripe), rk_/pk_ (Stripe), re_ (Resend), tvly- (Tavily),
-  // AIza (Google). The separator is required so ordinary words are left alone.
-  return message.replace(/\b(?:(?:sk|rk|pk)[-_]|re_|tvly-|AIza)[A-Za-z0-9_*-]{16,}/g, '[key hidden]');
+  // cur_ (the curriculum), AIza (Google). The separator is required so
+  // ordinary words are left alone.
+  return message.replace(/\b(?:(?:sk|rk|pk)[-_]|re_|tvly-|cur_|AIza)[A-Za-z0-9_*-]{16,}/g, '[key hidden]');
 }
 
 export async function rememberTest(id: ConnectionId, result: TestResult): Promise<StoredTest> {

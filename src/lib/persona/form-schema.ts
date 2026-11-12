@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { isChatProvider } from '@/lib/ai/provider-ids';
+import type { CurriculumScope } from '@/db/schema';
+import { KEY_STAGES, isKeyStage, normaliseSubject, yearsFor } from '@/lib/curriculum/scope';
 
 /*
  * The admin persona form's validation, in a plain module so it can be checked
@@ -86,6 +88,9 @@ const PERSONA_FIELDS: Record<string, { label: string; tab: PersonaTab; fix?: str
   creditsPerMessage: { label: 'Credits per message', tab: 'publishing', fix: 'use a whole number, 0 or more' },
   position: { label: 'Position', tab: 'publishing', fix: 'use a whole number' },
   sectorId: { label: 'Specialism', tab: 'publishing' },
+  curriculumKeyStages: { label: 'Curriculum key stages', tab: 'prompt', fix: 'tick at least one key stage, or turn "Teaches from the curriculum" off' },
+  curriculumSubjects: { label: 'Curriculum subjects', tab: 'prompt', fix: 'tick at least one subject, or turn "Teaches from the curriculum" off' },
+  curriculumYear: { label: 'Curriculum year', tab: 'prompt', fix: 'pick a year inside the ticked key stages, or leave it empty' },
 };
 
 export type PersonaSaveState = { error?: string; success?: string; field?: string; tab?: PersonaTab } | null;
@@ -98,3 +103,42 @@ export function personaFieldError(issue: z.core.$ZodIssue | undefined): PersonaS
   return { error: `${meta.label} (${tabLabel} tab): ${meta.fix ?? issue?.message ?? 'check this field'}.`, field, tab: meta.tab };
 }
 
+/**
+ * The Curriculum section of the Prompt tab, as the browser submits it: a
+ * checkbox (`curriculumEnabled`, "on" or absent), repeated `curriculumKeyStages`
+ * and `curriculumSubjects` checkboxes, and a `curriculumYear` select. Repeated
+ * fields cannot go through `personaSchema` — `Object.fromEntries` keeps only
+ * the last value — so they are read with `getAll` and checked here, in the same
+ * plain module, so scripts/verify-persona-form.ts runs the identical rules.
+ *
+ * Off means `null` (not a curriculum tutor), whatever else was ticked.
+ * Subjects are checked for shape, not against the last Fetch: the curriculum
+ * enforces its own scope on every request, and refusing a subject because the
+ * cached list is a day old would make a working tutor unsaveable.
+ */
+export type CurriculumFormInput = { enabled: boolean; keyStages: string[]; subjects: string[]; year: string };
+
+export function parseCurriculumForm(
+  input: CurriculumFormInput,
+): { ok: true; scope: CurriculumScope | null } | { ok: false; state: PersonaSaveState } {
+  if (!input.enabled) return { ok: true, scope: null };
+
+  const fail = (field: keyof typeof PERSONA_FIELDS) => {
+    const meta = PERSONA_FIELDS[field];
+    return { ok: false as const, state: { error: `${meta.label} (Prompt tab): ${meta.fix}.`, field, tab: meta.tab } };
+  };
+
+  const submitted = input.keyStages.map((value) => value.trim().toUpperCase());
+  if (submitted.length === 0 || !submitted.every(isKeyStage)) return fail('curriculumKeyStages');
+  const keyStages: string[] = KEY_STAGES.filter((stage) => submitted.includes(stage));
+
+  const subjects = [...new Set(input.subjects.map(normaliseSubject))];
+  if (subjects.length === 0 || subjects.length > 40 || subjects.some((subject) => subject === '' || subject.length > 80)) {
+    return fail('curriculumSubjects');
+  }
+
+  const year = input.year.trim();
+  if (year && !yearsFor(keyStages).includes(year)) return fail('curriculumYear');
+
+  return { ok: true, scope: year ? { keyStages, subjects, year } : { keyStages, subjects } };
+}

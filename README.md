@@ -58,7 +58,8 @@ sign in as admin and paste it under **Admin → Settings → Providers & keys**:
 (a real 8-token reply), then **Fetch models**, which adds the provider's models as *preview* — mark
 the ones you want Stable under **Settings → Models**. Keys stored in the settings table take
 precedence over the environment, so they can be rotated without a redeploy. Every other outside
-service (tools, email, payments, storage) has the same card — see `docs/51-connection-checks.md`.
+service (tools, email, payments, storage, and the UK curriculum that tutor bots teach from) has the
+same card — see `docs/51-connection-checks.md` and `docs/52-curriculum-tutors.md`.
 
 ---
 

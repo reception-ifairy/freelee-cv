@@ -21,6 +21,8 @@ import type { ProviderRegistry } from '@/lib/ai/registry';
 import { AUDIENCE_TYPES, APPROACH_TO_UNKNOWN, INTERACTION_STYLES, PROMPT_TECHNIQUES } from '@/lib/persona/prompt';
 import { GUARDRAILS } from '@/lib/persona/guardrails';
 import { segmentsForAudienceType } from '@/lib/persona/audience-segments';
+import type { CurriculumScopeCache } from '@/lib/curriculum/stored';
+import { PersonaCurriculumSection } from './persona-curriculum-section';
 import { cn, initialsOf } from '@/lib/utils';
 
 /**
@@ -158,10 +160,13 @@ type Props = {
   suggestedTools?: string[];
   /** `?saved=` after a redirect from save: 'live' | 'draft' | 'published'. */
   savedAs?: string;
+  /** What the last curriculum Fetch said freelee's key may see — the tutor scope's choices. Null before any Fetch. */
+  curriculumCache?: CurriculumScopeCache | null;
 };
 
 export function PersonaForm({
   persona, version, versionHistory = [], categories, sectors = [], selectedCategoryIds, providers, knowledgeSources, suggestedLayout, suggestedTools = [], savedAs,
+  curriculumCache = null,
 }: Props) {
   const [state, formAction] = useActionState<PersonaSaveState, FormData>(savePersonaAction, null);
   const [tab, setTab] = useState<Tab>('basics');
@@ -383,6 +388,8 @@ export function PersonaForm({
                 ))}
               </div>
             </div>
+
+            <PersonaCurriculumSection scope={version?.curriculumScope ?? null} cache={curriculumCache} />
 
             <div>
               <Label htmlFor="blueprintJson">Cognitive blueprint (advanced, optional JSON)</Label>

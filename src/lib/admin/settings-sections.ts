@@ -52,7 +52,7 @@ export const SETTINGS_MAP: SettingsGroupBlock[] = [
     heading: 'AI',
     blurb: 'Providers, the models they expose, and the assistant on the public site.',
     sections: [
-      { id: 'ai', label: 'Providers & keys', description: 'Save a key, Test it, then Fetch its models. Also web search, voice, and the defaults bots fall back to.', icon: 'cpu', schemaGroup: 'ai' },
+      { id: 'ai', label: 'Providers & keys', description: 'Save a key, Test it, then Fetch its models. Also web search, voice, the curriculum for tutors, and the defaults bots fall back to.', icon: 'cpu', schemaGroup: 'ai' },
       { id: 'models', label: 'Models', description: 'Which models customers can use, their tier and price, and the Knowledgebase embedding model.', icon: 'layers' },
       { id: 'assistant', label: 'Site assistant', description: 'The chat bubble on every public page.', icon: 'bot', schemaGroup: 'assistant' },
     ],
