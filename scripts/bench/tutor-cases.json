@@ -1,0 +1,13 @@
+{
+  "_note": "Fixed measurement cases for scripts/tutor-bench.ts (docs/53). Invented messages, no personal data. Change them only together with a new 'before' run, or the numbers stop being comparable.",
+  "cases": [
+    { "id": "y1-phonics",     "year": "Y1",  "subject": "english",     "turns": ["I'm in Year 1. Can you help me read words with 'sh' in them?"] },
+    { "id": "y2-add-wrong",   "year": "Y2",  "subject": "mathematics", "turns": ["I'm in Year 2. What is 8 + 5?", "Is it 12?"] },
+    { "id": "y4-fractions",   "year": "Y4",  "subject": "mathematics", "turns": ["I'm in Year 4. Can you help me understand equivalent fractions?"] },
+    { "id": "y4-science",     "year": "Y4",  "subject": "science",     "turns": ["I'm in Year 4. Why does ice melt when you take it out of the freezer?"] },
+    { "id": "y6-grammar",     "year": "Y6",  "subject": "english grammar, punctuation and spelling", "turns": ["I'm in Year 6. What is the passive voice?"] },
+    { "id": "y8-science",     "year": "Y8",  "subject": "science",     "turns": ["I'm in Year 8. How does photosynthesis work?"] },
+    { "id": "y10-quadratics", "year": "Y10", "subject": "mathematics", "turns": ["I'm in Year 10, Higher tier. How do I solve x^2 + 5x + 6 = 0 by factorising?"] },
+    { "id": "y11-essay",      "year": "Y11", "subject": "english",     "turns": ["I'm in Year 11. How should I structure a paragraph in my English Literature essay?"] }
+  ]
+}

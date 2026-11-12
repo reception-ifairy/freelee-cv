@@ -10,3 +10,6 @@ next-env.d.ts
 
 # User uploads and generated images (see src/lib/media/store.ts)
 storage/
+
+# Tutor measurement output (scripts/tutor-bench.ts) — summaries go to docs/53
+scripts/bench/results/

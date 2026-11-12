@@ -1,0 +1,12 @@
+{
+  "_note": "Temporary copy of the measurable norms from curriculum development levels (docs/53). Used only until curriculum serves GET /v1/levels; removed in update #70. Source: 'Designing an Adaptive Educational Engine' (levels 0-4) and the GCSE guides (level 5).",
+  "years": { "Reception": 0, "Y1": 1, "Y2": 1, "Y3": 2, "Y4": 2, "Y5": 3, "Y6": 3, "Y7": 4, "Y8": 4, "Y9": 5, "Y10": 5, "Y11": 5 },
+  "levels": {
+    "0": { "sentenceWords": [3, 6],  "maxReplyWords": 50,  "questionsPerReply": 1, "avoidPhrases": ["wrong", "incorrect", "bad answer", "that's not right", "easy", "simple"] },
+    "1": { "sentenceWords": [4, 8],  "maxReplyWords": 70,  "questionsPerReply": 1, "avoidPhrases": ["wrong", "incorrect", "bad answer", "that's not right", "easy", "simple", "most kids", "other children"] },
+    "2": { "sentenceWords": [6, 12], "maxReplyWords": 100, "questionsPerReply": 1, "avoidPhrases": ["wrong", "bad answer", "easy", "simple", "most kids", "other children", "everyone else"] },
+    "3": { "sentenceWords": [6, 20], "maxReplyWords": 130, "questionsPerReply": 1, "avoidPhrases": ["it's easy", "it's simple", "this is easy", "this is simple", "obviously", "most kids", "other children"] },
+    "4": { "sentenceWords": [6, 24], "maxReplyWords": 170, "questionsPerReply": 1, "avoidPhrases": ["it's easy", "this is easy", "obviously", "you should know", "most students"] },
+    "5": { "sentenceWords": [6, 28], "maxReplyWords": 220, "questionsPerReply": 1, "avoidPhrases": ["it's easy", "this is easy", "obviously", "you should know"] }
+  }
+}
