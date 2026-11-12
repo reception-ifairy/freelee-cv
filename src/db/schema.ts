@@ -1,6 +1,6 @@
 import {
   pgTable, text, integer, bigint, boolean, timestamp, jsonb, real, date,
-  uniqueIndex, index, primaryKey, pgEnum, serial, vector, type AnyPgColumn,
+  uniqueIndex, index, primaryKey, pgEnum, serial, vector, customType, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -188,6 +188,8 @@ export const users = pgTable(
     isAdmin: boolean('is_admin').notNull().default(false),
     timezone: text('timezone').notNull().default('UTC'),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    /** When the account holder declared they are 18+ and a parent or guardian (docs/54). */
+    adultDeclaredAt: timestamp('adult_declared_at', { withTimezone: true }),
 
     // `isAdmin` above is unrelated and keeps meaning platform admin, not a team role.
     defaultTeamId: text('default_team_id').notNull()
@@ -2276,3 +2278,46 @@ export type LibraryChunkRow = typeof libraryChunks.$inferSelect;
  * ------------------------------------------------------------------------- */
 export * from '@/modules/group-chat/schema';
 export * from '@/modules/crews/schema';
+
+/* ===================== Children (docs/54-children-data.md) =====================
+ * A child is a profile under an adult's account, never a login. Everything
+ * about the child is sealed by src/lib/crypto/envelope.ts before it is stored:
+ * `data` is the encrypted profile, `wrappedKey` the child's own data key under
+ * the master key. drizzle/0041_child_profiles.sql. */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+
+export const childProfiles = pgTable(
+  'child_profiles',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    parentUserId: text('parent_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['active', 'paused'] }).notNull().default('active'),
+    keyVersion: integer('key_version').notNull(),
+    wrappedKey: bytea('wrapped_key').notNull(),
+    data: bytea('data').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+    retentionNoticeAt: timestamp('retention_notice_at', { withTimezone: true }),
+  },
+  (t) => [index('child_profiles_parent_idx').on(t.parentUserId), index('child_profiles_active_idx').on(t.lastActiveAt)],
+);
+
+export type ChildProfileRow = typeof childProfiles.$inferSelect;
+
+export const consents = pgTable(
+  'consents',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    childProfileId: text('child_profile_id').references(() => childProfiles.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    textVersion: text('text_version').notNull(),
+    grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+    withdrawnAt: timestamp('withdrawn_at', { withTimezone: true }),
+  },
+  (t) => [index('consents_user_idx').on(t.userId)],
+);
+

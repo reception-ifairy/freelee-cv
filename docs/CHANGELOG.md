@@ -34,7 +34,19 @@ Conventions used throughout:
 
 ## 2026-11-12
 
-### #66 · `pending` — A plain Baseline Tutor and a bench that measures tutor turns through the real chat
+### #67 · `pending` — Adult accounts with encrypted child profiles, and sign-up works again
+
+Owner decisions: freelee is for adults; a child learns through a profile under a parent's account;
+the parent decides what to give and every field says why, where it goes and how long it is kept;
+the data is encrypted on our own server. Sign-up adds an 18+ declaration, records consents and sends
+an email-confirmation link; `/dashboard/children` creates, edits and deletes profiles sealed with
+AES-256-GCM under a per-child key wrapped by a root-only master key (fail closed, crypto-shredding
+on delete, rotation script). Guests can no longer chat with tutors for children. Found while testing:
+registration created teams without a credit wallet, so every sign-up failed with HTTP 500.
+
+📄 `54-children-data.md`, handbook `child-profiles.md` · 🗄 `0041_child_profiles`
+
+### #66 · `77adb8d` — A plain Baseline Tutor and a bench that measures tutor turns through the real chat
 
 Before giving each child one learning plan shared by every tutor, the current architecture needed
 measuring, and Pan Kleks could not do it: his 232-credit turn mixed the cost of the architecture
