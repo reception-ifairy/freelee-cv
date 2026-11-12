@@ -5,6 +5,11 @@
  *   npx tsx scripts/tutor-bench.ts --label=before --apply    # runs them (paid: one model call per turn)
  *   options: --persona=baseline-tutor  --only=y4-fractions,y2-add-wrong  --max-turns=10
  *            --base=https://freelee.cv  --keep (do not delete the test chats)
+ *            --lesson   measure lessons (docs/54): each case gets a temporary child profile under the
+ *                       admin account (year and subject of the case), its plan from curriculum's plan
+ *                       pack, and a chat marked as that child's lesson — the "after" architecture.
+ *                       Profiles (and with them plans and lessons) are deleted afterwards.
+ *   run as: npx tsx --conditions=react-server scripts/tutor-bench.ts …  (lesson mode uses server modules)
  *
  * Each case starts a fresh chat owned by the admin, posts its turns to
  * /api/chat with a short-lived admin session (the same request a browser
@@ -20,8 +25,8 @@
  *   belong to the learner's year or key stage.
  *
  * No AI judge: every check is plain code, so a run costs only the tutor turns.
- * Norms come from curriculum `GET /v1/levels` when it exists, otherwise from
- * scripts/bench/levels-fallback.json. Results go to scripts/bench/results/
+ * Norms come from curriculum `GET /v1/levels` (item type "profile" on the key).
+ * Results go to scripts/bench/results/
  * (not in git); the summary table is copied into docs/53 by hand.
  */
 import { config } from 'dotenv';
@@ -44,6 +49,7 @@ const maxTurns = Number(arg('max-turns', '10'));
 const base = arg('base', 'https://freelee.cv').replace(/\/+$/, '');
 const apply = process.argv.includes('--apply');
 const keep = process.argv.includes('--keep');
+const lesson = process.argv.includes('--lesson');
 
 type Case = { id: string; year: string; subject: string; turns: string[] };
 type Norms = { sentenceWords: [number, number]; maxReplyWords: number; questionsPerReply: number; avoidPhrases: string[] };
@@ -86,13 +92,14 @@ async function loadNorms(conn: Awaited<ReturnType<typeof curriculum>>): Promise<
   if (live?.levels?.length) {
     const table: LevelTable = { years: {}, levels: {} };
     for (const level of live.levels) {
-      table.levels[String(level.level)] = level.checks;
+      // Live levels carry phrases per language ({ en, pl }); lessons run in English (owner decision).
+      const ap = level.checks.avoidPhrases;
+      table.levels[String(level.level)] = { ...level.checks, avoidPhrases: Array.isArray(ap) ? ap : ap?.en ?? [] };
       for (const year of level.years ?? []) table.years[year] = level.level;
     }
     return { table, source: 'curriculum /v1/levels' };
   }
-  const fallback = JSON.parse(fs.readFileSync(path.join(here, 'bench/levels-fallback.json'), 'utf8'));
-  return { table: fallback, source: 'scripts/bench/levels-fallback.json' };
+  throw new Error('curriculum GET /v1/levels did not answer — the norms come from there (the key needs item type "profile").');
 }
 
 /* -------------------------------- checks -------------------------------- */
@@ -109,6 +116,7 @@ const KEY_STAGE_OF: Record<string, string> = {
 function visibleText(reply: string): string {
   return reply
     .replace(/^\s*\[SUGGESTIONS:.*\]\s*$/gim, '')
+    .replace(/\[PROGRESS:[^\]]*\]/gi, '')
     .replace(/^\s*Objective:.*$/gim, '')
     .replace(/[*_`#>]/g, '')
     .trim();
@@ -165,6 +173,26 @@ async function checkReply(reply: string, c: Case, norms: Norms, conn: Awaited<Re
     });
   }
   return checks;
+}
+
+/* ---------------------------- lesson mode ---------------------------- */
+
+/**
+ * A temporary child profile for one case, with its plan built from the
+ * curriculum's plan pack — the same code path a parent's save takes. Imported
+ * lazily: these modules need the server build conditions.
+ */
+async function lessonChild(adminId: string, teamId: string, c: Case): Promise<string> {
+  const { createChild } = await import('../src/lib/children/store');
+  const { childContext, ensurePlan } = await import('../src/lib/children/child-mode');
+  const id = await createChild(adminId, teamId, {
+    pseudonym: 'Bench', year: c.year as never, subjects: [c.subject === 'english grammar, punctuation and spelling' ? 'english' : c.subject],
+    interests: [], adaptations: [], includePshe: false,
+  });
+  const ctx = await childContext(adminId, id);
+  const built = ctx ? await ensurePlan(ctx, { rebuild: true }) : { plan: null, error: 'no context' };
+  if (!built.plan) console.log(`  (no plan for ${c.id}: ${built.error ?? 'unknown'} — the lesson runs without one)`);
+  return id;
 }
 
 /* ------------------------------ one turn ------------------------------- */
@@ -250,13 +278,19 @@ try {
 
   const results: unknown[] = [];
   const created: string[] = [];
+  const createdChildren: string[] = [];
 
   for (const c of cases) {
     const level = table.years[c.year];
     const norms = table.levels[String(level)];
     const chatId = randomUUID();
-    await sql`insert into chats (id, user_id, team_id, persona_id, title)
-              values (${chatId}, ${admin.id}, ${admin.default_team_id}, ${persona.id}, ${`bench ${label} ${c.id}`})`;
+    let childId: string | null = null;
+    if (lesson) {
+      childId = await lessonChild(admin.id, admin.default_team_id, c);
+      createdChildren.push(childId);
+    }
+    await sql`insert into chats (id, user_id, team_id, persona_id, title, child_profile_id)
+              values (${chatId}, ${admin.id}, ${admin.default_team_id}, ${persona.id}, ${`bench ${label} ${c.id}`}, ${childId})`;
     created.push(chatId);
 
     const history: UiMessage[] = [];
@@ -287,7 +321,7 @@ try {
   const sum = (f: (r: Row) => number) => rows.reduce((a, r) => a + f(r), 0);
   const n = rows.length;
   const summary = {
-    label, persona: personaSlug, at: new Date().toISOString(), turns: n, normsSource: source,
+    label, persona: personaSlug, mode: lesson ? 'lesson (child plan in the prompt)' : 'tools only', at: new Date().toISOString(), turns: n, normsSource: source,
     avgInputTokens: Math.round(sum((r) => r.inputTokens) / n),
     avgOutputTokens: Math.round(sum((r) => r.outputTokens) / n),
     avgCredits: Math.round((sum((r) => r.credits) / n) * 10) / 10,
@@ -311,6 +345,10 @@ try {
     await sql`delete from messages where chat_id in ${sql(created)}`;
     await sql`delete from chats where id in ${sql(created)}`;
     console.log(`Deleted ${created.length} test chat(s) (billing rows stay, as for any chat).`);
+  }
+  if (!keep && createdChildren.length) {
+    await sql`delete from child_profiles where id in ${sql(createdChildren)}`;
+    console.log(`Deleted ${createdChildren.length} temporary child profile(s) with their plans.`);
   }
 } finally {
   await sql.end();
