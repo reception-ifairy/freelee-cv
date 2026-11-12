@@ -10,6 +10,9 @@ import { NOT_COLLECTED, SUBJECTS, yearLabel } from '@/lib/children/profile';
 import { deleteChildAction, refreshPlanAction, startLearningAction } from '@/server/actions/children';
 import { childContext } from '@/lib/children/child-mode';
 import { loadPlan } from '@/lib/children/plan';
+import { and, desc } from 'drizzle-orm';
+import { chats, personas } from '@/db/schema';
+import { LESSON_DAYS } from '@/lib/children/retention';
 import { ChildForm } from './child-form';
 import { ResendVerification, DeclareAdult } from './account-checks';
 
@@ -35,6 +38,16 @@ export default async function ChildrenPage() {
     })),
   );
   const ready = available && Boolean(account?.emailVerified) && Boolean(account?.adult);
+  // Lessons per child, newest first — the full transcripts open for the parent only (owner decision 2026-11-12).
+  const lessons = new Map(
+    await Promise.all(children.map(async (c) => [c.id, await db
+      .select({ id: chats.id, title: chats.title, lastMessageAt: chats.lastMessageAt, count: chats.messagesCount, tutor: personas.name })
+      .from(chats)
+      .leftJoin(personas, eq(personas.id, chats.personaId))
+      .where(and(eq(chats.childProfileId, c.id), eq(chats.userId, session.id)))
+      .orderBy(desc(chats.lastMessageAt))
+      .limit(20)] as const)),
+  );
 
   return (
     <div className="container-app py-10">
@@ -83,6 +96,22 @@ export default async function ChildrenPage() {
             ) : (
               <p className="mb-4 text-sm text-slate-500">No learning plan yet.</p>
             )}
+            {(lessons.get(child.id) ?? []).length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium">Lessons <span className="font-normal text-slate-500">(kept {LESSON_DAYS} days after the last message)</span></p>
+                <ul className="mt-1 space-y-0.5 text-sm">
+                  {lessons.get(child.id)!.map((l) => (
+                    <li key={l.id}>
+                      <a href={`/chat/${l.id}`} className="text-brand-600 hover:underline">{l.tutor ?? l.title ?? 'Lesson'}</a>{' '}
+                      <span className="text-slate-500">· {l.lastMessageAt.toLocaleDateString('en-GB')} · {l.count} messages</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="mb-4 text-sm">
+              <a href={`/dashboard/children/${child.id}/export`} className="text-brand-600 hover:underline">Download everything about {child.profile.pseudonym} (JSON)</a>
+            </p>
             <details>
               <summary className="cursor-pointer list-none">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

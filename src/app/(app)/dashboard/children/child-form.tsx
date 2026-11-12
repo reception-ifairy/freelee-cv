@@ -1,11 +1,10 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
 import { saveChildAction } from '@/server/actions/children';
 import type { ActionState } from '@/server/actions/auth';
-import { Checkbox, FormMessage, Input, Label, Select } from '@/components/ui/field';
-import { ADAPTATIONS, FIELD_NOTES, SUBJECTS, YEARS, isGcseYear, yearLabel, type ChildProfile, type FieldNote } from '@/lib/children/profile';
+import { Checkbox, FormMessage, Input, Label, Select, Textarea } from '@/components/ui/field';
+import { ADAPTATIONS, FIELD_NOTES, NOTES_NOTE, SUBJECTS, YEARS, isGcseYear, yearLabel, type ChildProfile, type FieldNote } from '@/lib/children/profile';
 
 /** "Why we ask · Where it goes · How long we keep it" under every field (owner decision 2026-11-12). */
 function Note({ note }: { note: FieldNote }) {
@@ -18,8 +17,7 @@ function Note({ note }: { note: FieldNote }) {
   );
 }
 
-function Submit({ label }: { label: string }) {
-  const { pending } = useFormStatus();
+function Submit({ label, pending }: { label: string; pending: boolean }) {
   return (
     <button type="submit" disabled={pending} className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60">
       {pending ? 'Saving…' : label}
@@ -28,13 +26,28 @@ function Submit({ label }: { label: string }) {
 }
 
 export function ChildForm({ id, profile }: { id?: string; profile?: ChildProfile }) {
-  const [state, formAction] = useActionState<ActionState, FormData>(saveChildAction, null);
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(saveChildAction, null);
   const [year, setYear] = useState<string>(profile?.year ?? 'Y4');
   const subjects = SUBJECTS.filter((s) => (!s.from || YEARS.indexOf(year as never) >= YEARS.indexOf(s.from)) && (!s.to || YEARS.indexOf(year as never) <= YEARS.indexOf(s.to)));
   const prefix = id ? `c-${id.slice(0, 8)}-` : 'new-';
+  const formRef = useRef<HTMLFormElement>(null);
+  // A new profile was created: clear the "add" form for the next child (an edit keeps its values).
+  useEffect(() => {
+    if (state?.success && !id) formRef.current?.reset();
+  }, [state, id]);
 
   return (
-    <form action={formAction} className="space-y-6">
+    // Submitted through onSubmit, not the form's `action`: React resets a form after an action, so a
+    // parent who hit a message (a missing consent box) would lose everything they had typed.
+    <form
+      ref={formRef}
+      className="space-y-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        startTransition(() => formAction(data));
+      }}
+    >
       <FormMessage state={state} />
       {id && <input type="hidden" name="id" value={id} />}
 
@@ -124,6 +137,16 @@ export function ChildForm({ id, profile }: { id?: string; profile?: ChildProfile
       </fieldset>
 
       <div>
+        <Label htmlFor={`${prefix}notes`}>Anything else? (optional, used once)</Label>
+        <Textarea id={`${prefix}notes`} name="notes" rows={3} maxLength={1200} placeholder="e.g. gets tired quickly after school; likes to see things drawn out" />
+        <Note note={NOTES_NOTE} />
+        <label className="mt-2 flex items-start gap-2 text-sm">
+          <Checkbox name="notesConsent" className="mt-0.5" />
+          <span>I agree that these words are sent once to the AI service to pick adaptations from the list above, and then deleted.</span>
+        </label>
+      </div>
+
+      <div>
         <label className="flex items-start gap-2 text-sm">
           <Checkbox name="includePshe" defaultChecked={profile?.includePshe} className="mt-0.5" />
           <span>Include PSHE topics (health, feelings, friendships, money)</span>
@@ -140,7 +163,7 @@ export function ChildForm({ id, profile }: { id?: string; profile?: ChildProfile
         </label>
       )}
 
-      <Submit label={id ? 'Save profile' : 'Create profile'} />
+      <Submit label={id ? 'Save profile' : 'Create profile'} pending={pending} />
     </form>
   );
 }
