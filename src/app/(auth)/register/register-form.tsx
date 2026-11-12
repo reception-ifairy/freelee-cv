@@ -49,6 +49,13 @@ export function RegisterForm() {
       </div>
 
       <label className="flex items-start gap-2 text-sm">
+        <Checkbox name="adult" className="mt-0.5" required />
+        <span className="text-slate-600 dark:text-slate-300">
+          I am 18 or over. Children learn through a profile I create for them under my account.
+        </span>
+      </label>
+
+      <label className="flex items-start gap-2 text-sm">
         <Checkbox name="terms" className="mt-0.5" required />
         <span className="text-slate-600 dark:text-slate-300">
           I agree to the{' '}

@@ -95,6 +95,12 @@ export async function POST(request: Request) {
     return fail('No AI provider is configured yet. Add an API key in the admin settings.', 503);
   }
 
+  // Tutors for children (a curriculum scope) talk only to a signed-in adult's account —
+  // freelee is for adults, a child learns through a profile under it (docs/54). No guests.
+  if (!user && readCurriculumScope(version?.curriculumScope)) {
+    return fail('This tutor is for children learning through a parent’s account. Please sign in.', 403);
+  }
+
   /* ----------------------------- Spend guards ----------------------------- */
   const flatCost = persona?.creditsPerMessage ?? 0;
 

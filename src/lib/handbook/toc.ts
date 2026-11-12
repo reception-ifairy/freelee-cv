@@ -86,6 +86,7 @@ export const HANDBOOK: HandbookPart[] = [
       { slug: 'knowledgebase', title: 'Knowledgebase', summary: 'Your bots\' own library — putting books in, processing them, granting shelves to bots, and seeing exactly what they read.' },
       { slug: 'knowledge-sources', title: 'Knowledge sources', summary: 'Letting a persona cite from an external search API.' },
       { slug: 'curriculum-tutors', title: 'Tutors that teach from the curriculum', summary: 'Connecting the UK curriculum, making a tutor that teaches from it, and what you see about it in T1000.' },
+      { slug: 'child-profiles', title: 'Child profiles and privacy', summary: 'Adult accounts, what a parent tells us about a child and why, how it is encrypted, and how to delete it.' },
       { slug: 'settings', title: 'Settings', summary: 'The options that apply to the whole site, and checking every key with Test.' },
     ],
   },

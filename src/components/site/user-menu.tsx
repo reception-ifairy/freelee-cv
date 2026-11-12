@@ -39,6 +39,9 @@ export function UserMenu({ name, email, isAdmin, roomsEnabled = false, crewsEnab
           <Link href="/chat" className="block px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
             My chats
           </Link>
+          <Link href="/dashboard/children" className="block px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+            Children
+          </Link>
           {roomsEnabled ? (
             <Link href="/rooms" className="block px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
               Rooms
