@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import { Share2, Trash2, Zap } from 'lucide-react';
 import { asc, eq } from 'drizzle-orm';
 import type { UIMessage } from 'ai';
@@ -15,6 +16,8 @@ import { isTranscriptionConfigured } from '@/lib/voice/elevenlabs';
 import { ChatControls } from '@/components/chat/chat-controls';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
+import { activeChildId, childContext } from '@/lib/children/child-mode';
+import { openText } from '@/lib/crypto/envelope';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -41,6 +44,14 @@ export default async function ChatPage({ params }: { params: Params }) {
   ]);
 
   const persona = personaRows[0];
+
+  // Lessons (docs/54): sealed with the child's key, opened only for the parent who owns the profile.
+  // In child mode only the active child's lessons open; everything else goes back to /learn.
+  const activeChild = user ? await activeChildId(user.id) : null;
+  if (activeChild && chat.childProfileId !== activeChild) redirect('/learn');
+  const lesson = chat.childProfileId && user ? await childContext(user.id, chat.childProfileId) : null;
+  if (chat.childProfileId && !lesson) notFound();
+  const rowsInClear = lesson ? rows.map((row) => ({ ...row, content: openText(lesson.key, 'message', row.content) })) : rows;
 
   const versionId = chat.personaVersionId ?? persona?.currentVersionId;
   const [version] = versionId
@@ -75,7 +86,7 @@ export default async function ChatPage({ params }: { params: Params }) {
   // Attachments are replayed as file parts so an uploaded or generated image
   // survives a page reload instead of leaving a message that references a
   // picture nobody can see.
-  const initialMessages: UIMessage[] = rows
+  const initialMessages: UIMessage[] = rowsInClear
     .filter((row) => row.role !== 'system' && row.status === 'complete')
     .map((row) => ({
       id: row.id,
@@ -89,7 +100,13 @@ export default async function ChatPage({ params }: { params: Params }) {
   return (
     <div className="container-app py-6">
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <ChatSidebar chats={list} activeId={id} />
+        {activeChild ? (
+          <div className="space-y-2 text-sm">
+            <Link href="/learn" className="text-brand-600 hover:underline">← Back to my tutors</Link>
+          </div>
+        ) : (
+          <ChatSidebar chats={list} activeId={id} />
+        )}
 
         <div className="space-y-3">
           <header className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -120,7 +137,7 @@ export default async function ChatPage({ params }: { params: Params }) {
                 </span>
               ) : null}
 
-              {capabilities.share !== false ? (
+              {capabilities.share !== false && !lesson ? (
                 <form action={shareChatAction}>
                   <input type="hidden" name="chatId" value={chat.id} />
                   <button
@@ -145,6 +162,13 @@ export default async function ChatPage({ params }: { params: Params }) {
               </form>
             </div>
           </header>
+
+          {lesson ? (
+            <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              {activeChild ? 'Your grown-up can read our chats. ' : `A lesson for ${lesson.profile.pseudonym} — sealed with their key; only you can read it. `}
+              Your tutor is a computer program (AI), not a person.
+            </p>
+          ) : null}
 
           <ChatControls
             chatId={chat.id}

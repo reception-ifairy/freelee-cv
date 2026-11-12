@@ -7,7 +7,9 @@ import { Card } from '@/components/ui/card';
 import { childFeaturesAvailable } from '@/lib/crypto/envelope';
 import { listChildren } from '@/lib/children/store';
 import { NOT_COLLECTED, SUBJECTS, yearLabel } from '@/lib/children/profile';
-import { deleteChildAction } from '@/server/actions/children';
+import { deleteChildAction, refreshPlanAction, startLearningAction } from '@/server/actions/children';
+import { childContext } from '@/lib/children/child-mode';
+import { loadPlan } from '@/lib/children/plan';
 import { ChildForm } from './child-form';
 import { ResendVerification, DeclareAdult } from './account-checks';
 
@@ -25,6 +27,13 @@ export default async function ChildrenPage() {
   const [account] = await db.select({ emailVerified: users.emailVerified, adult: users.adultDeclaredAt }).from(users).where(eq(users.id, session.id)).limit(1);
   const available = childFeaturesAvailable();
   const children = available ? await listChildren(session.id) : [];
+  // The plan summary per child: what each subject is on now (decrypted for the parent only).
+  const plans = new Map(
+    await Promise.all(children.map(async (c) => {
+      const ctx = await childContext(session.id, c.id);
+      return [c.id, ctx ? await loadPlan(ctx.row, ctx.key) : null] as const;
+    })),
+  );
   const ready = available && Boolean(account?.emailVerified) && Boolean(account?.adult);
 
   return (
@@ -47,6 +56,33 @@ export default async function ChildrenPage() {
 
         {children.map((child) => (
           <Card key={child.id} className="p-6">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              {ready && (
+                <form action={startLearningAction}>
+                  <input type="hidden" name="id" value={child.id} />
+                  <button type="submit" className="h-9 rounded-xl bg-brand-600 px-3 text-sm font-semibold text-on-brand">Start learning as {child.profile.pseudonym}</button>
+                </form>
+              )}
+              <form action={refreshPlanAction}>
+                <input type="hidden" name="id" value={child.id} />
+                <button type="submit" className="h-9 rounded-xl border border-slate-300 px-3 text-sm dark:border-slate-700">{plans.get(child.id) ? 'Refresh plan' : 'Build plan'}</button>
+              </form>
+            </div>
+            {plans.get(child.id) ? (
+              <ul className="mb-4 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                {plans.get(child.id)!.subjects.map((s) => {
+                  const unit = s.units.find((u) => u.unitId === s.current) ?? s.units[0];
+                  const done = s.units.filter((u) => plans.get(child.id)!.progress[u.unitId]?.status === 'secure').length;
+                  return (
+                    <li key={s.subject}>
+                      <span className="font-medium">{subjectLabel(s.subject)}:</span> now {unit?.title ?? '—'} · {s.units.length} topics this year{done ? `, ${done} secure` : ''}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mb-4 text-sm text-slate-500">No learning plan yet.</p>
+            )}
             <details>
               <summary className="cursor-pointer list-none">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

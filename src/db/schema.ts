@@ -942,6 +942,8 @@ export const chats = pgTable(
     /** Optional grouping. Nulls out with the project; the chat survives. */
     projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
     guestToken: text('guest_token'),
+    /** A lesson for a child profile (0042): messages sealed with the child's key, the tutor reads the child's plan. */
+    childProfileId: text('child_profile_id').references((): AnyPgColumn => childProfiles.id, { onDelete: 'cascade' }),
 
     title: text('title'),
     model: text('model'),
@@ -1287,6 +1289,9 @@ export const usageEvents = pgTable(
     coveredByPass: boolean('covered_by_pass').notNull().default(false),
     isByok: boolean('is_byok').notNull().default(false),
     latencyMs: integer('latency_ms'),
+    /** Model round trips and tool calls of the turn (0042) — what looking things up cost. */
+    steps: integer('steps'),
+    toolCalls: integer('tool_calls'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -2320,4 +2325,13 @@ export const consents = pgTable(
   },
   (t) => [index('consents_user_idx').on(t.userId)],
 );
+
+export const childPlans = pgTable('child_plans', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  childProfileId: text('child_profile_id').notNull().unique().references(() => childProfiles.id, { onDelete: 'cascade' }),
+  curriculumVersion: text('curriculum_version').notNull(),
+  data: bytea('data').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 

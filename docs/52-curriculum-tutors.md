@@ -213,3 +213,14 @@ connection.
 - **A teaching turn is expensive** — measured at 232 credits with four tool calls; see *Costs*. To
   tune before the tutors import.
 - **A knowledge source pointing at the curriculum is warned against, not blocked.**
+
+## Since #68: lessons with a child's plan
+
+- **In a lesson** (a chat in child mode, docs/54) the tutor teaches from the child's learning plan,
+  which is already in its prompt: the current unit and its objectives, built once from curriculum's
+  plan pack.
+- The two tools stay, as an exception: at most one look-up per turn, and two model steps.
+- Outside lessons, nothing changes, except one thing for every chat: the last allowed step can no
+  longer call a tool, so a turn always ends in an answer.
+- Measurements: docs/53.
+

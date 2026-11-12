@@ -65,6 +65,9 @@ const SUGGESTIONS_TAG_RE = /\[SUGGESTIONS:\s*([^\]]+)\]\s*$/i;
 
 /** Strips a trailing `[SUGGESTIONS: A | B | C]` tag and returns both parts. */
 export function parseSuggestions(text: string): { text: string; suggestions: string[] } {
+  // Lesson progress tags ([PROGRESS: CODE secure], docs/54) are for the server, never for the learner —
+  // also while one is still streaming in.
+  text = text.replace(/\[PROGRESS:[^\]]*\]\s*/gi, '').replace(/\[PROGRESS[^\]]*$/i, '');
   const match = text.match(SUGGESTIONS_TAG_RE);
   if (!match) return { text, suggestions: [] };
 
@@ -182,8 +185,22 @@ function describeKeyStage(stage: string): string {
  * so rather than told to call tools it does not have — a model instructed to
  * use a missing tool tends to pretend it did.
  */
-function curriculumSection(curriculum: { scope: CurriculumScope; tools: string[] }): string {
+function curriculumSection(curriculum: { scope: CurriculumScope; tools: string[]; plan?: boolean }): string {
   const { scope, tools } = curriculum;
+  if (curriculum.plan) {
+    // A lesson with a child's plan (docs/54): the plan is the source; a look-up is the exception.
+    const stages = scope.keyStages.map(describeKeyStage).join(' and ');
+    return [
+      '## Teaching from the curriculum',
+      "The learner's plan below comes from the UK curriculum — teach from it. It is your source for what to teach and in what order.",
+      tools.length
+        ? `- Use ${tools.map((key) => `\`${key}\``).join(' or ')} only when the learner asks about something the plan does not cover — at most once per reply, never to re-check what the plan already says.`
+        : '- The curriculum cannot be checked right now; teach only from the plan.',
+      `- Stay at the learner's key stage (${stages}) and within your subjects: ${scope.subjects.join(', ')}.`,
+      '- Never present something as a curriculum fact unless it is in the plan or in what you looked up.',
+      '- Your own instructions above define your voice and how you teach; the plan defines what you teach.',
+    ].join('\n');
+  }
   const stages = scope.keyStages.map(describeKeyStage).join(' and ');
   const learner = scope.year ? ` The learner is in ${yearLabel(scope.year)}.` : '';
   const subjects = scope.subjects.join(', ');
@@ -237,7 +254,7 @@ export function buildSystemPrompt(
    * spread the whole version into this function too, and have no tools, so a
    * tutor there must not be told to use them.
    */
-  options: { curriculum?: { scope: CurriculumScope; tools: string[] } } = {},
+  options: { curriculum?: { scope: CurriculumScope; tools: string[]; plan?: boolean }; learner?: string } = {},
 ): string {
   const sections: string[] = [persona.systemPrompt.trim()];
 
@@ -332,6 +349,7 @@ export function buildSystemPrompt(
   }
 
   if (options.curriculum) sections.push(curriculumSection(options.curriculum));
+  if (options.learner) sections.push(options.learner);
 
   if (groundingChunks.length > 0) {
     /*
