@@ -30,7 +30,8 @@
     "changelog:verify": "tsx scripts/verify-changelog.ts",
     "tutors:baseline": "tsx scripts/bench/baseline-tutor.ts",
     "tutors:bench": "tsx scripts/tutor-bench.ts",
-    "children:verify-envelope": "tsx scripts/verify-envelope.ts"
+    "children:verify-envelope": "tsx scripts/verify-envelope.ts",
+    "children:retention": "tsx --conditions=react-server scripts/children-retention.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",

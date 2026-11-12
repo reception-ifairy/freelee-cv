@@ -3,7 +3,7 @@
 **Status:**
 - **#67 (2026-11-12):** accounts, profiles, consents and encryption.
 - **#68:** the learning plan per child, child mode and encrypted lessons.
-- **#69:** the parent dashboard (export, transcripts), the retention job and the full DPIA.
+- **#69:** the parent dashboard (lessons, export), "Anything else?" used once, account deletion, the retention job and the DPIA below.
 
 ## Owner decisions (2026-11-12)
 
@@ -204,4 +204,96 @@ through a parent's account. #68 adds child mode, the per-child plan and encrypte
      Pan Kleks".
   6. `/learn/exit` with the parent's password → Children page.
 - The test account and its data were removed afterwards.
+
+## Parent dashboard, retention, deletion (#69)
+
+- **Lessons.** The Children page lists each child's lessons, newest first, with the tutor, the date
+  and the message count. A parent opens the full transcript; it is decrypted for them only. The
+  child sees a standing notice that this is possible (owner decision).
+- **Export.** "Download everything about <nickname>" calls `/dashboard/children/:id/export`. The JSON
+  holds the profile, the plan with progress, every lesson in clear and the consents. It is decrypted
+  only for the profile's own parent.
+- **"Anything else?"** — free text, used once (`src/lib/children/notes.ts`):
+  - It needs its own consent box, because a parent may describe health.
+  - One call to the provider's *fast* model maps the text onto the adaptation checklist.
+  - The text is then dropped: never stored, never logged, never shown to a tutor.
+  - Only the chosen adaptation ids join the sealed profile. A `notes_once` consent row records that
+    it happened.
+- **Retention** (`src/lib/children/retention.ts`): a daily job `children.retention` in the existing
+  queue. It is scheduled when the worker starts and re-queues itself.
+  - Lessons are deleted 90 days after their last message.
+  - A profile unused for 11 months triggers an email to the parent. After 12 months, and at least
+    25 days after that email, the profile is deleted, which crypto-shreds its plan and lessons.
+  - The log carries counts only. `npm run children:retention [-- --now=YYYY-MM-DD]` shows what it
+    would do, as a dry run.
+- **Delete my account** (Profile page, password and a confirmation box) removes:
+  - every child profile, with its key, plan and lessons;
+  - all chats and consents;
+  - the name, email, password and image.
+
+  Payment records stay without personal details, because the law requires them. Platform admin
+  accounts cannot be deleted there.
+
+## DPIA (data protection impact assessment) — draft for the owner
+
+**Why one is needed.** freelee processes data about children, profiles their learning for a
+personalised plan, and uses AI. Under the ICO Children's Code (standard 2) a DPIA is expected before
+launch. This draft is the engineering view. The owner signs it off and keeps it updated.
+
+**Controller:** iFairy / freelee.cv (owner). **Processors:**
+- the AI provider for tutor replies — OpenAI by default, through the API, where data is not used for
+  training; retention follows the provider's API terms;
+- curriculum.ifairy.co.uk, run by the same owner;
+- the email service (Resend) once it is configured.
+
+**Data map**
+
+| Data | Purpose | Lawful basis | Where | Who sees it | Kept |
+|---|---|---|---|---|---|
+| Parent name, email, password hash | the account | contract | Postgres (password bcrypt) | the parent; the platform admin | until account deletion |
+| 18+ declaration, consents | proof of who agreed to what | legal obligation / consent | `users`, `consents` | the platform admin | with the account |
+| Child nickname, year, subjects, pathway, focus, interests, adaptations | plan and lessons | consent of the parent | `child_profiles.data`, sealed | the parent; the tutor (AI) during lessons | until deletion, or 12 months unused |
+| Learning plan and progress | teaching in order | consent | `child_plans.data`, sealed | the parent; the tutor (slice) | as the profile |
+| Lesson messages | the lesson itself; parent oversight | consent | `messages.content`, sealed | the parent | 90 days after the last message |
+| "Anything else?" text | choosing adaptations | explicit consent (may be health) | memory only, one AI call | nobody (not stored) | not kept |
+| Year, subjects, pathway | building the plan | consent | sent to curriculum | curriculum, which logs item ids only | curriculum `served_log`, 90 days |
+
+**Risks and measures**
+
+| Risk | Measures |
+|---|---|
+| Database copy leaks children's data | application encryption with a key per child; master key outside the database and repo; no plain text in the tables or in dumps (verified) |
+| A child is identified | nickname only; no real name, date of birth, school, address, photos, location or diagnoses; curriculum never receives anything identifying |
+| A child uses the service unsupervised as an account holder | adults-only accounts; 18+ declaration and confirmed email; child mode with the parent's password to leave |
+| Over-collection or over-retention | annotated, mostly optional fields; free text used once and dropped; 90-day lessons; 12-month inactive profiles; deletion and export on demand |
+| Unsuitable content | tutors for children are curriculum-scoped; no guests; level norms (never "wrong", never "it's easy"…); RSE not taught by AI; PSHE opt-in; the measurement bench checks replies |
+| Hidden monitoring | standing notice to the child that the grown-up can read the chats |
+| Loss of the master key | offline copy kept by the owner; rotation script |
+| AI provider retention | API use only; the provider named in the privacy notice; option of a zero-retention agreement later |
+
+**Children's Code — the 15 standards, where we stand**
+
+| # | Standard | Where we stand |
+|---|---|---|
+| 1 | Best interests | plan and level norms built around the child |
+| 2 | DPIA | this draft |
+| 3 | Age-appropriate application | levels 0–5; adult accounts only |
+| 4 | Transparency | field notes; child notice |
+| 5 | Detrimental use | no ads, no nudges, no streak pressure |
+| 6 | Policies and community standards | **to do:** child-friendly terms page |
+| 7 | Default settings | PSHE off, sharing impossible for lessons |
+| 8 | Data minimisation | annotated optional fields, free text not kept |
+| 9 | Data sharing | curriculum receives settings only |
+| 10 | Geolocation | none |
+| 11 | Parental controls | full transcripts with a visible notice |
+| 12 | Profiling | only the learning plan, which is the service itself; off otherwise |
+| 13 | Nudge techniques | none |
+| 14 | Connected toys | n/a |
+| 15 | Online tools | export, delete profile, delete account, withdraw consent |
+
+**Open items for the owner**
+- A plain-language privacy notice for parents and a child-friendly version.
+- The Resend key, so confirmation and retention emails are sent.
+- Naming the AI provider in the notice.
+- Deciding whether to ask the provider for zero data retention.
 

@@ -102,6 +102,13 @@ export const FIELD_NOTES: Record<'pseudonym' | 'year' | 'subjects' | 'goals' | '
   },
 };
 
+/** "Anything else?" — free text, used once, never kept (src/lib/children/notes.ts). */
+export const NOTES_NOTE: FieldNote = {
+  why: 'Optional. In your own words, anything that helps your child learn. We turn it into adaptations from the list above.',
+  where: 'Sent once to the AI service (with your consent below) to choose adaptations. Never shown to a tutor.',
+  howLong: 'Not kept at all: the text is deleted as soon as the adaptations are chosen. Only the ticked adaptations are saved.',
+};
+
 export const NOT_COLLECTED = ['real name', 'date of birth', 'school', 'address', 'photos', 'location', 'diagnoses or health details'];
 
 /** Version of the consent texts shown with the form; stored with each consent row. */

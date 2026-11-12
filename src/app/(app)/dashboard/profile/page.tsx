@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { requireUser } from '@/lib/auth';
 import { ProfileForm } from './profile-form';
+import { DeleteAccount } from './delete-account';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -22,6 +23,7 @@ export default async function ProfilePage() {
       <div className="mx-auto max-w-2xl">
         <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
         <ProfileForm name={account.name} email={account.email} timezone={account.timezone} />
+        {!account.isAdmin && <DeleteAccount />}
       </div>
     </div>
   );

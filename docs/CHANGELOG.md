@@ -34,7 +34,20 @@ Conventions used throughout:
 
 ## 2026-11-12
 
-### #68 · `pending` — One learning plan per child, child mode, and lessons sealed with the child's key
+### #69 · `pending` — Parents read lessons and export everything, notes used once, retention, account deletion, DPIA
+
+The Children page lists each child's lessons (full transcripts for the parent) and exports everything
+about a child as one JSON file. "Anything else?" lets a parent describe needs in their own words: one
+fast-model call turns it into adaptations, and the text is dropped without being stored or logged; it
+needs its own consent. A daily `children.retention` job deletes lessons 90 days after their last
+message and unused profiles after 12 months, with an email at 11. "Delete my account" removes
+children, chats, consents and personal details; billing records stay anonymous. The child form keeps
+what was typed when the server answers with a message (React reset it before). The DPIA draft and the
+Children's Code checklist are in docs/54.
+
+📄 `54-children-data.md`, handbook `child-profiles.md`
+
+### #68 · `2b8e9de` — One learning plan per child, child mode, and lessons sealed with the child's key
 
 The plan is built once from curriculum's plan pack (year, subjects, GCSE settings only), sealed with
 the child's key and shared by every tutor; progress comes back through a hidden `[PROGRESS: …]` tag

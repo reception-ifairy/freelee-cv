@@ -79,10 +79,33 @@ updates and keeps your child's progress.
 
 Lessons are encrypted with your child's key, never shared, and deleted together with the profile.
 
-## Coming next
+## "Anything else?"
 
-- Reading full lesson transcripts from the Children page.
-- Export of everything about a child.
-- Automatic clean-up of old lessons.
+At the bottom of the form you can describe, in your own words, what helps your child. For example:
+"gets tired after school, understands best with drawings".
+
+If you tick the box below it:
+1. Your note is sent **once** to the AI service.
+2. The service turns it into adaptations from the list (e.g. "More breaks", "More picture-like
+   examples").
+3. **The note itself is deleted straight away.** It is never saved, never shown to a tutor and never
+   kept in any log.
+
+Only the adaptations are saved, and you can untick them later.
+
+## Reading lessons and exporting
+
+- **Lessons.** Under each child you see their lessons (tutor, date, number of messages). Click one
+  to read the whole conversation. Your child sees a note that you can do this.
+- **Export.** **Download everything about <nickname>** gives you one file with the profile, the
+  learning plan with progress, every lesson and the consents you gave.
+
+## How long we keep things
+
+| What | How long |
+|---|---|
+| Lessons | Deleted **90 days** after their last message. |
+| A profile nobody uses | After 11 months you get an email. After 12 months the profile is deleted, with its plan and lessons. Starting a lesson keeps it. |
+| Your account | Profile page → **Delete my account**, with your password. This deletes every child profile, plan and lesson, all chats, and your name, email and password. Payment records stay, without your name, because the law requires them. |
 
 Engineering details: `docs/54-children-data.md`.
