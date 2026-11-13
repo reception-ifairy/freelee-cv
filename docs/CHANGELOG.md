@@ -34,7 +34,19 @@ Conventions used throughout:
 
 ## 2026-11-13
 
-### #71 · `pending` — The curriculum connection documented as the standard for every tutor
+### #72 · `pending` — Two offering pages, For business and Homeschooling, in the menu and footer
+
+What freelee sells has settled into two offers: specialist personas for businesses, and AI tutors for
+homeschooling families. `scripts/seed-offering-pages.ts` creates both as ordinary CMS pages built
+from blocks (validated through `validateBlockConfig`, never overwriting an existing page) and links
+them after Personas in the header and first in the footer. Every claim was checked against what a
+customer can actually do today; team spending caps and self-serve embedding were left out because
+customers have no UI for them. The How-it-works block gains an optional heading and sub-heading
+(blank keeps the home page as it was), and four steps now sit in one row.
+
+📄 handbook `content.md`
+
+### #71 · `d222449` — The curriculum connection documented as the standard for every tutor
 
 The 2026-11-12 work (#65–#70, curriculum #29–#31, T1000 #118–#120) made curriculum-backed tutors the
 normal way a tutor for children works. docs/52 is rewritten as the reference: the whole system on one

@@ -29,7 +29,7 @@ export type CtaConfig = {
 
 /** Curated set, not an arbitrary icon-name string — same "fixed small set" trade-off as branding fonts. Resolved to a real icon by `BlockIcon`. */
 export type HowItWorksStep = { icon: string; title: string; body: string };
-export type HowItWorksConfig = { steps: HowItWorksStep[] };
+export type HowItWorksConfig = { title?: string; subtitle?: string; steps: HowItWorksStep[] };
 
 export type CustomContentConfig = {
   heading: string;
