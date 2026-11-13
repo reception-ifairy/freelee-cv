@@ -34,7 +34,23 @@ Conventions used throughout:
 
 ## 2026-11-13
 
-### #72 · `pending` — Two offering pages, For business and Homeschooling, in the menu and footer
+### #73 · `pending` — Each school year on its own: a lesson carries the year's limits, not the level's
+
+The owner's iFairy v1.0 documents describe Years 1–11 one by one, and curriculum PR #33 serves them
+as year profiles. A level spanned two or three years: Years 1 and 2 shared a 70-word limit where Year
+1 now has 20, read aloud by an adult. The plan keeps the pack's `yearProfile` and each subject's
+learning areas. The lesson prompt states the year's limits (aiming at 75% of the limit at most),
+the "For the adult:" line, feedback without praise words, no "I / we / us", the hint ladder, a full
+answer only after an attempt, the never-do list, the subject's areas with what success looks like,
+and this term's emphasis; plans without a year profile keep the level. New
+`src/lib/children/turn-check.ts` applies the documents' validator rules (stacked questions count as
+two, symbols are not words, "Yes or no" is not a negative) and drives the bench, which now reads
+`/v1/years/:year/profile` and records turns within their year's limits. Year 1 and 2 lessons tell
+the parent to read aloud. No migration; the "after" measurement waits for PR #33 to be deployed.
+
+📄 `52-curriculum-tutors.md`, `53-tutor-measurement.md`, handbook `curriculum-tutors.md`
+
+### #72 · `fe3ebbc` — Two offering pages, For business and Homeschooling, in the menu and footer
 
 What freelee sells has settled into two offers: specialist personas for businesses, and AI tutors for
 homeschooling families. `scripts/seed-offering-pages.ts` creates both as ordinary CMS pages built

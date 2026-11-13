@@ -17,6 +17,7 @@ import { ChatControls } from '@/components/chat/chat-controls';
 import { loadChatList } from '../page';
 import { formatCredits, initialsOf } from '@/lib/utils';
 import { activeChildId, childContext } from '@/lib/children/child-mode';
+import { deliveryNotice } from '@/lib/children/profile';
 import { openText } from '@/lib/crypto/envelope';
 
 /**
@@ -167,6 +168,7 @@ export default async function ChatPage({ params }: { params: Params }) {
             <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
               {activeChild ? 'Your grown-up can read our chats. ' : `A lesson for ${lesson.profile.pseudonym} — sealed with their key; only you can read it. `}
               Your tutor is a computer program (AI), not a person.
+              {deliveryNotice(lesson.profile.year) ? <span className="mt-1 block font-medium">{deliveryNotice(lesson.profile.year)}</span> : null}
             </p>
           ) : null}
 

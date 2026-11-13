@@ -84,11 +84,18 @@ the same text.
 3. The parent starts **child mode**. The child picks a tutor and starts a lesson.
 4. At every reply the tutor has in front of it:
    - its own character;
-   - how to talk at this child's age: sentence length, kind of questions, what to say when an
-     answer is wrong, phrases it must never use (e.g. "it's easy");
+   - how to talk in this child's **school year** — each year has its own limits (since
+     2026-11-13): in Year 1 at most 20 words per reply, one question, read aloud by an adult; in
+     Year 11 up to 130. No praise words, no "I" or "we" (a tutor is a learning tool, not a friend),
+     a full answer only after the child has tried, and the hints in a set order;
    - the child's nickname, interests and the adaptations the parent chose;
-   - what the child is learning now, with the official objectives, and what is due for a quick
+   - what the child is learning now, with the official objectives, the year's learning area for
+     that subject and what success looks like, this term's focus, and what is due for a quick
      review.
+
+**Years 1 and 2 need a grown-up.** A five-year-old cannot reliably read or type a chat reply, so a
+Year 1 lesson is an *adult-led session*: you read each reply aloud and type what your child says,
+points to or does. Year 2 works best read aloud. The lesson page says so.
 5. It teaches from that. It looks something up in the curriculum only when the child asks about
    something the plan does not cover, and at most once per reply.
 6. When the child shows they understand, the tutor marks it in the plan (the child does not see

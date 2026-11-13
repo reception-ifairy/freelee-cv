@@ -5,6 +5,7 @@ import { childPlans, type ChildProfileRow } from '@/db/schema';
 import { curriculumConfig, curriculumRequest } from '@/lib/curriculum/client';
 import { openJson, sealJson, type ChildKey } from '@/lib/crypto/envelope';
 import { ADAPTATIONS, SUBJECTS, yearLabel, type ChildProfile } from './profile';
+import type { YearChecks } from './turn-check';
 
 /**
  * One learning plan per child, shared by every tutor (owner decision
@@ -34,7 +35,18 @@ export type PlanUnit = {
   bridge?: boolean;
 };
 
-export type PlanSubject = { subject: string; fromObjectives: boolean; current: string | null; units: PlanUnit[] };
+/** One of the year's learning areas for a subject (curriculum year guides, 2026-11-13). */
+export type PlanCategory = {
+  slug: string;
+  name: string;
+  focus: string | null;
+  keySkills: string | null;
+  application: string | null;
+  observableOutcome: string | null;
+  guide: { name: string; slug: string; mechanic: string | null; exampleLine: string | null };
+};
+
+export type PlanSubject = { subject: string; fromObjectives: boolean; current: string | null; units: PlanUnit[]; categories?: PlanCategory[] };
 export type Progress = { status: 'learning' | 'secure'; at: string; reviews: number; reviewAt?: string };
 
 export type LevelProfile = {
@@ -48,6 +60,25 @@ export type LevelProfile = {
   checks?: { maxReplyWords?: number; avoidPhrases?: { en?: string[] } };
 };
 
+/**
+ * How a tutor talks with this school year (curriculum year profile, owner's
+ * iFairy v1.0 documents). Finer than the level: Year 1 allows 20 words per
+ * turn where its level allowed 70. Absent for Reception and in plans built
+ * before 2026-11-13 — the level applies then.
+ */
+export type YearProfile = {
+  yearLabel: string;
+  title: string;
+  deliveryModeChat: string | null;
+  deliveryModeNote: string | null;
+  checks: YearChecks;
+  hintLadder: string[];
+  fullSolutionOnlyAfterAttempt: boolean;
+  modelAnswerAfterAttempt?: { maxWords?: number; learnerOpened?: boolean; kind?: string } | null;
+  neverDo: string[] | null;
+  progression: { phase: string; subjectEmphasis: string; supportEmphasis: string; observableExample: string }[];
+};
+
 export type Plan = {
   curriculumVersion: string;
   builtAt: string;
@@ -55,6 +86,7 @@ export type Plan = {
   keyStage: string | null;
   level: number | null;
   profile: LevelProfile | null;
+  yearProfile?: YearProfile | null;
   subjects: PlanSubject[];
   gaps: { subject: string; note: string }[];
   reviewIntervalsDays: number[];
@@ -63,7 +95,7 @@ export type Plan = {
 };
 
 type Pack = Omit<Plan, 'builtAt' | 'subjects' | 'progress' | 'studyStrategy'> & {
-  subjects: { subject: string; fromObjectives: boolean; startAt: string | null; units: PlanUnit[] }[];
+  subjects: { subject: string; fromObjectives: boolean; startAt: string | null; units: PlanUnit[]; categories?: PlanCategory[] }[];
   gcse?: { studyStrategy?: string[] };
 };
 
@@ -92,7 +124,8 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
     keyStage: pack.keyStage,
     level: pack.level,
     profile: pack.profile,
-    subjects: pack.subjects.map((s) => ({ subject: s.subject, fromObjectives: s.fromObjectives, current: s.startAt, units: s.units })),
+    yearProfile: pack.yearProfile ? keepYearProfile(pack.yearProfile) : null,
+    subjects: pack.subjects.map((s) => ({ subject: s.subject, fromObjectives: s.fromObjectives, current: s.startAt, units: s.units, categories: s.categories ?? [] })),
     gaps: pack.gaps,
     reviewIntervalsDays: pack.reviewIntervalsDays?.length ? pack.reviewIntervalsDays : [1, 3, 7, 21],
     studyStrategy: pack.gcse?.studyStrategy,
@@ -105,6 +138,15 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
     if (before && s.units.some((u) => u.unitId === before)) s.current = before;
   }
   return { ok: true, plan };
+}
+
+/** The part of the pack's year profile a lesson uses (the rest stays in curriculum). */
+function keepYearProfile(y: YearProfile): YearProfile {
+  return {
+    yearLabel: y.yearLabel, title: y.title, deliveryModeChat: y.deliveryModeChat, deliveryModeNote: y.deliveryModeNote,
+    checks: y.checks, hintLadder: y.hintLadder ?? [], fullSolutionOnlyAfterAttempt: y.fullSolutionOnlyAfterAttempt !== false,
+    modelAnswerAfterAttempt: y.modelAnswerAfterAttempt ?? null, neverDo: y.neverDo ?? [], progression: y.progression ?? [],
+  };
 }
 
 export async function loadPlan(row: Pick<ChildProfileRow, 'id'>, key: ChildKey): Promise<Plan | null> {
@@ -185,8 +227,11 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
   const adaptations = ADAPTATIONS.filter((a) => profile.adaptations.includes(a.id)).map((a) => `- ${a.instruction}`);
   if (adaptations.length) lines.push('Adapt every lesson:', ...adaptations);
 
+  const y = plan?.yearProfile;
   const p = plan?.profile;
-  if (p) {
+  if (y) {
+    lines.push('', ...yearRules(y));
+  } else if (p) {
     lines.push('', `## How to talk at this age (level ${p.level}: ${p.name}, ${p.ages})`);
     if (p.linguistic?.sentenceWords) lines.push(`- Sentences of ${p.linguistic.sentenceWords[0]}–${p.linguistic.sentenceWords[1]} words; whole reply at most ${p.checks?.maxReplyWords ?? 150} words.`);
     if (p.linguistic?.vocabulary) lines.push(`- Words: ${p.linguistic.vocabulary}`);
@@ -212,6 +257,9 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
     const next = s.units[i + 1];
     lines.push(`### ${subjectLabel(s.subject)} — now: ${unit.title} (unit ${unit.unitId}${unit.bridge ? ', a bridge into GCSE' : ''})`);
     if (unit.summary) lines.push(unit.summary);
+    for (const area of (s.categories ?? []).slice(0, 2)) {
+      lines.push(`Area: ${area.name} — ${area.focus ?? ''}${area.observableOutcome ? ` Success looks like: ${area.observableOutcome}` : ''}`);
+    }
     if (unit.keyConcepts.length) lines.push(`Key ideas: ${unit.keyConcepts.join(', ')}.`);
     for (const o of unit.objectives.slice(0, 10)) {
       const state = plan.progress[o.loCode]?.status;
@@ -219,6 +267,8 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
     }
     if (next) lines.push(`Next: ${next.title}.`);
   }
+  const term = y ? termOf(y, now) : null;
+  if (term) lines.push('', `This term (${term.phase}): ${term.subjectEmphasis}. Support: ${term.supportEmphasis}.`);
   const due = Object.entries(plan.progress)
     .filter(([, v]) => v.status === 'secure' && v.reviewAt && new Date(v.reviewAt) <= now)
     .slice(0, 3)
@@ -233,4 +283,57 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
       'objective code or unit id from the plan above. The tag is hidden from the learner. At most two tags per reply; none when nothing changed.',
   );
   return lines.join('\n');
+}
+
+/* ------------------------------ year rules ------------------------------- */
+
+const HINT_LABELS: Record<string, string> = {
+  repeat_with_emphasis: 'repeat the question with emphasis',
+  repeat_with_emphasis_or_picture: 'repeat with emphasis or a picture',
+  show_with_objects: 'show it with objects',
+  concrete_model: 'a concrete model',
+  adult_models_parallel_example: 'the adult models a similar example',
+  point_to_feature: 'point to the feature that matters',
+  partial_step: 'give one partial step',
+  worked_parallel_example: 'a worked example of a similar question',
+};
+
+const DELIVERY: Record<string, string> = {
+  adult_led: 'This is an adult-led session: the adult reads each turn aloud and types what the child says, points to or does. Speak to the child.',
+  adult_supported: 'The turn is read aloud by default and an adult sits with the child.',
+  child_operated_adult_nearby: 'The learner reads and answers; an adult is nearby.',
+  child_operated_adult_available: 'The learner works alone; an adult is available.',
+  learner_led_adult_plan: 'The learner leads, within the plan the adult set.',
+  learner_led: 'The learner leads; the adult reads the report.',
+};
+
+/** Autumn September–December, Spring January–April, Summer May–August. */
+function termOf(y: YearProfile, now: Date) {
+  const m = now.getUTCMonth();
+  return y.progression[m >= 8 ? 0 : m <= 3 ? 1 : 2] ?? null;
+}
+
+/**
+ * The year's limits as instructions (≈ 250–350 tokens). The prompt aims below
+ * the target: from Year 4 the target is only 10 words under the limit, and a
+ * model rarely lands on an exact count (docs/52).
+ */
+export function yearRules(y: YearProfile): string[] {
+  const c = y.checks;
+  const aim = Math.min(c.targetReplyWords ?? c.maxReplyWords, Math.round(c.maxReplyWords * 0.75));
+  const out = [`## How to talk in ${y.title}`];
+  if (y.deliveryModeChat && DELIVERY[y.deliveryModeChat]) out.push(`- ${DELIVERY[y.deliveryModeChat]}`);
+  out.push(`- Each reply: about ${aim} words, never more than ${c.maxReplyWords}. Sentences of about ${c.sentenceWords[0]} words, never more than ${c.sentenceWords[1]}${c.maxSentencesPerTurn ? `; at most ${c.maxSentencesPerTurn} sentences` : ''}.`);
+  out.push('- Exactly one question or one action per reply — never two questions joined by "and", never a question hidden in an instruction.');
+  if (c.adultNoteMaxWords) out.push(`- You may start with one line "For the adult: …" (at most ${c.adultNoteMaxWords} words, preparation only, no question). It does not count towards the learner's words.`);
+  out.push(`- Feedback names what the learner did${c.feedbackMaxWords ? `, in at most ${c.feedbackMaxWords} words` : ''}. No praise words (brilliant, amazing, clever, well done…), no scores, no comparisons with others.`);
+  out.push(`- You are a learning tool, not a person or a friend: never say "I", "me", "my", "we", "us" or "let's", and never claim feelings${c.firstPersonException ? ' (except inside a labelled language role-play)' : ''}.`);
+  if (c.newTermsMax) out.push(`- At most ${c.newTermsMax} new term${c.newTermsMax > 1 ? 's' : ''} per reply, each with a short definition.`);
+  if (c.negationsPerTurnMax === 0) out.push('- No negatives in an instruction ("not", "don\'t", "never").');
+  if (c.optionsMax) out.push(`- When you offer choices, at most ${c.optionsMax}.`);
+  const ladder = y.hintLadder.map((h) => HINT_LABELS[h] ?? h.replace(/_/g, ' '));
+  if (ladder.length) out.push(`- After a wrong or missing answer, one hint at a time: ${ladder.join(' → ')}. ${y.fullSolutionOnlyAfterAttempt ? 'Show the full answer only after a genuine attempt.' : ''}`.trim());
+  if (y.modelAnswerAfterAttempt?.maxWords) out.push(`- A model answer only after an attempt and only when the learner asks, at most ${y.modelAnswerAfterAttempt.maxWords} words, labelled as iFairy practice.`);
+  if (y.neverDo?.length) out.push(`- Never: ${y.neverDo.map((n) => n.replace(/\.$/, '')).join('; ')}.`);
+  return out;
 }

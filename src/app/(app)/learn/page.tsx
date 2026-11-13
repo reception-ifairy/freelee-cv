@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { activeChildId, childContext, ensurePlan } from '@/lib/children/child-mode';
 import { lessonTutorsFor } from '@/lib/children/tutors';
-import { SUBJECTS, yearLabel } from '@/lib/children/profile';
+import { SUBJECTS, deliveryNotice, yearLabel } from '@/lib/children/profile';
 import { startLessonAction } from '@/server/actions/chat';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +32,7 @@ export default async function LearnPage() {
         </div>
         <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           Your grown-up can read our chats. Tutors are computer programs (AI), not people.
+          {deliveryNotice(ctx.profile.year) ? <span className="mt-1 block font-medium">{deliveryNotice(ctx.profile.year)}</span> : null}
         </p>
 
         {plan && (

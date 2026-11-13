@@ -109,10 +109,18 @@ Every request is intersected with this scope: out of scope is a 403, over a limi
         does not cover, at most once;
      3. *Your learner*:
         - nickname, interests, focus, adaptations;
-        - *how to talk at this age* from the level profile (sentence and reply length, question
-          types, praise, error handling, phrases never to use, session steps);
-        - *the plan slice* for the tutor's subjects: the current unit, up to 10 objectives with
-          their state, the next unit and reviews due;
+        - *how to talk in this year* from the **year profile** (since #73, curriculum PR #33):
+          the year's limits as "about N words, never more than M", sentence length and count, one
+          question or action, the optional "For the adult:" line, feedback length without praise
+          words, no "I / we / us", new terms, Year 1 without negatives, the hint ladder, a full
+          answer only after an attempt, and the year's never-do list (≈ 300–400 tokens). Plans
+          without a year profile (Reception, or built before the update) keep the level profile
+          (sentence and reply length, question types, praise, error handling, phrases never to
+          use, session steps);
+        - *the plan slice* for the tutor's subjects: the current unit, up to two of the year's
+          learning areas for that subject (focus and "success looks like", the observable outcome
+          a parent will see), up to 10 objectives with their state, the next unit, this term's
+          emphasis and reviews due;
         - how to record progress.
    - **Tools:** `curriculum_search` and `curriculum_objectives`, built per request around the scope,
      with a **shared limit of one call per turn** (a second call is answered locally: "teach from
@@ -126,9 +134,42 @@ Every request is intersected with this scope: out of scope is a 403, over a limi
    - **Storage:** the child's message and the reply are stored sealed (`enc:v1:`) with a generic
      title. `usage_events` records the steps and tool calls of the turn.
 5. **The parent** reads full lessons and progress on the Children page and can export everything.
-   The child sees "Your grown-up can read our chats."
+   The child sees "Your grown-up can read our chats." Year 1 lessons add "an adult-led session:
+   please read each turn aloud and type what your child says"; Year 2 "works best read aloud"
+   (`deliveryNotice()` in `src/lib/children/profile.ts`).
 6. **Retention** (daily job): lessons are deleted 90 days after their last message; profiles unused
    for 12 months are deleted, with an email to the parent at 11 months.
+
+## Year profiles: each school year on its own (#73)
+
+The owner's iFairy v1.0 documents (2026-11-13) describe every year from 1 to 11 separately;
+curriculum serves them as year profiles (`GET /v1/years/:year/profile`) and puts the compact form in
+the plan pack (`yearProfile`, and per subject `categories`: the year's learning areas with their
+function-named guide). A level spans two or three years — Years 1 and 2 shared a 70-word reply
+limit — so where a year profile exists it replaces the level in the prompt.
+
+| | Year 1 | Year 4 | Year 7 | Year 11 |
+|---|---|---|---|---|
+| Delivery in chat | adult-led: the adult reads aloud and types | child reads, adult nearby | learner leads within the adult's plan | learner leads |
+| Words per turn (target / limit) | 12 / 20 | 40 / 50 | 70 / 80 | 120 / 130 |
+| Words per sentence (target / limit) | 6 / 10 | 10 / 15 | 15 / 20 | 15 / 25 |
+| Feedback (words) | 8 | 20 | 40 | 60 |
+
+**The prompt aims below the target**: `min(target, 75% of the limit)` — from Year 4 the documents'
+target is only 10 words under the limit, and a model rarely lands on an exact count.
+
+**The validator** (`src/lib/children/turn-check.ts`, `npm run children:verify-turn-check`) applies
+the documents' Part 3 rules to a reply: it splits off the "For the adult:" line, counts words
+(symbols such as × or = on their own are not words), sentences and questions — including two
+questions joined by "and" — and refuses first person (I, me, my, we, us, let's; allowed only in a
+labelled language role-play), praise words, and negatives in Year 1 instructions. Today it measures
+(`scripts/tutor-bench.ts`); checking replies before they are shown — regenerate once, then the
+guide's line — is the next step, once the bench shows how often tutors overshoot.
+
+**Function-named guides.** The DfE *Generative AI: product safety standards* (19 January 2026) ask
+products to avoid names or characters that suggest a person and to avoid "I"-statements. The year
+guides are named after what they do (Sound Lantern, Quantis Counting Gate, Lab Notebook); importing
+them as tutors is an owner decision, as is any use of named characters with children.
 
 ## Making a tutor — the checklist for importing characters
 
