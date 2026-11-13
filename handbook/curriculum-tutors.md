@@ -1,11 +1,21 @@
 # Tutors that teach from the curriculum
 
-A tutor is an ordinary persona with one difference: what it teaches comes from the **UK
-curriculum**, live, instead of from whatever the AI happens to remember. You write the character —
-its voice, its patience, how it explains things. The curriculum supplies the facts: passages from
-official documents, the learning objectives for each year, and real test questions.
+Every tutor for children on freelee works the same way. **You write the character**: who it is,
+its voice and world, how it encourages and explains. **The curriculum supplies the rest**: what to
+teach, in what order, and how to talk to a child of that age. It comes from curriculum.ifairy.co.uk,
+the UK curriculum service on the same server.
 
-Each tutor is limited to the **key stages and subjects** you choose. A tutor for Year 4 maths never
+How the pieces fit:
+
+- **The curriculum** knows the official learning objectives for each school year, topics in order,
+  past test questions, and *developmental levels*: how a tutor should talk to a 6-year-old, a
+  9-year-old or a 15-year-old. It knows nothing about any child.
+- **freelee** knows the child. A parent creates a profile (docs: Child profiles and privacy), and
+  freelee builds **one learning plan for that child**, shared by every tutor they talk to.
+- **T1000** is where you see and control it all: what freelee may take from the curriculum, how much
+  it used, the topics waiting for your review, and the plan a child of a given year would get.
+
+Each tutor is limited to the **key stages and subjects** you choose. A Year 4 maths tutor never
 looks at GCSE material, however the child asks.
 
 ## 1. Connect the curriculum
@@ -48,9 +58,16 @@ yet — the key stages and subjects to choose from come from **Fetch scope**.
 Saving also ticks the matching audience on the **Personality** tab (KS2 → *KS2 Learners*, and so
 on), so the persona knows who it is talking to.
 
-**Write the prompt as the character, not the subject.** Who the tutor is, how it encourages, how it
-checks understanding, what it does when a child is stuck. Leave out the subject content — that is
-what the curriculum is for, and a prompt full of facts is a prompt full of things that can be wrong.
+**Write the prompt as the character, not the subject or the age.** Who the tutor is, its world, how
+it encourages, what it does when a child is stuck.
+
+Leave out:
+- **subject content**: the plan supplies it, and a prompt full of facts is a prompt full of things
+  that can be wrong;
+- **rules for a particular age**: the developmental level supplies them, so the same character can
+  teach a 6-year-old and a 10-year-old.
+
+A shorter prompt also makes every reply cheaper.
 
 > *"You are Max, a cheerful maths coach for children aged 8 and 9. Explain one small step at a
 > time, use everyday objects as examples, and ask the child to try before you show the answer.
@@ -59,21 +76,34 @@ what the curriculum is for, and a prompt full of facts is a prompt full of thing
 Don't also tick a **grounding source** that points at the curriculum — the tutor would pay twice for
 the same text.
 
-## 3. What the tutor will do
+## 3. What happens in a lesson
 
-- **Checks before it teaches.** Before a new topic, or a fact like "what Year 4 should know about
-  fractions", it looks it up in the curriculum.
-- **Stays at its level.** It only ever looks inside its key stages and subjects, and says so if a
-  child asks about something else.
-- **Says where it learned it.** It names the documents it used, with a link where there is one.
-  Some documents may only be named, not quoted, because of their licence.
-- **Admits when there is nothing.** If the curriculum has nothing on a question, it says so plainly
-  instead of making something up.
-- **Says when it cannot check.** If the curriculum is down, or the daily limit is reached, it tells
-  the child it cannot check right now rather than guessing.
+1. A parent creates a profile for their child: nickname, school year, subjects.
+2. freelee asks the curriculum, once, for that year's **plan**: the topics in order, with the
+   official objectives. Only the year and subjects are sent, never anything about the child.
+3. The parent starts **child mode**. The child picks a tutor and starts a lesson.
+4. At every reply the tutor has in front of it:
+   - its own character;
+   - how to talk at this child's age: sentence length, kind of questions, what to say when an
+     answer is wrong, phrases it must never use (e.g. "it's easy");
+   - the child's nickname, interests and the adaptations the parent chose;
+   - what the child is learning now, with the official objectives, and what is due for a quick
+     review.
+5. It teaches from that. It looks something up in the curriculum only when the child asks about
+   something the plan does not cover, and at most once per reply.
+6. When the child shows they understand, the tutor marks it in the plan (the child does not see
+   this). The plan moves on, and understood topics come back for short reviews after 1, 3, 7 and 21
+   days.
+7. The parent can read every lesson and see progress on the Children page.
 
-Tutors work in ordinary one-to-one chats. In rooms and bot teams they talk like any persona, without
-the curriculum.
+The tutor also:
+
+- **stays at its level**, inside its key stages and subjects, and says so if asked about something
+  else;
+- **names its sources** when it looked something up;
+- **admits when there is nothing**, or when it cannot check right now, instead of guessing.
+
+Lessons happen in one-to-one chats. In rooms and bot teams a tutor talks like any persona.
 
 ## 4. What you see in T1000
 
@@ -93,18 +123,27 @@ questions — the people typing are children.
 
 ## What it costs
 
-Looking something up costs the curriculum almost nothing. What costs your customer is the text the
-tutor reads: each look-up adds up to about 750 tokens to that reply, billed like any other input. A
-tutor only looks things up when it is about to teach something, not on every message, so a
-"yes, I get it" costs the same as with any persona.
+Building a plan costs nothing per lesson: it happens once, when the profile is saved. A lesson reply
+costs what any reply costs, plus the short learner and plan sections.
+
+Measured on the same eight questions (Year 1 to Year 11) with the plain **Baseline Tutor**:
+
+| Per reply | Before plans (tutor searched every time) | With the child's plan |
+|---|---|---|
+| Credits, average | 111 | **59** |
+| Credits, most expensive reply | 216 | **82** |
+| Look-ups per reply | 2.1 | **0.44** |
+
+Before plans, the tutor sometimes looked things up so many times that the child got no answer at
+all. That cannot happen any more.
 
 ## Measuring tutors
 
-To compare tutors fairly there is **Baseline Tutor**: a plain teacher with no world, no voice and a
-short prompt. It is not listed and customers never see it. It is used only to measure.
+**Baseline Tutor** is a plain teacher with no world, no voice and a short prompt. It is not listed,
+customers never see it, and it is used only to measure.
 
-A measurement sends the same eight short learner messages (Year 1 to Year 11) through the normal
-chat and records for each reply:
+A measurement sends eight short learner messages (Year 1 to Year 11) through real lessons and
+records for each reply:
 
 - what it cost (tokens and credits);
 - how many times the tutor looked something up;
@@ -112,11 +151,9 @@ chat and records for each reply:
   exactly one question at the end;
 - whether it named a real curriculum objective for that year.
 
-The first measurement (12 November 2026) found that a reply costs about 62 credits when the tutor
-looks something up once, and 120–216 when it keeps looking things up. Sometimes it looked things up
-so many times that the child got no answer at all. The next updates give each child a learning plan
-that the tutor already has in front of it, so it rarely needs to look anything up. The same
-measurement will show whether that worked.
+When we import characters, each one is measured the same way. The difference to Baseline Tutor is
+what the character itself costs.
 
-Ask Claude to run a measurement; it costs only the tutor's own replies (about 1,000 credits for the
-full set today). Engineering details: `docs/53-tutor-measurement.md`.
+Ask Claude to run a measurement. It costs only the tutor's own replies (about 500–1,000 credits for
+the full set). Engineering details: `docs/52-curriculum-tutors.md` and
+`docs/53-tutor-measurement.md`.

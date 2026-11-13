@@ -1,9 +1,35 @@
 # Curriculum tutors: the character from freelee, the knowledge from the curriculum
 
-Added 2026-11-12. A tutor on freelee is an ordinary persona whose **subject knowledge comes live
-from curriculum.ifairy.co.uk** — the UK curriculum database on this same server — through two
-tools, instead of from whatever the model remembers. The contract between the three systems
-(curriculum, freelee, T1000) was agreed the same day; this page is the freelee side of it.
+**Status:** the standard way every tutor for children works on freelee. Built 2026-11-12 in updates
+#65–#70, together with curriculum.ifairy.co.uk PRs #29–#31 and T1000 #118–#120. This page is the
+freelee side and the reference for anyone adding tutors. It covers how freelee and the curriculum
+are connected, what goes where, what a lesson turn does, and what it costs.
+
+## The whole system on one page
+
+```
+curriculum.ifairy.co.uk  — WHAT to teach, and HOW to talk at each age      (no data about any child)
+  objectives (DfE, statutory) · units (topics in order) · levels 0–5 · GCSE pathways · passages · SATs questions
+        ▲  Bearer cur_… key "freelee" — one consumer, one scope, limits; logs item ids served, never the request
+        │
+freelee.cv               — WHO is learning                                 (encrypted, docs/54)
+  parent account → child profile → ONE learning plan per child (from POST /v1/plan-pack, built once)
+  lesson = chat with child_profile_id: tutor prompt + learner section + plan slice; ≤ 1 look-up per turn
+        ▲
+T1000                    — the owner's view                                (never data about a child)
+  curriculum consumer: scope, limits, usage, served items · Treści: units review, plan-pack preview · Poczta
+```
+
+**Owner decisions (2026-11-12)**
+
+| Decision | What it means here |
+|---|---|
+| freelee is **one consumer** of the curriculum | One `cur_…` key, one scope, set in T1000. Tutors narrow inside it and never get keys of their own. |
+| The curriculum **logs what it served, never what was asked** | The people typing are children. |
+| **Tutors are characters, not subject experts** | The prompt carries voice, world and manner. Subject knowledge comes from the curriculum; how to talk at each age comes from the developmental levels. |
+| **The plan belongs to the child, not the tutor** | Children change topics and tutors; the plan is shared by every tutor they talk to. |
+| **Adults only** | A child is a profile under a parent's account, with encrypted data, field notes, consents, parent oversight and retention (docs/54). |
+| **AI-assisted units are used now**, flagged `reviewed: false` | The owner reviews them in T1000. The DfE objectives linked to each unit carry the authoritative wording. |
 
 ## The model
 
@@ -11,27 +37,117 @@ A curriculum tutor is three things:
 
 | Part | Where it lives | What it decides |
 |---|---|---|
-| **Mindset persona** | The prompt, personality and blueprint, as for any persona | Who the tutor is, its voice, and *how* it teaches |
-| **Scope** | `persona_versions.curriculum_scope` (migration 0040) | *Which* key stages and subjects it teaches, and optionally the learner's year |
-| **Live knowledge** | `curriculum_search` and `curriculum_objectives`, built per request | *What* it teaches — passages, objectives and questions from the curriculum |
+| **Character** | The prompt, personality and blueprint, as for any persona | Who the tutor is: voice, world, manner |
+| **Scope** | `persona_versions.curriculum_scope` (migration 0040) | *Which* key stages and subjects it teaches (and, outside lessons, optionally a year) |
+| **The curriculum** | The child's plan in the prompt (lessons) and two look-up tools | *What* it teaches, and *how to talk* at the child's age |
 
 ```json
 { "keyStages": ["KS2"], "subjects": ["mathematics"], "year": "Y4" }
 ```
 
-`NULL` means "not a curriculum tutor" — every persona before this change. The column is on
-`persona_versions`, not `personas`, because a scope changes what the bot does: it is drafted, pinned
-and published with the prompt beside it (`11-persona-versioning.md`), and it is copied wherever a
-version is copied — revert and duplicate (they spread every column), publish (in place), marketplace
-install, `scripts/grant-grounding.ts` and the bundle importer (spread).
+`NULL` means "not a curriculum tutor". The column is on `persona_versions`, not `personas`, because a
+scope changes what the bot does: it is drafted, pinned and published with the prompt beside it
+(`11-persona-versioning.md`). It is copied wherever a version is copied: revert and duplicate (both
+spread every column), publish (in place), marketplace install, `scripts/grant-grounding.ts` and the
+bundle importer (spread).
 
-Three owner decisions shape everything below:
+**Who a tutor talks to:**
+- **In a lesson** (child mode, `/learn`): a child with a profile and a plan. This is the normal case.
+- **In an ordinary chat:** a signed-in adult, with the tools only.
+- **Never a guest.** `POST /api/chat` answers 403 to a guest talking to a persona that has a scope.
 
-- **freelee is one consumer of the curriculum** — one `cur_…` key, one scope, set in T1000. Tutors
-  narrow inside it; they never get keys of their own.
-- **The curriculum logs what it served, never what was asked.** The people typing are children.
-- **Tutors are mindset only.** The prompt should describe the character and the teaching, not
-  carry subject content; the curriculum supplies that.
+## The curriculum API as freelee uses it
+
+All calls go through `curriculumRequest()` in `src/lib/curriculum/client.ts`. That one function sets
+the Bearer key, the timeout (8 s for tools, 15 s for the plan pack) and the error handling, and keeps
+the small cache. Base URL, key and grant come from **Settings → Providers & keys → Knowledge →
+Curriculum** (settings `curriculum_base_url`, `curriculum_api_key`, `curriculum_grant`).
+
+| When | Request | What it returns | Who triggers it |
+|---|---|---|---|
+| Connection card **Test** | `GET /v1/health`, `POST /v1/rag/search {query:"fractions", k:1}` | stats; one hit | admin |
+| Connection card **Fetch** | `GET /v1/scope` | what the key may see, with counts (stored as `curriculum_scope_cache`) | admin |
+| A parent saves a profile, **Build/Refresh plan**, or the first lesson without a plan | `POST /v1/plan-pack {year, subjects, pathway?, includeSensitive?}` | units in order per subject with DfE objectives, the level profile, review intervals, the GCSE block from Y9, `curriculumVersion` | `ensurePlan()` in `src/lib/children/child-mode.ts` |
+| A tutor looks something up (≤ 1 per lesson turn) | `POST /v1/rag/search` (`curriculum_search`), `GET /v1/objectives` (`curriculum_objectives`) | passages / objectives inside the scope | the model, through `curriculumTools()` |
+| The measurement bench | `GET /v1/levels`, `GET /v1/objectives/:code` | level norms; one objective | `scripts/tutor-bench.ts` |
+
+**What freelee sends** (and only this):
+- the year;
+- subject names;
+- GCSE settings (when KS4 starts, tier, science route) and the PSHE opt-in;
+- topic queries written by the model, such as "equivalent fractions", never the child's sentence.
+
+`POST /v1/plan-pack` refuses any other field with 400 ("this API never takes personal data").
+
+**The key's scope in curriculum** (set in T1000 → Centrum iFairy → Połączenia API → freelee):
+- key stages KS1–KS4, all subjects;
+- item types `chunk`, `objective`, `question`, `unit` and `profile` (the last two added 2026-11-12 for plans);
+- `commercialOnly` on (non-commercial texts come back as title and link only), no `/v1/chat`;
+- limits 60 per minute and 5,000 per day.
+
+Every request is intersected with this scope: out of scope is a 403, over a limit is a 429.
+
+## A lesson, step by step
+
+1. **The parent saves a child profile** (`/dashboard/children`). The profile is sealed with the
+   child's own key.
+2. **freelee asks once for a plan pack** and builds the plan without AI (`src/lib/children/plan.ts`):
+   - per subject, the year's units in course order;
+   - a pointer to the current unit;
+   - empty progress;
+   - review intervals of 1, 3, 7 and 21 days.
+
+   The plan is sealed in `child_plans`; `curriculum_version` stays plain so that "the programme
+   changed" can be noticed without decrypting. Years 7–8 have no units yet: KS3 objectives stand in,
+   and the plan's `gaps` says so.
+3. **The parent starts child mode**; the child opens `/learn` and picks a tutor whose scope covers
+   their key stage. `startLessonAction` creates a chat with `child_profile_id`.
+4. **Each turn** (`src/app/api/chat/route.ts`):
+   - **The prompt is assembled in a fixed order**, so the provider can cache the stable start:
+     1. the tutor's own prompt (voice and world) and its compiled sections;
+     2. *Teaching from the curriculum* in plan mode: teach from the plan; look up only what the plan
+        does not cover, at most once;
+     3. *Your learner*:
+        - nickname, interests, focus, adaptations;
+        - *how to talk at this age* from the level profile (sentence and reply length, question
+          types, praise, error handling, phrases never to use, session steps);
+        - *the plan slice* for the tutor's subjects: the current unit, up to 10 objectives with
+          their state, the next unit and reviews due;
+        - how to record progress.
+   - **Tools:** `curriculum_search` and `curriculum_objectives`, built per request around the scope,
+     with a **shared limit of one call per turn** (a second call is answered locally: "teach from
+     the plan").
+   - **Steps:** two model steps. On the last step tools are switched off (`toolChoice: 'none'`), so
+     the turn always ends in an answer. This last-step rule applies to every chat on freelee.
+   - **The reply** may end with `[PROGRESS: CODE learning|secure]`:
+     - the server applies it to the plan; only codes in the plan count, and a subject moves on when
+       its unit is secure;
+     - the tag is removed before storing and hidden from display, even mid-stream.
+   - **Storage:** the child's message and the reply are stored sealed (`enc:v1:`) with a generic
+     title. `usage_events` records the steps and tool calls of the turn.
+5. **The parent** reads full lessons and progress on the Children page and can export everything.
+   The child sees "Your grown-up can read our chats."
+6. **Retention** (daily job): lessons are deleted 90 days after their last message; profiles unused
+   for 12 months are deleted, with an email to the parent at 11 months.
+
+## Making a tutor — the checklist for importing characters
+
+1. **The prompt is the character, not the subject.** Voice, world, how it encourages, how it checks
+   understanding.
+   - Leave out curriculum content: the plan supplies it.
+   - Leave out age rules: the level profile supplies them, so the same character works for a
+     6-year-old and a 10-year-old.
+   - Aim for a few thousand characters. The prompt is sent on every turn.
+2. **Scope:** tick *Teaches from the curriculum*, the key stages and the subjects (Prompt tab →
+   Curriculum). The matching audience segment is added (KS1 → B2C-CYP-02 … KS5 → 06).
+3. **Measure it against Baseline Tutor:**
+   `npx tsx --conditions=react-server scripts/tutor-bench.ts --persona=<slug> --lesson --label=<name> --apply`.
+   The difference to the baseline is what the character costs.
+4. **Safety fixes from the archive report** (`docs/tutors-import/RAPORT.md`) are mandatory:
+   - no "secret mission" framing;
+   - RSE relabelled and not taught;
+   - UK crisis lines (Shout 85258, Childline 0800 1111);
+   - one output format.
 
 ## The scope is enforced on both sides
 
@@ -146,17 +262,21 @@ queries — in memory only, never on disk or in the database. Test and Fetch byp
 | Test | the curriculum | one health check and one 1-result search |
 | Fetch | nobody | one `GET /v1/scope` |
 
-A typical teaching turn is two steps — call, then answer — so the result is paid once. For scale,
-`48-knowledgebase.md` measured ~780 tokens of grounding at 6 credits per reply against 2 credits
-plain on Haiku 4.5; one curriculum call is the same order, but only on the turns that make one.
-**Measured live (2026-11-12, Pan Kleks, KS1–KS2, default OpenAI model):** one answer to "explain
-equivalent fractions, I'm in Year 4" made **four curriculum calls in one turn** (two objective
-lists — the second the automatic retry without the year — and two searches), served 7 objectives and
-5 passages, and cost **12,514 input / 348 output tokens = 232 credits**. The persona's own prompt is
-only 1,314 characters; the cost is the tool results being resent on every later step of the turn.
-The answer was right and cited `MA-Y3-020`. Before the imported tutors go live this needs tuning:
-fewer calls per turn (one search or one objective list is usually enough), a smaller result budget,
-and checking what the compiled system prompt adds.
+**Measured live, same 8 learner messages (Y1–Y11), gpt-5.5, Baseline Tutor (docs/53):**
+
+| Per turn | Tools only, no plan (#66) | Lesson with the child's plan (#70) |
+|---|---|---|
+| Credits, average | 111 | **59** |
+| Credits, worst turn | 216 | **82** |
+| Input tokens | 5,567 | **2,678** |
+| Tool calls | 2.1 | **0.44** (5 of 9 turns: none) |
+| Model steps | 3.1 | **1.4** |
+| Empty or cut replies | 2 (in a run with a 350-token cap) | **0** |
+
+For reference, Pan Kleks (a long character prompt, tools only) spent 232 credits on the Y4
+fractions question with four tool calls. A plan pack costs a lesson nothing: it is built once per
+child, outside the chat. Its size on the real data is 8–21 KB, of which the tutor sees only the
+current slice (≈ 600–900 tokens).
 
 ## Privacy
 
@@ -201,26 +321,20 @@ connection.
 | `src/lib/persona/form-schema.ts` | `parseCurriculumForm()` — shared with `scripts/verify-persona-form.ts` |
 | `src/components/admin/persona-curriculum-section.tsx` | The Curriculum section of the Prompt tab |
 | `src/lib/persona/prompt.ts` | `## Teaching from the curriculum` |
-| `src/app/api/chat/route.ts` | Builds the tools and passes the scope to the prompt |
+| `src/app/api/chat/route.ts` | Builds the tools (with the lesson limit), the learner section, sealing, progress, the last-step rule |
+| `src/lib/children/plan.ts` | Plan from the plan pack, progress tags, spaced reviews, `learnerSection()` |
+| `src/lib/children/child-mode.ts` | Child mode cookie, `childContext()`, `ensurePlan()` |
+| `src/lib/children/tutors.ts` | Which tutors a child may have a lesson with |
+| `scripts/tutor-bench.ts`, `scripts/bench/` | Baseline Tutor and the measurement (docs/53) |
 
 ## Known gaps
 
-- **Rooms and bot teams have no tools at all**, so a tutor there teaches without the curriculum —
-  and without the prompt section, which is passed only by the one-to-one chat route.
-- **Year matching is the curriculum's.** freelee sends `year=Y4` and falls back to the key stage
-  when nothing comes back; whether `Y3-Y4` rows count as Year 4 is decided on the curriculum side.
+- **Rooms and bot teams have no tools and no learner section.** A tutor there talks like any persona.
+  Lessons are one-to-one only.
+- **Years 7–8 and Reception have no units yet.** KS3 objectives stand in, in document order. KS4
+  objectives exist for 6 subjects; 42 DfE GCSE subject-content documents are in the catalogue
+  waiting to be extracted.
+- **Units are AI-assisted and unreviewed** until the owner ticks them in T1000 → Treści.
+- **Year matching is the curriculum's** (`Y3-Y4` rows count for Year 4).
 - **Saving a new key does not clear the Fetch cache.** Fetch again after changing keys.
-- **A teaching turn is expensive** — measured at 232 credits with four tool calls; see *Costs*. To
-  tune before the tutors import.
 - **A knowledge source pointing at the curriculum is warned against, not blocked.**
-
-## Since #68: lessons with a child's plan
-
-- **In a lesson** (a chat in child mode, docs/54) the tutor teaches from the child's learning plan,
-  which is already in its prompt: the current unit and its objectives, built once from curriculum's
-  plan pack.
-- The two tools stay, as an exception: at most one look-up per turn, and two model steps.
-- Outside lessons, nothing changes, except one thing for every chat: the last allowed step can no
-  longer call a tool, so a turn always ends in an answer.
-- Measurements: docs/53.
-

@@ -32,9 +32,24 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-13
+
+### #71 · `pending` — The curriculum connection documented as the standard for every tutor
+
+The 2026-11-12 work (#65–#70, curriculum #29–#31, T1000 #118–#120) made curriculum-backed tutors the
+normal way a tutor for children works. docs/52 is rewritten as the reference: the whole system on one
+page, the owner decisions, every curriculum request freelee makes and what it may send, a lesson step
+by step (plan pack → sealed plan → prompt order → one look-up → progress tags → parent oversight →
+retention), measured costs before and after plans, and the checklist for importing characters. The
+handbook page explains the same in plain language.
+
+📄 `52-curriculum-tutors.md`, handbook `curriculum-tutors.md`
+
+---
+
 ## 2026-11-12
 
-### #70 · `pending` — Measured: a lesson with the child's plan costs half, and never loops
+### #70 · `ce8b4f3` — Measured: a lesson with the child's plan costs half, and never loops
 
 The bench gains `--lesson`: each case runs as a real child lesson (temporary profile, plan from
 curriculum's plan pack, sealed chat), cleaned up afterwards. Same 8 cases, same model: 111 → 59
