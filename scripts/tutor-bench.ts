@@ -19,13 +19,18 @@
  * - input/output tokens, credits and latency — the assistant row in `messages`,
  *   written by the route's own onFinish (so this is what a customer is billed);
  * - model steps and tool calls — counted from the response stream;
- * - the reply against the learner's level norms (sentence length, reply
- *   length, phrases that level must never hear, exactly one question);
+ * - the reply against the learner's year limits (since 2026-11-13: curriculum
+ *   `GET /v1/years/:year/profile`, checked by src/lib/children/turn-check.ts —
+ *   words and sentences per turn, sentence length, one question, no first
+ *   person, no praise, no negatives in Year 1), or the level norms when the
+ *   curriculum has no year profile (sentence length, reply length, phrases
+ *   that level must never hear, exactly one question);
  * - the `Objective: CODE` line — the code must exist in the curriculum and
  *   belong to the learner's year or key stage.
  *
  * No AI judge: every check is plain code, so a run costs only the tutor turns.
- * Norms come from curriculum `GET /v1/levels` (item type "profile" on the key).
+ * Norms come from curriculum `GET /v1/years/:year/profile`, else `GET /v1/levels`
+ * (item type "profile" on the key).
  * Results go to scripts/bench/results/
  * (not in git); the summary table is copied into docs/53 by hand.
  */
@@ -35,6 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { encode } from 'next-auth/jwt';
+import { checkTurn, type YearChecks } from '../src/lib/children/turn-check';
 
 config({ path: '.env.local', quiet: true });
 config({ quiet: true });
@@ -86,6 +92,16 @@ async function curriculumGet(conn: { baseUrl: string; apiKey: string } | null, p
   }
 }
 
+/** The year limits for each case year, where curriculum has them (year profiles, 2026-11-13). */
+async function loadYearChecks(conn: Awaited<ReturnType<typeof curriculum>>, years: string[]): Promise<Record<string, YearChecks>> {
+  const out: Record<string, YearChecks> = {};
+  for (const year of [...new Set(years)]) {
+    const profile = await curriculumGet(conn, `/v1/years/${encodeURIComponent(year)}/profile`);
+    if (profile?.checks) out[year] = profile.checks;
+  }
+  return out;
+}
+
 /** Live norms when curriculum serves them; the local copy otherwise. Says which it used. */
 async function loadNorms(conn: Awaited<ReturnType<typeof curriculum>>): Promise<{ table: LevelTable; source: string }> {
   const live = await curriculumGet(conn, '/v1/levels');
@@ -133,7 +149,27 @@ const words = (s: string) => s.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w))
 
 type Check = { name: string; pass: boolean; detail: string };
 
-async function checkReply(reply: string, c: Case, norms: Norms, conn: Awaited<ReturnType<typeof curriculum>>): Promise<Check[]> {
+/** The same five checks, held to the year's limits by the shared validator. */
+function yearChecksFor(reply: string, year: YearChecks): Check[] {
+  const r = checkTurn(reply, year);
+  const has = (rule: string) => r.problems.filter((p) => p.rule === rule);
+  const voice = r.problems.filter((p) => ['first person', 'praise', 'avoided phrase', 'negation', 'adult line'].includes(p.rule));
+  const list = r.learnerText.split(/\n+|(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  const lastIsQuestion = list.length > 0 && list[list.length - 1].endsWith('?');
+  return [
+    { name: 'sentence length', pass: has('sentence length').length === 0 && has('sentences per turn').length === 0, detail: `longest ${r.longestSentence}, ${r.sentences} sentence(s) (limit ${year.sentenceWords[1]} words, ${year.maxSentencesPerTurn ?? '–'} sentences)` },
+    { name: 'reply length', pass: has('turn length').length === 0, detail: `${r.words} words (target ${year.targetReplyWords ?? '–'}, limit ${year.maxReplyWords})` },
+    { name: 'avoided phrases', pass: voice.length === 0, detail: voice.length ? voice.map((p) => `${p.rule}: ${p.detail}`).join('; ') : 'none' },
+    { name: 'one question, last', pass: r.questions === 1 && lastIsQuestion && has('one question').length === 0, detail: `${r.questions} question(s)${has('one question').length ? ' (stacked)' : ''}, last is ${lastIsQuestion ? '' : 'not '}a question` },
+  ];
+}
+
+async function checkReply(reply: string, c: Case, norms: Norms, year: YearChecks | undefined, conn: Awaited<ReturnType<typeof curriculum>>): Promise<Check[]> {
+  const checks: Check[] = year ? yearChecksFor(reply, year) : levelChecks(reply, norms);
+  return [...checks, await objectiveCheck(reply, c, conn)];
+}
+
+function levelChecks(reply: string, norms: Norms): Check[] {
   const text = visibleText(reply);
   const list = sentences(text);
   const lengths = list.map(words);
@@ -152,10 +188,13 @@ async function checkReply(reply: string, c: Case, norms: Norms, conn: Awaited<Re
     { name: 'avoided phrases', pass: said.length === 0, detail: said.length ? `said: ${said.join(', ')}` : 'none' },
     { name: 'one question, last', pass: questions.length === norms.questionsPerReply && lastIsQuestion, detail: `${questions.length} question(s), last is ${lastIsQuestion ? '' : 'not '}a question` },
   ];
+  return checks;
+}
 
+async function objectiveCheck(reply: string, c: Case, conn: Awaited<ReturnType<typeof curriculum>>): Promise<Check> {
   const code = reply.match(/Objective:\s*`?([A-Z]{2,3}-[A-Z0-9]+(?:-[A-Z0-9]+)?-\d{3})/)?.[1];
   if (!code) {
-    checks.push({ name: 'objective code', pass: false, detail: 'no Objective line' });
+    return { name: 'objective code', pass: false, detail: 'no Objective line' };
   } else {
     const found = await curriculumGet(conn, `/v1/objectives/${encodeURIComponent(code)}`);
     const objective = found?.objective;
@@ -166,13 +205,12 @@ async function checkReply(reply: string, c: Case, norms: Norms, conn: Awaited<Re
       yearGroup === KEY_STAGE_OF[c.year] ||
       objective.keyStage === KEY_STAGE_OF[c.year]
     );
-    checks.push({
+    return {
       name: 'objective code',
       pass: fits,
       detail: objective ? `${code} (${objective.keyStage} ${yearGroup}${fits ? '' : ` — learner is ${c.year}`})` : `${code} not found`,
-    });
+    };
   }
-  return checks;
 }
 
 /* ---------------------------- lesson mode ---------------------------- */
@@ -263,7 +301,10 @@ try {
   }
 
   const conn = await curriculum();
-  const { table, source } = await loadNorms(conn);
+  const { table, source: levelSource } = await loadNorms(conn);
+  const yearNorms = await loadYearChecks(conn, cases.map((c) => c.year));
+  const yearsWith = Object.keys(yearNorms);
+  const source = yearsWith.length ? `curriculum /v1/years (${yearsWith.join(', ')}); ${levelSource} for the rest` : levelSource;
   console.log(`Norms from ${source}.`);
 
   const [admin] = await sql`select id, email, default_team_id from users where is_admin order by created_at limit 1`;
@@ -300,13 +341,15 @@ try {
       const turn = await postTurn(cookie, chatId, history);
       const row = await assistantRow(chatId, 2 * (t + 1));
       history.push({ id: randomUUID(), role: 'assistant', parts: [{ type: 'text', text: turn.text }] });
-      const checks = await checkReply(turn.text, c, norms, conn);
+      const checks = await checkReply(turn.text, c, norms, yearNorms[c.year], conn);
+      const yearReport = yearNorms[c.year] ? checkTurn(turn.text, yearNorms[c.year]) : null;
       const passed = checks.filter((k) => k.pass).length;
       results.push({
         case: c.id, turn: t + 1, year: c.year, level, subject: c.subject, model: row.model,
         inputTokens: row.input_tokens, outputTokens: row.output_tokens, credits: row.credits_cost,
         latencyMs: row.latency_ms ?? Date.now() - started, steps: turn.steps, toolCalls: turn.tools.length, tools: turn.tools,
         checks, passed, reply: turn.text,
+        ...(yearReport ? { learnerWords: yearReport.words, withinYearLimits: yearReport.problems.length === 0, yearProblems: yearReport.problems } : {}),
       });
       console.log(
         `${`${c.id}#${t + 1}`.padEnd(18)} L${level} in ${String(row.input_tokens).padStart(6)} out ${String(row.output_tokens).padStart(4)} ` +
@@ -332,6 +375,9 @@ try {
     avgLatencyMs: Math.round(sum((r) => r.latencyMs) / n),
     checksPassed: `${sum((r) => r.passed)}/${sum((r) => r.checks.length)}`,
     turnsAllPassed: rows.filter((r) => r.passed === r.checks.length).length,
+    // Year limits (2026-11-13): turns whose learner-facing text kept every limit of its year.
+    turnsWithinYearLimits: (results as { withinYearLimits?: boolean }[]).filter((r) => r.withinYearLimits === true).length,
+    turnsMeasuredAgainstYear: (results as { withinYearLimits?: boolean }[]).filter((r) => r.withinYearLimits !== undefined).length,
   };
   console.log('\nSummary', summary);
 

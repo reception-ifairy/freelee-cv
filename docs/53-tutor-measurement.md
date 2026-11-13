@@ -66,7 +66,15 @@ npx tsx --conditions=react-server scripts/tutor-bench.ts --label=after --lesson 
 
 ### Checks, per turn
 
-| Check | Passes when |
+**Since #73** the norms are the learner's **year** limits when curriculum serves a year profile
+(`GET /v1/years/:year/profile`), checked by the same validator lessons use
+(`src/lib/children/turn-check.ts`): sentence length and sentences per turn, words per turn, one
+question (stacked questions count as two) and last, no first person, praise or avoided phrases, no
+negatives in Year 1 — plus the objective code. Each result also records `learnerWords` and
+`withinYearLimits`; the summary counts `turnsWithinYearLimits`. Where there is no year profile
+(Reception, or before curriculum PR #33 is deployed) the level checks below apply.
+
+| Check (level mode) | Passes when |
 |---|---|
 | sentence length | average words per sentence ≤ the level's maximum, longest ≤ 1.75 × it |
 | reply length | words ≤ the level's maximum reply |
@@ -151,6 +159,13 @@ Spend for the three runs (smoke, cap-350, before): 19 turns, about 113,000 token
 tied the line to a look-up, and in a lesson a look-up is no longer needed.
 
 **Spend for the after run:** 9 turns plus one aborted turn, about 31,000 gpt-5.5 tokens.
+
+### #73 · year limits — to be measured after curriculum PR #33 is deployed
+
+The prompt now carries the year's limits instead of the level's (Year 1: 20 words, not 70). The
+same 8 cases run once in lesson mode against the year profiles; the table goes here with the share
+of turns within their year's limits and the cost per turn (the year section adds ≈ 200 tokens to
+the prompt compared with the level section).
 
 ### Targets for "after" (set in #66; met in #70)
 

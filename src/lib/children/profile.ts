@@ -14,6 +14,18 @@
 export const YEARS = ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11'] as const;
 export type Year = (typeof YEARS)[number];
 
+/**
+ * How a lesson runs for the youngest years in a plain chat (curriculum year
+ * profiles, owner's iFairy v1.0 documents, 2026-11-13): a five-year-old cannot
+ * reliably read or type a reply, so Year 1 is an adult-led session and Year 2
+ * is read aloud by default. Shown on the lesson pages; null from Year 3.
+ */
+export function deliveryNotice(year: string): string | null {
+  if (year === 'Y1') return 'Year 1 is an adult-led session: please read each turn aloud and type what your child says, points to or does.';
+  if (year === 'Y2') return 'Year 2 works best read aloud: a grown-up reads each turn and stays nearby.';
+  return null;
+}
+
 /** Curriculum subject names (curriculum `Catalog::normaliseSubject` values) with a label. PSHE is separate: it needs its own consent. */
 export const SUBJECTS: { id: string; label: string; from?: Year; to?: Year }[] = [
   { id: 'mathematics', label: 'Maths' },
