@@ -10,13 +10,14 @@ export async function HowItWorksSection({ config }: { config: HowItWorksConfig }
     <section className="border-y border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900/40">
       <div className="container-app">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('home.how_title', 'Three steps, no setup')}</h2>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{config.title || t('home.how_title', 'Three steps, no setup')}</h2>
           <p className="mt-3 text-slate-500 dark:text-slate-400">
-            {t('home.how_subtitle', 'No prompt engineering, no configuration files. Pick someone and start talking.')}
+            {config.subtitle || t('home.how_subtitle', 'No prompt engineering, no configuration files. Pick someone and start talking.')}
           </p>
         </div>
 
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        {/* Four steps sit in one row on wide screens instead of three and an orphan. */}
+        <div className={`mt-14 grid gap-8 ${config.steps.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
           {config.steps.map((step, i) => {
             return (
               <div key={`${step.title}-${i}`} className="text-center">

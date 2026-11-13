@@ -173,6 +173,9 @@ export const BLOCK_CATALOG: BlockMeta[] = [
     supportsColumns: true,
     defaultLayout: LEGACY_LAYOUT,
     fields: [
+      // Optional (#72): blank keeps the site-wide translated heading, so the home page is unchanged.
+      { key: 'title', label: 'Heading', type: 'text', maxLength: 120, help: 'Leave blank for the standard "Three steps, no setup".' },
+      { key: 'subtitle', label: 'Sub-heading', type: 'textarea', maxLength: 300, help: 'Leave blank for the standard line under the heading.' },
       {
         key: 'steps',
         label: 'Steps',

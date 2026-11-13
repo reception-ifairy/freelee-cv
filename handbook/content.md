@@ -42,3 +42,21 @@ Each link has a **label**, a **URL** (internal like `/pricing`, or a full extern
 
 Keep the header to five or six links. It's the navigation people actually use, and past about six
 it stops being navigation and starts being a list.
+
+## Offering pages: For business and Homeschooling
+
+Two pages describe what freelee offers. Both are linked in the top menu and the footer.
+
+- **For business** — `/business`: specialist personas by sector, answers shaped your way, a team
+  workspace, a chat widget for your site (on request), selling your own bots, exporting your data.
+- **Homeschooling** — `/homeschooling`: AI tutors for Year 1 to Year 11 built on the national
+  curriculum for England, one plan per child, parent accounts, encryption, how lessons work and
+  questions parents ask.
+
+They are ordinary pages built from blocks. Open one while signed in as an admin to edit any block in
+place, or edit the menu links under **Menus**. Everything they promise exists today. Before adding a
+new claim, check that the feature is really available to customers.
+
+The **How it works** block now has an optional heading and sub-heading. Left blank, it shows the
+standard "Three steps, no setup" (as on the home page).
+
