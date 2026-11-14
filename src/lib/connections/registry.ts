@@ -20,7 +20,7 @@ import {
   type CurriculumResult,
 } from '@/lib/curriculum/client';
 import { isKeyStage } from '@/lib/curriculum/scope';
-import { CURRICULUM_SCOPE_CACHE_KEY, readScopeCache, type CurriculumScopeCache } from '@/lib/curriculum/stored';
+import { CURRICULUM_SCOPE_CACHE_KEY, CURRICULUM_SUBJECTS_CACHE_KEY, readScopeCache, readSubjectsCache, type CurriculumScopeCache } from '@/lib/curriculum/stored';
 import {
   TEST_STATES,
   type ConnectionField,
@@ -372,6 +372,46 @@ const asArray = (value: unknown): Record<string, unknown>[] =>
 const asCount = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
 const asLimit = (value: unknown) => (typeof value === 'number' && value > 0 ? value : null);
 
+type SubjectsAnswer = { version?: unknown; hash?: unknown; subjects?: unknown; raw?: unknown };
+
+/**
+ * The curriculum's subject dictionary, kept as `curriculum_subjects_cache`:
+ * the subjects with their years and what they are part of, and the other
+ * spellings that stand for them (src/lib/curriculum/subjects.ts). Returns a
+ * line for the Fetch summary.
+ */
+async function fetchSubjectsDictionary(config: NonNullable<Awaited<ReturnType<typeof curriculumConfig>>>): Promise<string> {
+  const result = await curriculumRequest<SubjectsAnswer>(config, { method: 'GET', path: '/v1/subjects' }, { timeoutMs: 15_000 });
+  if (!result.ok) {
+    return result.status === 404 ? 'no subject dictionary on this curriculum server yet (the built-in list of 16 subjects stays)' : 'subject dictionary not fetched (the last copy stays)';
+  }
+  const data = result.data ?? {};
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined);
+  const options = asArray(data.subjects)
+    .filter((s) => str(s.id) && str(s.shortLabel ?? s.label))
+    .map((s) => {
+      const years = (s.years ?? {}) as Record<string, unknown>;
+      const partOf = Array.isArray(s.partOf) ? str(s.partOf[0]) : undefined;
+      return {
+        id: String(s.id).toLowerCase(), label: String(str(s.shortLabel) ?? str(s.label)),
+        ...(partOf ? { partOf } : {}), ...(str(years.from) ? { from: str(years.from) } : {}), ...(str(years.to) ? { to: str(years.to) } : {}),
+        childSelectable: s.childSelectable !== false, ...(s.sensitive === true ? { sensitive: true } : {}),
+      };
+    });
+  const aliases: Record<string, string> = {};
+  const parts: Record<string, string> = {};
+  for (const [name, entry] of Object.entries((data.raw ?? {}) as Record<string, Record<string, unknown>>)) {
+    const subject = str(entry?.subject);
+    if (!subject || entry?.outOfScope) continue;
+    if (str(entry.domain)) parts[name.toLowerCase()] = subject;
+    else aliases[name.toLowerCase()] = subject;
+  }
+  const dict = readSubjectsCache({ version: str(data.version) ?? 'unknown', hash: str(data.hash) ?? '', fetchedAt: new Date().toISOString(), options, aliases, parts });
+  if (!dict) return 'the subject dictionary came back in an unexpected shape (the last copy stays)';
+  await upsertSetting(CURRICULUM_SUBJECTS_CACHE_KEY, JSON.stringify(dict), 'json', 'connections');
+  return `subject dictionary: ${dict.options.length} subjects`;
+}
+
 /**
  * Fetch = what this key may see, kept as `curriculum_scope_cache` for the
  * persona form. A compact copy (labels and counts), rebuilt on every Fetch:
@@ -409,6 +449,8 @@ async function fetchCurriculumScope(): Promise<FetchResult> {
   if (!cache) return { ok: false, summary: 'The curriculum answered, but not in the shape expected. Nothing was saved.' };
 
   await upsertSetting(CURRICULUM_SCOPE_CACHE_KEY, JSON.stringify(cache), 'json', 'connections');
+  // The subject dictionary (2026-11-14): what a parent can choose for a child. A curriculum without it is a note, not a failure.
+  const dictionaryNote = await fetchSubjectsDictionary(config);
 
   const stages = cache.keyStages.filter((row) => isKeyStage(row.keyStage));
   if (stages.length === 0 || cache.subjects.length === 0) {
@@ -426,6 +468,7 @@ async function fetchCurriculumScope(): Promise<FetchResult> {
     `${objectives.toLocaleString('en-GB')} objectives`,
     cache.limits.perDay ? `${usedToday.toLocaleString('en-GB')} of ${cache.limits.perDay.toLocaleString('en-GB')} requests used today` : null,
     cache.commercialOnly ? 'text of licence-restricted documents withheld (title and link only)' : null,
+    dictionaryNote,
   ].filter(Boolean);
 
   return {

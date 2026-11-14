@@ -23,6 +23,7 @@ import { moderateInput } from '@/lib/moderation/filter';
 import { storeDataUrl } from '@/lib/media/store';
 import { childContext, ensurePlan, type ChildContext } from '@/lib/children/child-mode';
 import { applyProgress, learnerSection, parseProgress, savePlan, type Plan } from '@/lib/children/plan';
+import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
 import { sealText, openText } from '@/lib/crypto/envelope';
 import { childProfiles } from '@/db/schema';
 
@@ -278,7 +279,7 @@ export async function POST(request: Request) {
           groundingChunks,
           {
             ...(curriculumScope ? { curriculum: { scope: curriculumScope, tools: curriculumToolDefs.map((t) => t.key), plan: Boolean(child) } } : {}),
-            ...(child ? { learner: learnerSection(child.profile, childPlan, curriculumScope?.subjects ?? []) } : {}),
+            ...(child ? { learner: learnerSection(child.profile, childPlan, curriculumScope?.subjects ?? [], new Date(), await getSubjectsDictionary()) } : {}),
           },
         ) + narrativePromptFragment(layoutKey)
       : undefined;

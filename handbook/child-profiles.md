@@ -22,7 +22,7 @@ Account menu → **Children** → **Add your child**. Every field shows three th
 |---|---|
 | Nickname | Required. Not the child's real name. |
 | School year | Required. |
-| Subjects | Required: at least one. |
+| Subjects | Required: at least one. The list comes from the curriculum. Some subjects are part of another (Biology, Chemistry and Physics are part of Science): choose either or both — each topic is planned once. |
 | GCSE details | From Year 9. "Not sure" is fine. |
 | Focus | Optional. |
 | Interests | Optional. |

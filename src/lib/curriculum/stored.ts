@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CurriculumScope } from '@/db/schema';
 import { KEY_STAGES, normaliseSubject, yearsFor } from './scope';
+import type { SubjectsDictionary } from './subjects';
 
 /**
  * Parsers for the two curriculum values kept in the database: a version's
@@ -58,5 +59,39 @@ export const CURRICULUM_SCOPE_CACHE_KEY = 'curriculum_scope_cache';
 
 export function readScopeCache(value: unknown): CurriculumScopeCache | null {
   const parsed = curriculumScopeCacheSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/* ---------------------- the subject dictionary (2026-11-14) ---------------------- */
+
+/**
+ * The compact copy of `GET /v1/subjects` kept as `curriculum_subjects_cache`:
+ * the subjects a parent can choose (with their years and what they are part
+ * of) and the other spellings that stand for them. The assignments and
+ * interfaces stay on the curriculum, which applies them in every plan.
+ */
+const subjectOptionSchema = z.object({
+  id: z.string().min(1).max(80),
+  label: z.string().min(1).max(80),
+  partOf: z.string().max(80).optional(),
+  from: z.string().max(4).optional(),
+  to: z.string().max(4).optional(),
+  childSelectable: z.boolean().optional(),
+  sensitive: z.boolean().optional(),
+});
+
+export const subjectsCacheSchema = z.object({
+  version: z.string(),
+  hash: z.string(),
+  fetchedAt: z.string(),
+  options: z.array(subjectOptionSchema).min(1),
+  aliases: z.record(z.string(), z.string()).catch({}),
+  parts: z.record(z.string(), z.string()).catch({}),
+});
+
+export const CURRICULUM_SUBJECTS_CACHE_KEY = 'curriculum_subjects_cache';
+
+export function readSubjectsCache(value: unknown): SubjectsDictionary | null {
+  const parsed = subjectsCacheSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }

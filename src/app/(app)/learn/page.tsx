@@ -5,13 +5,13 @@ import { requireUser } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { activeChildId, childContext, ensurePlan } from '@/lib/children/child-mode';
 import { lessonTutorsFor } from '@/lib/children/tutors';
-import { SUBJECTS, deliveryNotice, yearLabel } from '@/lib/children/profile';
+import { deliveryNotice, yearLabel } from '@/lib/children/profile';
+import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { sameFamily, subjectLabel, subjectOptions } from '@/lib/curriculum/subjects';
 import { startLessonAction } from '@/server/actions/chat';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Learn' };
-
-const subjectLabel = (id: string) => SUBJECTS.find((s) => s.id === id)?.label ?? id;
 
 /** The child's home in child mode (docs/54): their tutors, what they are learning now, and who can read the chats. */
 export default async function LearnPage() {
@@ -22,6 +22,11 @@ export default async function LearnPage() {
   if (!ctx) redirect('/learn/exit');
   const { plan } = await ensurePlan(ctx).catch(() => ({ plan: null }));
   const tutors = await lessonTutorsFor(ctx.profile.year, user.isAdmin);
+  const dict = await getSubjectsDictionary();
+  const options = subjectOptions(dict);
+  const label = (id: string) => subjectLabel(id, options);
+  // Subjects of the child's plan that no tutor teaches yet: said plainly, never hidden (2026-11-14).
+  const untaught = ctx.profile.subjects.filter((s) => !tutors.some((t) => t.subjects.some((ts) => sameFamily(ts, s, dict))));
 
   return (
     <div className="container-app py-10">
@@ -41,7 +46,7 @@ export default async function LearnPage() {
             <ul className="mt-2 space-y-1 text-sm">
               {plan.subjects.map((s) => {
                 const unit = s.units.find((u) => u.unitId === s.current) ?? s.units[0];
-                return unit ? <li key={s.subject}><span className="font-medium">{subjectLabel(s.subject)}:</span> {unit.title}</li> : null;
+                return unit ? <li key={s.subject}><span className="font-medium">{label(s.subject)}:</span> {unit.title}</li> : null;
               })}
             </ul>
           </Card>
@@ -52,7 +57,7 @@ export default async function LearnPage() {
             <Card key={t.id} className="flex flex-col p-5">
               <h3 className="font-semibold">{t.name}{!t.active && <span className="ml-2 text-xs font-normal text-slate-500">(test — admin only)</span>}</h3>
               {t.tagline && <p className="mt-1 flex-1 text-sm text-slate-600 dark:text-slate-300">{t.tagline}</p>}
-              <p className="mt-2 text-xs text-slate-500">{t.subjects.map(subjectLabel).join(', ')}</p>
+              <p className="mt-2 text-xs text-slate-500">{t.subjects.map(label).join(', ')}</p>
               <form action={startLessonAction} className="mt-3">
                 <input type="hidden" name="persona" value={t.slug} />
                 <button type="submit" className="h-9 rounded-xl bg-brand-600 px-3 text-sm font-semibold text-on-brand">Start a lesson</button>
@@ -61,6 +66,9 @@ export default async function LearnPage() {
           ))}
           {tutors.length === 0 && <Card className="p-5 text-sm">No tutors for {yearLabel(ctx.profile.year)} yet.</Card>}
         </div>
+        {tutors.length > 0 && untaught.length > 0 && (
+          <p className="text-sm text-slate-600 dark:text-slate-300">No tutor for {untaught.map(label).join(', ')} yet.</p>
+        )}
       </div>
     </div>
   );

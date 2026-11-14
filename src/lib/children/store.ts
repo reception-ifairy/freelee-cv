@@ -4,7 +4,8 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { childProfiles, consents, type ChildProfileRow } from '@/db/schema';
 import { newWrappedKey, openJson, sealJson, unwrapKey, type ChildKey } from '@/lib/crypto/envelope';
-import { ADAPTATIONS, CONSENT_TEXT_VERSION, SUBJECTS, YEARS, isGcseYear, type ChildProfile } from './profile';
+import { ADAPTATIONS, CONSENT_TEXT_VERSION, YEARS, isGcseYear, type ChildProfile } from './profile';
+import { FALLBACK_SUBJECTS, offeredIn, type SubjectOption } from '@/lib/curriculum/subjects';
 
 /**
  * The only code that reads or writes child profiles (docs/54-children-data.md).
@@ -12,38 +13,56 @@ import { ADAPTATIONS, CONSENT_TEXT_VERSION, SUBJECTS, YEARS, isGcseYear, type Ch
  * here logs a profile — errors carry ids only.
  */
 
-const subjectIds = SUBJECTS.map((s) => s.id);
 const adaptationIds = ADAPTATIONS.map((a) => a.id);
 
 /** Plain, short, printable — no control characters, no markup. */
 const shortText = (max: number) =>
   z.string().trim().max(max).refine((v) => !/[\u0000-\u001f<>]/.test(v), 'Please use plain text.');
 
-export const childProfileSchema = z
-  .object({
-    pseudonym: shortText(24).pipe(z.string().min(2, 'Give a nickname of at least 2 letters.')),
-    year: z.enum(YEARS),
-    subjects: z.array(z.enum(subjectIds as [string, ...string[]])).min(1, 'Choose at least one subject.').max(8),
-    goals: shortText(160).optional(),
-    pathway: z
-      .object({
-        ks4Start: z.enum(['Y9', 'Y10']).optional(),
-        tier: z.enum(['foundation', 'higher']).optional(),
-        scienceRoute: z.enum(['combined', 'triple']).optional(),
-      })
-      .optional(),
-    interests: z.array(shortText(24).pipe(z.string().min(1))).max(5),
-    adaptations: z.array(z.enum(adaptationIds as [string, ...string[]])).max(adaptationIds.length),
-    includePshe: z.boolean(),
-  })
-  .transform((p): ChildProfile => ({
-    ...p,
-    goals: p.goals || undefined,
-    // A pathway only means something from Year 9.
-    pathway: isGcseYear(p.year) ? p.pathway : undefined,
-    subjects: Array.from(new Set(p.subjects)),
-    interests: Array.from(new Set(p.interests)),
-  }));
+/**
+ * The profile schema for a set of subjects: the curriculum's dictionary after
+ * a Fetch (src/lib/curriculum/subjects.ts), the built-in list before. Each
+ * subject must be one a parent can choose and offered in the child's year —
+ * checked here, not only in the form.
+ */
+export function childProfileSchemaFor(options: SubjectOption[]) {
+  const selectable = new Map(options.filter((o) => o.childSelectable !== false && !o.sensitive).map((o) => [o.id, o]));
+  return z
+    .object({
+      pseudonym: shortText(24).pipe(z.string().min(2, 'Give a nickname of at least 2 letters.')),
+      year: z.enum(YEARS),
+      subjects: z
+        .array(z.string().refine((id) => selectable.has(id), 'Choose subjects from the list.'))
+        .min(1, 'Choose at least one subject.')
+        .max(8),
+      goals: shortText(160).optional(),
+      pathway: z
+        .object({
+          ks4Start: z.enum(['Y9', 'Y10']).optional(),
+          tier: z.enum(['foundation', 'higher']).optional(),
+          scienceRoute: z.enum(['combined', 'triple']).optional(),
+        })
+        .optional(),
+      interests: z.array(shortText(24).pipe(z.string().min(1))).max(5),
+      adaptations: z.array(z.enum(adaptationIds as [string, ...string[]])).max(adaptationIds.length),
+      includePshe: z.boolean(),
+    })
+    .superRefine((p, ctx) => {
+      const outside = p.subjects.filter((id) => selectable.has(id) && !offeredIn(selectable.get(id)!, p.year));
+      if (outside.length) ctx.addIssue({ code: 'custom', path: ['subjects'], message: `Not offered in this year: ${outside.map((id) => selectable.get(id)!.label).join(', ')}.` });
+    })
+    .transform((p): ChildProfile => ({
+      ...p,
+      goals: p.goals || undefined,
+      // A pathway only means something from Year 9.
+      pathway: isGcseYear(p.year) ? p.pathway : undefined,
+      subjects: Array.from(new Set(p.subjects)),
+      interests: Array.from(new Set(p.interests)),
+    }));
+}
+
+/** The schema with the built-in subjects (before the first Fetch). */
+export const childProfileSchema = childProfileSchemaFor(FALLBACK_SUBJECTS);
 
 /** Reads the form's fields into the shape the schema checks. */
 export function profileFromForm(form: FormData): unknown {

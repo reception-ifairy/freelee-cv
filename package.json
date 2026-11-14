@@ -26,12 +26,13 @@
     "i18n:export": "tsx scripts/export-translations.ts",
     "i18n:import": "tsx scripts/import-translations.ts",
     "media:verify": "tsx scripts/verify-sigv4.ts && tsx scripts/verify-s3-store.ts",
-    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts && tsx scripts/verify-document-extract.ts && tsx scripts/verify-changelog.ts && tsx scripts/verify-persona-mark.ts && tsx scripts/verify-library-chunking.ts && tsx scripts/verify-taxonomy-brief.ts && tsx scripts/verify-crew-runner.ts && tsx scripts/verify-envelope.ts && tsx scripts/verify-turn-check.ts",
+    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts && tsx scripts/verify-document-extract.ts && tsx scripts/verify-changelog.ts && tsx scripts/verify-persona-mark.ts && tsx scripts/verify-library-chunking.ts && tsx scripts/verify-taxonomy-brief.ts && tsx scripts/verify-crew-runner.ts && tsx scripts/verify-envelope.ts && tsx scripts/verify-turn-check.ts && tsx scripts/verify-curriculum-subjects.ts",
     "changelog:verify": "tsx scripts/verify-changelog.ts",
     "tutors:baseline": "tsx scripts/bench/baseline-tutor.ts",
     "tutors:bench": "tsx scripts/tutor-bench.ts",
     "children:verify-envelope": "tsx scripts/verify-envelope.ts",
     "children:verify-turn-check": "tsx scripts/verify-turn-check.ts",
+    "curriculum:verify-subjects": "tsx scripts/verify-curriculum-subjects.ts",
     "children:retention": "tsx --conditions=react-server scripts/children-retention.ts"
   },
   "dependencies": {

@@ -32,9 +32,28 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-14
+
+### #74 · `pending` — One subject list with the curriculum: overlapping subjects, years, tutors matched through it
+
+The owner's direction (2026-11-14): freelee, the curriculum and the Academy use one list of subjects,
+and biology, chemistry and physics count as subjects of their own while staying part of science.
+Curriculum now serves its subject dictionary (curriculum PRs #35–#36, deployed). Fetch on the
+Curriculum card also saves it as `curriculum_subjects_cache`: subjects with their years and what they
+are part of, synonyms and courses, and parts stored as subjects (`english reading` → English). The
+child form offers the year's subjects from it ("Biology · part of Science", with a line on choosing
+both); saving checks each subject against it and its years on the server, not only in the form;
+the lesson prompt matches a tutor's subjects through it, so a science tutor teaches the child who
+chose biology; the child's page names subjects no tutor teaches yet; plans keep the pack's domains
+and interfaces. Before the first Fetch the sixteen built-in subjects stand in, so nothing breaks.
+No migration (profiles already use the curriculum's names). Not changed on purpose: the tutor's
+search filter and the admin tutor picker. Checks: `npm run curriculum:verify-subjects` (13).
+
+📄 docs/55-subject-dictionary.md · handbook/child-profiles.md
+
 ## 2026-11-13
 
-### #73 · `pending` — Each school year on its own: a lesson carries the year's limits, not the level's
+### #73 · `abfe7f0` — Each school year on its own: a lesson carries the year's limits, not the level's
 
 The owner's iFairy v1.0 documents describe Years 1–11 one by one, and curriculum PR #33 serves them
 as year profiles. A level spanned two or three years: Years 1 and 2 shared a 70-word limit where Year

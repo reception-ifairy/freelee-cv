@@ -4,7 +4,8 @@ import { startTransition, useActionState, useEffect, useRef, useState } from 're
 import { saveChildAction } from '@/server/actions/children';
 import type { ActionState } from '@/server/actions/auth';
 import { Checkbox, FormMessage, Input, Label, Select, Textarea } from '@/components/ui/field';
-import { ADAPTATIONS, FIELD_NOTES, NOTES_NOTE, SUBJECTS, YEARS, isGcseYear, yearLabel, type ChildProfile, type FieldNote } from '@/lib/children/profile';
+import { ADAPTATIONS, FIELD_NOTES, NOTES_NOTE, YEARS, isGcseYear, yearLabel, type ChildProfile, type FieldNote } from '@/lib/children/profile';
+import { FALLBACK_SUBJECTS, displayLabel, hasParts, subjectsForYear, type SubjectOption } from '@/lib/curriculum/subjects';
 
 /** "Why we ask · Where it goes · How long we keep it" under every field (owner decision 2026-11-12). */
 function Note({ note }: { note: FieldNote }) {
@@ -25,10 +26,11 @@ function Submit({ label, pending }: { label: string; pending: boolean }) {
   );
 }
 
-export function ChildForm({ id, profile }: { id?: string; profile?: ChildProfile }) {
+export function ChildForm({ id, profile, subjectOptions = FALLBACK_SUBJECTS }: { id?: string; profile?: ChildProfile; subjectOptions?: SubjectOption[] }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(saveChildAction, null);
   const [year, setYear] = useState<string>(profile?.year ?? 'Y4');
-  const subjects = SUBJECTS.filter((s) => (!s.from || YEARS.indexOf(year as never) >= YEARS.indexOf(s.from)) && (!s.to || YEARS.indexOf(year as never) <= YEARS.indexOf(s.to)));
+  // From the curriculum's subject dictionary (2026-11-14): parts such as biology show what they belong to.
+  const subjects = subjectsForYear(subjectOptions, year);
   const prefix = id ? `c-${id.slice(0, 8)}-` : 'new-';
   const formRef = useRef<HTMLFormElement>(null);
   // A new profile was created: clear the "add" form for the next child (an edit keeps its values).
@@ -71,10 +73,15 @@ export function ChildForm({ id, profile }: { id?: string; profile?: ChildProfile
           {subjects.map((s) => (
             <label key={s.id} className="flex items-center gap-2 text-sm">
               <Checkbox name="subjects" value={s.id} defaultChecked={profile ? profile.subjects.includes(s.id) : ['mathematics', 'english'].includes(s.id)} />
-              {s.label}
+              {displayLabel(s, subjectOptions)}
             </label>
           ))}
         </div>
+        {hasParts(subjects) && (
+          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+            Some subjects are part of another (e.g. Biology is part of Science). Choose either, or both: each topic is planned once — the part takes its own topics and the whole subject keeps the rest.
+          </p>
+        )}
         <Note note={FIELD_NOTES.subjects} />
       </fieldset>
 
