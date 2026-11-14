@@ -10,15 +10,50 @@ bodies matter, how risky the work is, and who it serves.
 
 Three screens:
 
-- **Categories** — the twenty fields. Open one to see everything known about it.
+- **Categories** — the twenty fields, their sectors and the bots filed there, as a browser (below).
 - **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
-
-The badges count live bots apart: **16/32 personas live** means 16 of the field's 32 bots are switched on. The workbench shows which AI model answers it.
 - **Audiences** — seventy groups of people, and what each of them needs.
+
+## Browsing the taxonomy
+
+The screen has two halves.
+
+**On the left, the tree.** At the top is **All categories**, then the twenty fields, each with its
+sectors underneath; the arrow beside a field folds its sectors in and out. Every line shows **live/all**
+bots: **16/32** means 16 of the 32 bots filed there are switched on. **R1–R3** marks a field's risk
+level. A field or sector that is switched off is greyed out. The box at the top finds a field or
+sector by name: type *nutri* and only Lifestyle and Wellness › Nutrition Coaching is left.
+
+**On the right, the list** for whatever you picked in the tree:
+
+- **Personas** — the bots filed there, with their sector, audience type and whether they are live.
+  Search, filter (live or not, audience type, curriculum tutors) and sort; click **Name** to sort by
+  it.
+- **Sectors** — the specialisms, with how many of their bots are live and their risk level.
+
+**Click a row and its card slides in** from the right:
+
+- a bot's card shows where it is filed, its audience and audience groups, its model, how much it is
+  used, and its description;
+- a sector's card shows its risk, who it suits and its description, and **Show its bots** jumps to
+  that sector in the tree.
+
+The arrows at the top of the card step through the rows on screen. **Esc**, a click beside the card or
+your browser's **Back** button closes it.
+
+Your search stays as you click around the tree, so you can search *maths* and then click through
+fields to see where the maths bots are.
+
+Everything you pick is in the page address, so you can bookmark a view or send it to someone.
+
+When you pick a field, its header has **Workspace**, which opens the field's brief (below), and
+**Edit**.
+
+On a phone, the tree folds into a **Browse** line above the list.
 
 ## Opening a field
 
-Click a category and you get its brief on one page:
+Press **Workspace** on a field (or open */admin/taxonomy/34* directly) and you get its brief on one page:
 
 - **The market** — size, growth, regulation, industry bodies, risk level.
 - **What the address decides** — the chat layout persons in this field get, and the tools they are

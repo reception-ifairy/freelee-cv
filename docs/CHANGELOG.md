@@ -34,7 +34,23 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #79 · `pending` — Admin lists keep a tree selection, sort by column header and mark the open row; tabs as one component
+### #80 · `pending` — The taxonomy as a browser: a tree of categories and sectors, the bots of the picked node in a table, a card on demand
+
+Step 5 of the admin redesign, and the owner's main request ("instead of the card view, a system that
+makes browsing clear, with the card opening on demand"). `/admin/taxonomy` was one long column of 20
+category cards with 103 sector tiles, no search, and tiles that led to an edit form. Now: a tree on
+the left (All › category › sector, live/total bots and risk on every line, a find box), and on the
+right the picked node's header, Personas | Sectors tabs, search, filters (live, audience type,
+curriculum tutors) and sort, and a dense table; a row opens its card in a sheet — a bot's filing,
+audience groups (another type's drawn dashed: stored, never in the prompt), model, use and
+description; a sector's risk, suitability and "Show its bots". All state is in the URL
+(`src/lib/taxonomy/browser.ts`); the counts are one GROUPING SETS query (~5 ms). `ResourceView`
+gains a `dense` mode so the table fits beside the tree at 1280px. New check
+`npm run taxonomy:verify-browser` (20).
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md
+
+### #79 · `d4dc1d1` — Admin lists keep a tree selection, sort by column header and mark the open row; tabs as one component
 
 Step 4 of the admin redesign: the list parts the taxonomy browser is built from. `ListConfig.keep`
 names URL params a list carries but does not edit — a tree selection (`cat`, `sec`) — so a search,
