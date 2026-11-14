@@ -4,7 +4,8 @@ import { db } from '@/db';
 import { childPlans, type ChildProfileRow } from '@/db/schema';
 import { curriculumConfig, curriculumRequest } from '@/lib/curriculum/client';
 import { openJson, sealJson, type ChildKey } from '@/lib/crypto/envelope';
-import { ADAPTATIONS, SUBJECTS, yearLabel, type ChildProfile } from './profile';
+import { ADAPTATIONS, yearLabel, type ChildProfile } from './profile';
+import { sameFamily, subjectLabel as labelOf, subjectOptions, type SubjectsDictionary } from '@/lib/curriculum/subjects';
 import type { YearChecks } from './turn-check';
 
 /**
@@ -33,6 +34,8 @@ export type PlanUnit = {
   estSessions: number;
   reviewed: boolean;
   bridge?: boolean;
+  /** The part of the subject this unit belongs to (curriculum subject dictionary, 2026-11-14), e.g. "mathematics.number". */
+  domain?: string;
 };
 
 /** One of the year's learning areas for a subject (curriculum year guides, 2026-11-13). */
@@ -44,9 +47,19 @@ export type PlanCategory = {
   application: string | null;
   observableOutcome: string | null;
   guide: { name: string; slug: string; mechanic: string | null; exampleLine: string | null };
+  /** Since 2026-11-14: the area's domains (first one first) and the interface of the first. */
+  domains?: string[];
+  interface?: string;
 };
 
-export type PlanSubject = { subject: string; fromObjectives: boolean; current: string | null; units: PlanUnit[]; categories?: PlanCategory[] };
+/** A kind of screen for a domain, with the tools it offers in the child's year (curriculum, 2026-11-14). Until freelee builds one, lessons stay a chat. */
+export type PlanInterface = { label: string; notation: string; inputs: string[]; tools: { id: string; label: string }[] };
+
+export type PlanSubject = {
+  subject: string; fromObjectives: boolean; current: string | null; units: PlanUnit[]; categories?: PlanCategory[];
+  /** Since 2026-11-14: a part of a whole subject (biology) says what it is part of and where its content comes from. */
+  partOf?: string[]; source?: string; defaultDomain?: string | null;
+};
 export type Progress = { status: 'learning' | 'secure'; at: string; reviews: number; reviewAt?: string };
 
 export type LevelProfile = {
@@ -91,11 +104,14 @@ export type Plan = {
   gaps: { subject: string; note: string }[];
   reviewIntervalsDays: number[];
   studyStrategy?: string[];
+  /** Since 2026-11-14: the domains and interfaces the plan uses; absent in older plans. */
+  domains?: Record<string, { label: string; subject: string; interface: string }>;
+  interfaces?: Record<string, PlanInterface>;
   progress: Record<string, Progress>;
 };
 
 type Pack = Omit<Plan, 'builtAt' | 'subjects' | 'progress' | 'studyStrategy'> & {
-  subjects: { subject: string; fromObjectives: boolean; startAt: string | null; units: PlanUnit[]; categories?: PlanCategory[] }[];
+  subjects: { subject: string; fromObjectives: boolean; startAt: string | null; units: PlanUnit[]; categories?: PlanCategory[]; partOf?: string[]; source?: string; defaultDomain?: string | null }[];
   gcse?: { studyStrategy?: string[] };
 };
 
@@ -125,10 +141,15 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
     level: pack.level,
     profile: pack.profile,
     yearProfile: pack.yearProfile ? keepYearProfile(pack.yearProfile) : null,
-    subjects: pack.subjects.map((s) => ({ subject: s.subject, fromObjectives: s.fromObjectives, current: s.startAt, units: s.units, categories: s.categories ?? [] })),
+    subjects: pack.subjects.map((s) => ({
+      subject: s.subject, fromObjectives: s.fromObjectives, current: s.startAt, units: s.units, categories: s.categories ?? [],
+      ...(s.partOf ? { partOf: s.partOf, source: s.source } : {}), ...(s.defaultDomain !== undefined ? { defaultDomain: s.defaultDomain } : {}),
+    })),
     gaps: pack.gaps,
     reviewIntervalsDays: pack.reviewIntervalsDays?.length ? pack.reviewIntervalsDays : [1, 3, 7, 21],
     studyStrategy: pack.gcse?.studyStrategy,
+    ...(pack.domains ? { domains: pack.domains } : {}),
+    ...(pack.interfaces ? { interfaces: pack.interfaces } : {}),
     // Progress is kept per objective code / unit id, so a refreshed programme keeps it.
     progress: previous?.progress ?? {},
   };
@@ -210,7 +231,6 @@ export function applyProgress(plan: Plan, marks: { code: string; status: 'learni
 
 /* --------------------------------- prompt -------------------------------- */
 
-const subjectLabel = (id: string) => SUBJECTS.find((s) => s.id === id)?.label ?? id;
 
 /**
  * What a tutor reads about this child: the developmental level (how to talk),
@@ -219,7 +239,8 @@ const subjectLabel = (id: string) => SUBJECTS.find((s) => s.id === id)?.label ??
  * its objectives, the next unit and anything due for review. Kept short on
  * purpose (≈ 600–900 tokens): it is sent with every turn.
  */
-export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSubjects: string[], now = new Date()): string {
+export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSubjects: string[], now = new Date(), dict: SubjectsDictionary | null = null): string {
+  const subjectLabel = (id: string) => labelOf(id, subjectOptions(dict));
   const lines: string[] = ['## Your learner'];
   lines.push(`You are teaching ${profile.pseudonym}, in ${yearLabel(profile.year)}${plan?.keyStage ? ` (${plan.keyStage})` : ''}. Call them ${profile.pseudonym}.`);
   if (profile.interests.length) lines.push(`They like: ${profile.interests.join(', ')} — use these in examples.`);
@@ -247,7 +268,8 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
     return lines.join('\n');
   }
 
-  const wanted = plan.subjects.filter((s) => tutorSubjects.length === 0 || tutorSubjects.includes(s.subject));
+  // Through the subject dictionary (2026-11-14): a science tutor teaches the child who chose biology, an "english reading" tutor English.
+  const wanted = plan.subjects.filter((s) => tutorSubjects.length === 0 || tutorSubjects.some((t) => sameFamily(t, s.subject, dict)));
   const subjects = wanted.length ? wanted : plan.subjects;
   lines.push('', '## The learning plan (shared by every tutor this child talks to)');
   for (const s of subjects) {

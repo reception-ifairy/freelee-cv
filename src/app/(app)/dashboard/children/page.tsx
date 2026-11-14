@@ -6,7 +6,9 @@ import { requireUser } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { childFeaturesAvailable } from '@/lib/crypto/envelope';
 import { listChildren } from '@/lib/children/store';
-import { NOT_COLLECTED, SUBJECTS, yearLabel } from '@/lib/children/profile';
+import { NOT_COLLECTED, yearLabel } from '@/lib/children/profile';
+import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { subjectLabel as labelOf, subjectOptions } from '@/lib/curriculum/subjects';
 import { deleteChildAction, refreshPlanAction, startLearningAction } from '@/server/actions/children';
 import { childContext } from '@/lib/children/child-mode';
 import { loadPlan } from '@/lib/children/plan';
@@ -19,7 +21,6 @@ import { ResendVerification, DeclareAdult } from './account-checks';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Children' };
 
-const subjectLabel = (id: string) => SUBJECTS.find((s) => s.id === id)?.label ?? id;
 
 /**
  * Child profiles under a parent's account (docs/54-children-data.md). freelee
@@ -30,6 +31,9 @@ export default async function ChildrenPage() {
   const [account] = await db.select({ emailVerified: users.emailVerified, adult: users.adultDeclaredAt }).from(users).where(eq(users.id, session.id)).limit(1);
   const available = childFeaturesAvailable();
   const children = available ? await listChildren(session.id) : [];
+  // The curriculum's subject dictionary after a Fetch, the built-in list before (2026-11-14).
+  const options = subjectOptions(await getSubjectsDictionary());
+  const subjectLabel = (id: string) => labelOf(id, options);
   // The plan summary per child: what each subject is on now (decrypted for the parent only).
   const plans = new Map(
     await Promise.all(children.map(async (c) => {
@@ -123,7 +127,7 @@ export default async function ChildrenPage() {
                 <span className="mt-1 block text-xs text-brand-600">Edit profile</span>
               </summary>
               <div className="mt-6">
-                <ChildForm id={child.id} profile={child.profile} />
+                <ChildForm id={child.id} profile={child.profile} subjectOptions={options} />
                 <form action={deleteChildAction} className="mt-8 border-t border-slate-100 pt-4 dark:border-slate-800">
                   <input type="hidden" name="id" value={child.id} />
                   <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -142,7 +146,7 @@ export default async function ChildrenPage() {
         {ready && (
           <Card className="p-6">
             <h2 className="mb-4 text-lg font-semibold">{children.length ? 'Add another child' : 'Add your child'}</h2>
-            <ChildForm />
+            <ChildForm subjectOptions={options} />
           </Card>
         )}
       </div>

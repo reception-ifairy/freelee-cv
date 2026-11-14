@@ -26,25 +26,12 @@ export function deliveryNotice(year: string): string | null {
   return null;
 }
 
-/** Curriculum subject names (curriculum `Catalog::normaliseSubject` values) with a label. PSHE is separate: it needs its own consent. */
-export const SUBJECTS: { id: string; label: string; from?: Year; to?: Year }[] = [
-  { id: 'mathematics', label: 'Maths' },
-  { id: 'english', label: 'English' },
-  { id: 'science', label: 'Science' },
-  { id: 'history', label: 'History' },
-  { id: 'geography', label: 'Geography' },
-  { id: 'computing', label: 'Computing' },
-  { id: 'languages', label: 'Languages' },
-  { id: 'art and design', label: 'Art & design' },
-  { id: 'music', label: 'Music' },
-  { id: 'design and technology', label: 'Design & technology' },
-  { id: 'physical education', label: 'PE' },
-  { id: 'religious education', label: 'RE', to: 'Y8' },
-  { id: 'religious studies', label: 'Religious studies (GCSE)', from: 'Y9' },
-  { id: 'drama', label: 'Drama (GCSE)', from: 'Y9' },
-  { id: 'business', label: 'Business (GCSE)', from: 'Y9' },
-  { id: 'psychology', label: 'Psychology (GCSE)', from: 'Y9' },
-];
+/**
+ * Subjects come from the curriculum's subject dictionary since 2026-11-14
+ * (src/lib/curriculum/subjects.ts: options, years, parts such as biology inside
+ * science; FALLBACK_SUBJECTS before the first Fetch). PSHE is separate: it
+ * needs its own consent.
+ */
 
 export const ADAPTATIONS: { id: string; label: string; instruction: string }[] = [
   { id: 'shorter-sentences', label: 'Shorter, simpler sentences', instruction: 'Use shorter and simpler sentences than usual for this year group.' },
