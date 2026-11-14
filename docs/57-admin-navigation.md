@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the dashboard and the connections page, each as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the connections page as its own section here.
 
 ## Building blocks (freelee #78)
 
@@ -312,6 +312,56 @@ At 1280×900 the whole sidebar fits without scrolling, with 13 links visible by 
 - **Breadcrumbs:** "Taxonomy › Education and Training", "Taxonomy › Categories › Education and Training", "Personas › AmaterAI" and "Homeschooling & family".
 - **Phone:** the drawer shows the same groups.
 - No page errors.
+
+## The dashboard's attention list (freelee #85)
+
+The dashboard showed platform totals and one banner for pending orders. With about 20 messages and no orders a month, the totals said little, and what needed doing was spread over a dozen screens. It now opens with two panels.
+
+**Needs your attention** (`src/lib/admin/attention.ts`, pure: facts → items):
+- **Act** — someone is waiting or something is broken:
+  - orders awaiting payment;
+  - new leads;
+  - marketplace listings to review;
+  - connections whose last test failed.
+- **Check:**
+  - no live tutor while /homeschooling is published;
+  - fields below the risk floor of a market they serve;
+  - connections saved but never tested.
+
+  Built-in default addresses are excluded from "never tested".
+- **Tidy:**
+  - visible fields with no bot;
+  - visible fields with no audience;
+  - bots holding audience groups of another type. These are stored but never in the prompt (#77), and the item links to the browser filtered to them (`?groups=other-type`, a new persona filter).
+
+Each row links to where the thing is done. The old pending-orders banner became the first item.
+
+**Markets:** the share bar and live/total bots per market, each linking to the market's page.
+
+**Header badge "N to act on"** (`attention-badge.tsx`) appears on every admin page when an Act item exists, and links to the list. It reads only the light facts, about 10 ms. A failure there renders nothing rather than breaking the page.
+
+**Facts** (`attention-queries.ts`):
+- the counts come from one query of scalar subqueries;
+- connections come from settings already read for the request;
+- the risk-floor check reuses the dashboard's `marketSummaries()` (about 140 ms cold).
+
+A segment of another type is detected by its prefix (`left(code, 3)` against the bot's audience type), because every code starts with its type.
+
+Checked by `npm run admin:verify-attention` (10 checks):
+- an empty state;
+- the order act → check → tidy;
+- the badge counts only Act items;
+- the wording;
+- the tutor rule depends on the page;
+- one risk-floor item per market, and none for the header;
+- the links.
+
+**Verified live:**
+- the 8 items today: 0 act, 5 check, 3 tidy;
+- no badge;
+- the Markets card matches the Markets page;
+- the other-type link opens the browser with 55 bots;
+- a test lead turned the badge to "1 to act on" on the dashboard and on another page, and put "1 new lead" first. The lead was then deleted, and 0 test leads remain.
 
 ## First use: the Audiences screen (freelee #78)
 

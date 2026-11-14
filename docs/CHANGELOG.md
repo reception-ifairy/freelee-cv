@@ -34,7 +34,22 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #84 · `pending` — The sidebar by job, folding where you left it, and breadcrumbs that name what they show
+### #85 · `pending` — The dashboard opens with what needs your attention, the markets beside it, and a header badge when someone is waiting
+
+Step 10 of the admin redesign. The dashboard showed platform totals and a pending-orders banner;
+what needed doing was spread over a dozen screens. **Needs your attention** lists it, most urgent
+first: *act* (orders to confirm, new leads, listings to review, failing connections), *check* (no
+live tutor while /homeschooling is published, fields below a market's risk floor, keys never
+tested), *tidy* (fields with no bot or no audience, bots holding audience groups of another type —
+a new taxonomy-browser filter, `?groups=other-type`). Each row links to where it is fixed.
+**Markets** beside it shows live/total bots per market. The header shows "N to act on" on every
+admin page when something is waiting (light facts, ~10 ms). The rules are a pure module
+(`src/lib/admin/attention.ts`); the counts are one query. New check
+`npm run admin:verify-attention` (10).
+
+📄 docs/57-admin-navigation.md · handbook/welcome.md
+
+### #84 · `1197c5d` — The sidebar by job, folding where you left it, and breadcrumbs that name what they show
 
 Step 9 of the admin redesign. The sidebar was grouped by technical layer and never folded (29 links,
 Translations and Branding under System). It is grouped by job now — Markets (the six, each with its

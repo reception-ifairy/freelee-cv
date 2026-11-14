@@ -114,6 +114,11 @@ export async function browserPersonas(
   if (params.filters.audience) conditions.push(sql`${personaVersions.audienceType}::text = ${params.filters.audience}`);
   if (params.filters.kind === 'tutor') conditions.push(sql`${personaVersions.curriculumScope} is not null`);
   if (params.filters.kind === 'other') conditions.push(isNull(personaVersions.curriculumScope));
+  // A code starts with its type (B2C-…): one whose prefix differs is of another type.
+  if (params.filters.groups === 'other-type') {
+    conditions.push(sql`exists (select 1 from jsonb_array_elements_text(${personaVersions.audienceSegments}) code
+      where left(code, 3) is distinct from ${personaVersions.audienceType}::text)`);
+  }
   const where = conditions.length ? and(...conditions) : undefined;
 
   const orderBy = {

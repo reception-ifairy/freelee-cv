@@ -81,6 +81,8 @@ export const PERSONA_LIST: ListConfig = {
       ],
     },
     { key: 'kind', label: 'Kind', options: [{ id: 'tutor', label: 'Curriculum tutors' }, { id: 'other', label: 'Not tutors' }] },
+    // Groups of another audience type are stored but never reach the prompt (#77); the dashboard links here.
+    { key: 'groups', label: 'Audience groups', options: [{ id: 'other-type', label: 'Holding another type' }] },
   ],
   sorts: [
     { id: 'name', label: 'Sort: name A–Z' },
