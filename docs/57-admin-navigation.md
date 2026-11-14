@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses. Later updates add the taxonomy browser, the pillars and the sidebar by job, each as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the pillars and the sidebar by job, each as its own section here.
 
 ## Building blocks (freelee #78)
 
@@ -68,6 +68,68 @@ Built on native `<details>`/`<summary>`:
 - **`TabNav`** (`src/components/admin/tab-nav.tsx`): tabs as server-rendered links (`?tab=…`) with an optional count. The admin had tabs four ways. Links are the one that survives a reload, can be linked to, works before hydration, and runs only the open tab's queries. They are announced as links (`aria-current="page"`), not as the ARIA tab pattern, because each tab is another URL. The bot team page uses it ("Runs 3"). The category workspace and the homeschool hub will too.
 
 Checked by `npm run admin:verify-list-query` (11 checks, part of `blocks:verify`).
+
+## The taxonomy browser (freelee #80)
+
+`/admin/taxonomy` used to be one long column of 20 category cards holding 103 sector tiles, each tile with three meters. It had no search and no filter, and a sector tile led to the sector's edit form rather than to the bots filed under it. It is now a browser.
+
+**The tree** (`taxonomy-tree.tsx`, on the left from `lg`):
+- **Nodes.** All categories › category › sector, each showing live/total bots, the risk level (R1–R3), and greyed out when switched off.
+- **Filter box.** A category that matches by name shows all its sectors; one that matches only through its sectors shows just those, unfolded.
+- **Folding.** Folding is client state. Arriving at a category by any route unfolds it, and nothing ever folds a category by itself.
+- **Bots with no sector.** Bots in a category but under no sector show as "N without a sector". Bots with no category get their own node (`cat=none`).
+- **Below `lg`.** The same tree sits in a Disclosure ("Browse: …") above the list.
+
+**The list** (on the right): a header for the node, `TabNav` Personas | Sectors, `ListToolbar`, then a dense table-only `ResourceView` and `ListPagination`.
+- **Personas list.**
+  - Filters: live or not, audience type, curriculum tutors or not.
+  - Sort: name either way, messages either way, newest.
+  - Columns: category › sector (or the sector alone once a category is picked), audience, and badges (live, tutor, featured).
+- **Sectors list.**
+  - Filter: active or switched off.
+  - Sort: catalogue order, name, number of bots.
+  - Columns: category (at the top level only), bots live, risk.
+- **The width budget.** At 1280px the table gets about 700px beside a 15rem tree. So `dense` caps the name at 15rem and other cells at 10rem, makes subtitles one line, and drops an empty badge column. Messages and suitability are kept off the table and stay in Sort and on the card. Measured at 1280px, 1600px and 390px, with no sideways page scroll.
+
+**The card** is a RouteSheet at `open=persona-N` or `open=sector-N`. Previous/Next step through the rows on screen, never across a page.
+- **Bot card.**
+  - Shows: category › sector, audience type, model, version, price, use, dates, curriculum scope, description and expertise.
+  - Audience groups link to their cards on Audiences. A group of another type is drawn dashed: stored, but never in the prompt (freelee #77).
+- **Sector card.** Risk, narrative fit, interaction modes, suitability meters and description, with "Show its N bots".
+
+**State** (`src/lib/taxonomy/browser.ts`, pure):
+- **`parseBrowser`** reads `cat`, `sec`, `tab` and `open`:
+  - unknown ids are dropped;
+  - a sector brings its own category;
+  - the Sectors tab exists only above sector level;
+  - kept params are rewritten from what was understood.
+- **`selectionHref`** builds tree and tab links:
+  - search and filters stay while the list kind stays the same;
+  - paging restarts and the card closes;
+  - switching kind keeps only the search.
+- **`withOpen`** opens or closes a card, keeping the list exactly as it was.
+
+**Counts** (`treeCounts()`, `src/lib/taxonomy/browser-queries.ts`): one query with `GROUPING SETS ((category, sector), (category), ())` and `count(distinct)`, about 5 ms. The category is read through `persona_categories`. The sector's category always matches it (checked: 0 mismatches of 122 links).
+
+Checked by `npm run taxonomy:verify-browser` (20 checks):
+- the tree adds up;
+- the URL is read safely;
+- the links keep and drop the right params;
+- Previous/Next stop at the ends.
+
+**Verified live** (Playwright, 1280×900, 1600×1000 and 390×844; server render about 150 ms):
+- **Top level:** "20 categories · 103 sectors · 87/123 bots live".
+- **Education:** 16/32 with 6 sectors in the tree.
+- **List state:** searching "tutor" keeps `cat` and finds 2; sorting by header keeps both.
+- **Bot card:**
+  - Next steps to the next bot;
+  - Escape returns focus to the row of the card that was open;
+  - 0 of 25 Tab presses left it.
+- **Sectors tab and sector card:** "Show its bots" lands on the sector with 2 bots; Back reopens the card it came from.
+- **Tree filter:** "nutri" leaves Lifestyle and Wellness › Nutrition Coaching.
+- **Other views:** `cat=none` shows 1 bot; junk params fall back to the top level.
+- **Phone:** the tree is folded and the page does not scroll sideways (the table scrolls inside its frame).
+- No page errors.
 
 ## First use: the Audiences screen (freelee #78)
 

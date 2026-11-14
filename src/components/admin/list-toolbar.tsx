@@ -24,10 +24,13 @@ export function ListToolbar({
   params,
   config,
   total,
+  placeholder = 'Search by name, tagline or expertise…',
 }: {
   params: ListParams;
   config: ListConfig;
   total: number;
+  /** What the search box searches — it differs between lists. */
+  placeholder?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -77,7 +80,7 @@ export function ListToolbar({
               typed.current = true;
               setQuery(event.target.value);
             }}
-            placeholder="Search by name, tagline or expertise…"
+            placeholder={placeholder}
             aria-label="Search"
             className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900"
           />

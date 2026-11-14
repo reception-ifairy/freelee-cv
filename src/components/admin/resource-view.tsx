@@ -53,6 +53,7 @@ export function ResourceView({
   selectedId,
   openInPlace = false,
   toggle = true,
+  dense = false,
 }: {
   /** Cookie key for the grid/list preference. */
   module: string;
@@ -85,6 +86,13 @@ export function ResourceView({
   openInPlace?: boolean;
   /** Off for a list that only makes sense as a table (a browser beside a tree). */
   toggle?: boolean;
+  /**
+   * Table view: compact rows (~40px), one-line subtitles, cells that never
+   * wrap. For a table that shares the width with a tree — at 1280px the
+   * browser's table gets about 660px, and wrapped cells pushed the last three
+   * columns out of sight.
+   */
+  dense?: boolean;
 }) {
   const rowOptions = { selectedId: selectedId ?? null, openInPlace };
   return (
@@ -105,7 +113,7 @@ export function ResourceView({
       ) : view === 'grid' && toggle ? (
         <ResourceGrid items={items} columns={columns} {...rowOptions} />
       ) : (
-        <ResourceTable items={items} badgeHeader={badgeHeader} sortHrefs={sortHrefs} {...rowOptions} />
+        <ResourceTable items={items} badgeHeader={badgeHeader} sortHrefs={sortHrefs} dense={dense} {...rowOptions} />
       )}
     </div>
   );
@@ -198,11 +206,11 @@ function ResourceGrid({ items, columns, selectedId, openInPlace }: { items: Reso
   );
 }
 
-function SortableTH({ label, sort }: { label: string; sort?: SortHref }) {
-  if (!sort) return <TH>{label}</TH>;
+function SortableTH({ label, sort, className }: { label: string; sort?: SortHref; className?: string }) {
+  if (!sort) return <TH className={className}>{label}</TH>;
   const Icon = sort.direction === 'asc' ? ArrowUp : sort.direction === 'desc' ? ArrowDown : ArrowUpDown;
   return (
-    <TH aria-sort={sort.direction === 'asc' ? 'ascending' : sort.direction === 'desc' ? 'descending' : undefined}>
+    <TH className={className} aria-sort={sort.direction === 'asc' ? 'ascending' : sort.direction === 'desc' ? 'descending' : undefined}>
       <Link
         href={sort.href}
         scroll={false}
@@ -223,7 +231,12 @@ function ResourceTable({
   sortHrefs,
   selectedId,
   openInPlace,
-}: { items: ResourceItem[]; badgeHeader?: string; sortHrefs?: Record<string, SortHref> } & RowOptions) {
+  dense = false,
+}: { items: ResourceItem[]; badgeHeader?: string; sortHrefs?: Record<string, SortHref>; dense?: boolean } & RowOptions) {
+  const cell = dense ? 'px-3 py-2 whitespace-nowrap' : undefined;
+  // Dense tables drop an all-empty badge column: beside a tree every column
+  // costs ~70px, and an empty one pushed the ⋯ menu out of sight.
+  const badgeColumn = !dense || items.some((item) => item.badges?.length);
   // Columns come from the first item, so every item must describe the same
   // `meta` keys — which is a property of how a page builds its items, not
   // something this component can enforce.
@@ -234,25 +247,25 @@ function ResourceTable({
       <Table>
         <THead>
           <tr>
-            <SortableTH label="Name" sort={sortHrefs?.title} />
+            <SortableTH label="Name" sort={sortHrefs?.title} className={cell} />
             {columns.map((column) => (
-              <SortableTH key={column.key} label={column.label} sort={sortHrefs?.[column.key]} />
+              <SortableTH key={column.key} label={column.label} sort={sortHrefs?.[column.key]} className={cell} />
             ))}
             {/* Not always "Status": menus put a visibility scope here, sales
                 the payment gateway. Naming the column after whatever the badges
                 actually are beats one label that is wrong on half the lists. */}
-            <TH>{badgeHeader}</TH>
-            <TH />
+            {badgeColumn ? <TH className={cell}>{badgeHeader}</TH> : null}
+            <TH className={cell} />
           </tr>
         </THead>
         <TBody>
           {items.length === 0 ? (
-            <EmptyRow colSpan={columns.length + 3}>Nothing here yet.</EmptyRow>
+            <EmptyRow colSpan={columns.length + (badgeColumn ? 3 : 2)}>Nothing here yet.</EmptyRow>
           ) : (
             items.map((item) => (
               <TR key={item.id} className={cn(openInPlace && 'relative', item.id === selectedId && 'bg-brand-500/10')}>
-                <TD>
-                  <span className="flex items-center gap-2">
+                <TD className={cell}>
+                  <span className={cn('flex items-center gap-2', dense && 'max-w-[15rem]')}>
                     {item.media}
                     <span className="min-w-0">
                       <TitleLink
@@ -266,18 +279,23 @@ function ResourceTable({
                   </span>
                 </TD>
                 {(item.meta ?? []).map((field) => (
-                  <TD key={field.key ?? field.label}>{field.value}</TD>
+                  <TD key={field.key ?? field.label} className={cell}>
+                    {/* max-width on a <td> itself is not honoured in an auto-layout table; on a block inside it is. */}
+                    {dense ? <span className="block max-w-[10rem] truncate">{field.value}</span> : field.value}
+                  </TD>
                 ))}
-                <TD>
-                  <span className="flex flex-wrap gap-1">
-                    {item.badges?.map((badge) => (
-                      <Badge key={badge.label} tone={badge.tone} title={badge.title}>
-                        {badge.label}
-                      </Badge>
-                    ))}
-                  </span>
-                </TD>
-                <TD className="text-right">
+                {badgeColumn ? (
+                  <TD className={cell}>
+                    <span className={cn('flex gap-1', !dense && 'flex-wrap')}>
+                      {item.badges?.map((badge) => (
+                        <Badge key={badge.label} tone={badge.tone} title={badge.title}>
+                          {badge.label}
+                        </Badge>
+                      ))}
+                    </span>
+                  </TD>
+                ) : null}
+                <TD className={cn('text-right', cell)}>
                   <span className="relative z-10 inline-flex justify-end">{item.actions?.length ? <ActionMenu items={item.actions} /> : null}</span>
                 </TD>
               </TR>
