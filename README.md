@@ -1,9 +1,15 @@
 # Freelee — Next.js
 
-An AI persona marketplace: streaming chat, multi-tenant teams, a team-scoped credit wallet with
-subscriptions and time-boxed passes, group chat rooms, bot-to-bot "crews" on a durable job queue,
-projects that group the work, data export/import, an external-vendor marketplace, a block-builder
-CMS, and a full admin panel.
+An AI specialist marketplace with two offers: **specialist bots for businesses**, and **AI tutors for
+homeschooling families** that teach from the live UK curriculum. Underneath: streaming chat,
+multi-tenant teams, a team-scoped credit wallet with subscriptions and time-boxed passes, group chat
+rooms, bot teams on a durable job queue, projects, data export/import, an external-vendor
+marketplace, a block-builder CMS — and, for families, adults-only accounts with encrypted child
+profiles, one learning plan per child, exam goals and a child mode. The admin panel is organised by
+market, with a taxonomy browser, a homeschool hub and one page for every connection.
+
+🆕 **[docs/RELEASES.md](docs/RELEASES.md) says what changed, in plain words** — one release per day of
+work, also published as [GitHub Releases](https://github.com/reception-ifairy/freelee-cv/releases).
 
 📖 **[docs/CHANGELOG.md](docs/CHANGELOG.md) is the record of every update** — one numbered entry per
 commit with the reason for the change, the doc that covers it, and the migration it applied. Start
@@ -54,7 +60,7 @@ production checklist), see **`DEPLOY.md`**.
 ### Making the AI answer
 
 Nothing generates until a provider key exists. Either set `OPENAI_API_KEY` in `.env.local`, or
-sign in as admin and paste it under **Admin → Settings → Providers & keys**: **Save**, then **Test**
+sign in as admin and paste it under **Admin → System → Connections**: **Save**, then **Test**
 (a real 8-token reply), then **Fetch models**, which adds the provider's models as *preview* — mark
 the ones you want Stable under **Settings → Models**. Keys stored in the settings table take
 precedence over the environment, so they can be rotated without a redeploy. Every other outside
@@ -104,7 +110,7 @@ src/
 └── components/
 ```
 
-**`docs/00-overview.md`** is the index into 51 documents covering every piece, and each one is
+**`docs/00-overview.md`** is the index into 57 documents covering every piece, and each one is
 written for the design decisions and trade-offs behind the code rather than a restatement of it —
 including what was deliberately *not* built, and why.
 
@@ -118,6 +124,8 @@ What has been built on top of the original persona-catalogue-and-chat app, rough
 | **Knowledge** | a private library the bots read from (shelves, hybrid retrieval, cited passages) · remote knowledge sources · shelves granted to many bots in one step (`scripts/grant-grounding.ts`) |
 | **Content** | a block builder driving the front page, CMS pages and blog posts · nested menus · a showcase · translations from a modular word bank |
 | **Growth** | a site assistant that *is* a persona · lead-capture quick actions · an admin-only bot converter turning a document into a draft persona |
+| **Homeschooling** | tutors that teach from the live UK curriculum within a scope set on both sides · adults-only accounts with child profiles encrypted per child · one learning plan per child from the curriculum's plan pack · a shared subject dictionary (overlapping subjects, years) · exam goals the plan works back from · a child mode with sealed lessons the parent can read · retention and deletion |
+| **Admin** | six markets worked out from each bot's audience · a taxonomy browser (tree, table, card on demand) · a workspace per field · a homeschool hub (tutors, coverage, families as numbers only) · a sidebar by job · a dashboard that opens with what needs attention · every connection on one page |
 | **Craft** | a theme composer generating WCAG-checked ramps · an admin design system with real loading and empty states · audience-split public navigation · persona cards built from a generated mark rather than a stock face, flipping to access and depth |
 
 Every capability has a manifest in `src/lib/modules/registry.ts` — that registry is the single

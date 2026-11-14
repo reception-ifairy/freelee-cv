@@ -5,6 +5,9 @@ specialist AI personas, and an owner's admin console (`/admin`) built into the s
 no external control plane. This page is the front door of the documentation; use the sidebar to move
 between sections.
 
+> **What changed, in plain words: [`RELEASES.md`](RELEASES.md)** — one release per day of work since
+> 2026-11-11, with what was changed outside git.
+>
 > **Every update is recorded in [`CHANGELOG.md`](CHANGELOG.md)** — one entry per commit, newest
 > first, with the reason for the change, the doc that covers it and the migration it applied. If you
 > want to know what happened and when, start there rather than in `git log`.

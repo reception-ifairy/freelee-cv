@@ -34,7 +34,20 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #86 · `pending` — Every connection on one page, and Settings holding only values — one home per key
+### #87 · `pending` — Release notes in plain words, a README that says what freelee is now, and GitHub Releases
+
+The owner asked for every change to be readable, here and on GitHub. The CHANGELOG records each
+commit's reasoning but reads as a ledger, the README still described the August product, and GitHub
+showed no releases. `docs/RELEASES.md` now tells each day of work since 2026-11-11 in plain words —
+what is different, the updates it is made of, the docs, and what was changed outside git (migrations
+applied, characters deleted, the /homeschooling copy, with backups noted). The same text is
+published as GitHub Releases `v2026.11.11`–`v2026.11.14`, each tagged on the day's last commit. The
+README opens with the two offers and the homeschooling and admin capabilities, links the release
+notes, and points keys at *System → Connections*. Docs only.
+
+📄 docs/RELEASES.md · README.md · docs/00-overview.md
+
+### #86 · `ff905e5` — Every connection on one page, and Settings holding only values — one home per key
 
 Step 11, the last of the admin redesign. The 13 connection cards were spread over four settings
 sections (Providers & keys held nine and a 23-key form; Billing, Email and Media storage a card each),
