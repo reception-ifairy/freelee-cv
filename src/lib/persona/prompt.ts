@@ -305,6 +305,9 @@ export function buildSystemPrompt(
   const segments = (persona.audienceSegments ?? [])
     .filter(isAudienceSegmentCode)
     .map((code) => AUDIENCE_SEGMENTS[code])
+    // Only segments of the persona's own kind (owner decision 2026-11-14). Segments were copied from
+    // the category, so 28 consumer personas described schools, universities or firms to the model.
+    .filter((segment) => !audience || segment.audienceType === audience)
     .slice(0, 4);
 
   if (audience && audience in AUDIENCE_TYPES) {

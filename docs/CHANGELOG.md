@@ -34,7 +34,23 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #76 · `pending` — Admin fixes before the redesign: the category filter, breadcrumbs, live counts, Drafts, the workbench
+### #77 · `pending` — Honest data: a prompt names only its own kind of people, the homeschooling page says tutors are coming, Education serves families
+
+Three decisions the owner made on 2026-11-14, from the admin analysis. A persona's prompt now
+describes only audience segments of its own kind (`buildSystemPrompt`): segments had been copied
+from the category, so 31 live personas described the wrong people — 28 consumer personas named
+schools, universities or firms. The stored segments are unchanged, so the change is one line to
+undo. The public /homeschooling page promised "a tutor for every subject" with no active tutor; its
+tutor-dependent lines now say tutors are in preparation and open subject by subject, the plan and
+exam goals can be set up now, and the FAQ answers "When can my child start lessons?" — one source in
+`scripts/offering-copy.ts`, applied to the existing page by `scripts/update-homeschooling-copy.ts`
+(a backup of the old blocks was taken first). Education & Training gains the 12 learner and family
+audience segments and risk R2 (`drizzle/0043_education_home_audiences.sql`, data only; brief and
+workbench only). New check `npm run personas:verify-prompt-audience` (4).
+
+📄 docs/49-taxonomy-workbench.md · handbook/content.md
+
+### #76 · `84806ec` — Admin fixes before the redesign: the category filter, breadcrumbs, live counts, Drafts, the workbench
 
 The first step of the admin redesign the owner approved on 2026-11-14 (pillars by audience, a
 taxonomy browser, a sidebar by job): fix what is broken before rebuilding. The personas list's

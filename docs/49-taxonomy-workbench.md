@@ -168,3 +168,12 @@ slug, so on an empty database it inserted **nothing** — the categories did not
 - **The overview counts live personas apart:** "16/32 personas live" instead of "32 personas", which counted switched-off ones too.
 - **"Prototypes" is now "Drafts"** (`/admin/taxonomy/drafts`; the old address redirects). It lists every persona that is not live.
 
+## Honest data (2026-11-14, freelee #77; owner decisions)
+
+- **A persona's prompt describes only people of its own kind.** `buildSystemPrompt` (`src/lib/persona/prompt.ts`) keeps the segments whose `audienceType` matches the persona's. Segments had been copied from the category, so **31 live personas** described the wrong people: 28 consumer personas named schools, universities or firms, and 3 business or public-sector ones named the other kind. The stored segments are unchanged, so the change is reversible in one line. `npm run personas:verify-prompt-audience` checks it.
+- **Education & Training serves children and families too** (`drizzle/0043_education_home_audiences.sql`, data only):
+  - it gains the 12 learner and family segments: Home Educated, the parents, carers, Early Years to Post-16, and SEND;
+  - its risk goes from **R0 to R2**.
+
+  Both feed the brief and the workbench only; no live persona changes.
+

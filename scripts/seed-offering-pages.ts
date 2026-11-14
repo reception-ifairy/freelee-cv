@@ -14,12 +14,16 @@
  * added twice.
  *
  * Every claim below is a feature that exists on freelee today (2026-11-13);
- * the lesson cost range is the measured one from docs/53.
+ * the lesson cost range is the measured one from docs/53. The homeschooling
+ * lines that depend on tutors being live are in ./offering-copy.ts (softened
+ * on 2026-11-14 while no tutor is active; scripts/update-homeschooling-copy.ts
+ * applies them to the existing page).
  */
 import { config } from 'dotenv';
 import postgres from 'postgres';
 import { validateBlockConfig } from '../src/lib/blocks/validate';
 import { DEFAULT_BLOCK_LAYOUT } from '../src/lib/blocks/layout';
+import { HOMESCHOOLING_COPY } from './offering-copy';
 
 config({ path: '.env.local', quiet: true });
 config({ quiet: true });
@@ -32,20 +36,14 @@ const HOMESCHOOLING: PageSeed = {
   title: 'Homeschooling with AI tutors',
   metaTitle: 'Homeschooling with AI tutors — one plan for your child, built on the UK curriculum',
   metaDescription:
-    'AI tutors for Year 1 to Year 11 that teach from the UK national curriculum. One learning plan per child, shared by every tutor, with parents in charge and children’s data encrypted.',
+    HOMESCHOOLING_COPY.metaDescription,
   menuLabel: 'Homeschooling',
   blocks: [
     {
       type: 'custom_content',
       config: {
-        heading: 'A tutor for every subject — and one plan that follows your child',
-        body: [
-          'Freelee tutors teach from the **national curriculum for England**, from Year 1 to Year 11. Each tutor has its own character, but they all work from the same thing: **your child’s learning plan** — the topics for their school year, in order, with the official learning objectives.',
-          '',
-          '- **One plan, every tutor.** Switching from the maths tutor to the science tutor never means starting again.',
-          '- **Talks at their age.** A six-year-old gets short sentences and simple choices; a fifteen-year-old gets exam technique.',
-          '- **You stay in charge.** The account is yours. You read every lesson, see progress and can delete everything at any time.',
-        ].join('\n'),
+        heading: HOMESCHOOLING_COPY.heading,
+        body: HOMESCHOOLING_COPY.body,
         ctaLabel: 'Create a parent account',
         ctaHref: '/register',
       },
@@ -82,6 +80,7 @@ const HOMESCHOOLING: PageSeed = {
       config: {
         title: 'Questions parents ask',
         items: [
+          HOMESCHOOLING_COPY.whenFaq,
           { question: 'Which curriculum do the tutors follow?', answer: 'The national curriculum for England: the official learning objectives for each year, organised into topics in order, and GCSE subject content from Year 9. Topic lists are reviewed by our team; the official objectives are always the authority.' },
           { question: 'Which years are covered?', answer: 'Year 1 to Year 11. Years 1–6 and 9–11 have full topic lists. Years 7 and 8 currently follow the official Key Stage 3 objectives directly; their topic lists are coming.' },
           { question: 'What do you store about my child?', answer: 'Only what you choose: a nickname, school year, subjects and, if you like, interests and practical adaptations. It is encrypted with your child’s own key. Lessons are deleted 90 days after the last message, and profiles nobody uses for 12 months are deleted too — we email you first.' },
@@ -95,7 +94,7 @@ const HOMESCHOOLING: PageSeed = {
       type: 'cta',
       config: {
         title: 'Start learning at home today',
-        subtitle: 'Create a parent account — {credits} credits on us to try the tutors. No subscription.',
+        subtitle: HOMESCHOOLING_COPY.ctaSubtitle,
         buttonLabel: 'Create a parent account',
       },
     },
