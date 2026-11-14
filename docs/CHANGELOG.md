@@ -34,7 +34,27 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #74 · `pending` — One subject list with the curriculum: overlapping subjects, years, tutors matched through it
+### #75 · `pending` — Exam goals in a child's profile: the plan works back from them, the tutor practises the format
+
+The owner's decision (2026-11-14): the parent picks a target exam and the plan works back from it.
+Curriculum serves the exams layer since its PRs #37–#39 (deployed). Fetch now also saves the exams
+(`curriculum_exams_cache`: identity, years, series, tiers or levels, home-education access and
+barriers, practice papers). The child form gains up to three exam goals — an exam from the list for
+the child's year and its month, with the tier or grade where the exam has one, and what stands in
+the way at home (a centre-marked part, a speaking test, required practicals). The month stays in
+the sealed profile: the plan pack receives the exam and the school year it falls in (school years
+turn in September), never the date; a goal after Year 11 is a note; a goal the curriculum refuses
+builds the plan without the goals and says so. The plan keeps the curriculum's targets (format,
+barriers, milestones, coverage); the parent's page shows months to go and topics until then, and in
+September–October asks to check the year. The lesson prompt gets at most two "Exam goal" lines and
+the rule: calm, untimed practice, never a predicted score, never pressure, never assessed work. New
+tool `exam_practice` (child lessons with a KS2 tests goal): one published question at a time, never
+one asked before (`practiceSeen` in the plan), within the one-look-up-per-turn budget; the lesson
+page shows the OGL attribution. No migration. Checks: `npm run children:verify-exam-targets` (12).
+
+📄 docs/56-exam-goals.md · docs/54-children-data.md · handbook/child-profiles.md
+
+### #74 · `1bd416f` — One subject list with the curriculum: overlapping subjects, years, tutors matched through it
 
 The owner's direction (2026-11-14): freelee, the curriculum and the Academy use one list of subjects,
 and biology, chemistry and physics count as subjects of their own while staying part of science.

@@ -9,7 +9,8 @@ import { chats, childProfiles, consents, users } from '@/db/schema';
 import { requireUser, signOut } from '@/lib/auth';
 import { childFeaturesAvailable } from '@/lib/crypto/envelope';
 import { childProfileSchemaFor, createChild, deleteChild, profileFromForm, updateChild } from '@/lib/children/store';
-import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { getExamsCache, getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import type { ExamOption } from '@/lib/children/exams';
 import { subjectOptions } from '@/lib/curriculum/subjects';
 import { sendVerificationEmail } from '@/lib/children/verify-email';
 import { childContext, enterChildMode, ensurePlan, leaveChildMode } from '@/lib/children/child-mode';
@@ -35,7 +36,7 @@ export async function saveChildAction(_prev: ActionState, formData: FormData): P
   const { user, error } = await parentOrError();
   if (error) return { error };
   // The curriculum's subject dictionary after a Fetch, the built-in list before (2026-11-14).
-  const parsed = childProfileSchemaFor(subjectOptions(await getSubjectsDictionary())).safeParse(profileFromForm(formData));
+  const parsed = childProfileSchemaFor(subjectOptions(await getSubjectsDictionary()), (await getExamsCache())?.exams as ExamOption[] | undefined).safeParse(profileFromForm(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
   if (formData.get('consent') !== 'on' && !formData.get('id')) {
     return { error: 'Please confirm that you are this child’s parent or guardian and agree to how the profile is used.' };

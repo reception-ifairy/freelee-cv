@@ -11,6 +11,8 @@
  * it needs; adaptations are practical instructions, never a condition.
  */
 
+import type { ExamTarget } from './exams';
+
 export const YEARS = ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11'] as const;
 export type Year = (typeof YEARS)[number];
 
@@ -54,11 +56,13 @@ export type ChildProfile = {
   adaptations: string[];
   /** PSHE topics in the plan — only with the parent's separate consent. */
   includePshe: boolean;
+  /** Target exams (2026-11-14): the exam and the calendar sitting, kept here; the curriculum gets the school year only. */
+  targets?: ExamTarget[];
 };
 
 export type FieldNote = { why: string; where: string; howLong: string };
 
-export const FIELD_NOTES: Record<'pseudonym' | 'year' | 'subjects' | 'goals' | 'pathway' | 'interests' | 'adaptations' | 'includePshe', FieldNote> = {
+export const FIELD_NOTES: Record<'pseudonym' | 'year' | 'subjects' | 'goals' | 'pathway' | 'interests' | 'adaptations' | 'includePshe' | 'targets', FieldNote> = {
   pseudonym: {
     why: 'So tutors can address your child. Please use a nickname, not their real name.',
     where: 'Shown to the AI tutor during lessons only.',
@@ -92,6 +96,11 @@ export const FIELD_NOTES: Record<'pseudonym' | 'year' | 'subjects' | 'goals' | '
   adaptations: {
     why: 'Optional. How lessons should be paced or shaped. Practical instructions only — we never ask for a diagnosis.',
     where: 'Given to the AI tutor as instructions.',
+    howLong: 'Until you change them or delete the profile.',
+  },
+  targets: {
+    why: 'Optional. Up to three exams your child is working towards (e.g. GCSE maths in June 2028, a music grade), so the plan can pace the years before and the tutor can practise the format.',
+    where: 'The month stays here. The curriculum service receives only the exam and the school year it falls in, never the date.',
     howLong: 'Until you change them or delete the profile.',
   },
   includePshe: {

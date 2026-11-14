@@ -6,6 +6,7 @@ import { childProfiles, consents, type ChildProfileRow } from '@/db/schema';
 import { newWrappedKey, openJson, sealJson, unwrapKey, type ChildKey } from '@/lib/crypto/envelope';
 import { ADAPTATIONS, CONSENT_TEXT_VERSION, YEARS, isGcseYear, type ChildProfile } from './profile';
 import { FALLBACK_SUBJECTS, offeredIn, type SubjectOption } from '@/lib/curriculum/subjects';
+import { FORM_TARGETS, MAX_TARGETS, isSitting, monthsUntil, type ExamOption } from './exams';
 
 /**
  * The only code that reads or writes child profiles (docs/54-children-data.md).
@@ -25,7 +26,8 @@ const shortText = (max: number) =>
  * subject must be one a parent can choose and offered in the child's year —
  * checked here, not only in the form.
  */
-export function childProfileSchemaFor(options: SubjectOption[]) {
+export function childProfileSchemaFor(options: SubjectOption[], exams: ExamOption[] = []) {
+  const examById = new Map(exams.map((e) => [e.id, e]));
   const selectable = new Map(options.filter((o) => o.childSelectable !== false && !o.sensitive).map((o) => [o.id, o]));
   return z
     .object({
@@ -46,6 +48,15 @@ export function childProfileSchemaFor(options: SubjectOption[]) {
       interests: z.array(shortText(24).pipe(z.string().min(1))).max(5),
       adaptations: z.array(z.enum(adaptationIds as [string, ...string[]])).max(adaptationIds.length),
       includePshe: z.boolean(),
+      targets: z
+        .array(z.object({
+          exam: z.string().max(80).refine((id) => examById.size === 0 || examById.has(id), 'Choose exams from the list.'),
+          sitting: z.string().refine(isSitting, 'Give the month of the exam.').refine((s) => monthsUntil(s) >= -12 && monthsUntil(s) <= 72, 'Give an exam month from a year ago to six years ahead.'),
+          tier: z.string().max(40).optional(),
+          level: z.string().max(40).optional(),
+        }))
+        .max(MAX_TARGETS)
+        .optional(),
     })
     .superRefine((p, ctx) => {
       const outside = p.subjects.filter((id) => selectable.has(id) && !offeredIn(selectable.get(id)!, p.year));
@@ -58,6 +69,15 @@ export function childProfileSchemaFor(options: SubjectOption[]) {
       pathway: isGcseYear(p.year) ? p.pathway : undefined,
       subjects: Array.from(new Set(p.subjects)),
       interests: Array.from(new Set(p.interests)),
+      // Tiers and levels only where the exam has them; one entry per exam and level.
+      targets: p.targets?.length
+        ? Array.from(new Map(p.targets.map((t) => {
+            const exam = examById.get(t.exam);
+            const tier = t.tier && (!exam || exam.tiers?.includes(t.tier)) ? t.tier : undefined;
+            const level = t.level && (!exam || exam.levels?.some((l) => l.id === t.level)) ? t.level : undefined;
+            return [`${t.exam}|${level ?? ''}`, { exam: t.exam, sitting: t.sitting, ...(tier ? { tier } : {}), ...(level ? { level } : {}) }] as const;
+          })).values())
+        : undefined,
     }));
 }
 
@@ -80,6 +100,10 @@ export function profileFromForm(form: FormData): unknown {
     interests: String(form.get('interests') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     adaptations: all('adaptations'),
     includePshe: form.get('includePshe') === 'on',
+    // Target exams: rows target0…, an exam and its month; empty rows are left out.
+    targets: Array.from({ length: FORM_TARGETS }, (_, i) => ({ exam: pick(`targetExam${i}`), sitting: pick(`targetSitting${i}`), tier: pick(`targetTier${i}`), level: pick(`targetLevel${i}`) }))
+      .filter((t) => t.exam && t.sitting)
+      .map((t) => Object.fromEntries(Object.entries(t).filter(([, v]) => v))),
   };
 }
 

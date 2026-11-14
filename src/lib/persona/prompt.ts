@@ -190,12 +190,15 @@ function curriculumSection(curriculum: { scope: CurriculumScope; tools: string[]
   if (curriculum.plan) {
     // A lesson with a child's plan (docs/54): the plan is the source; a look-up is the exception.
     const stages = scope.keyStages.map(describeKeyStage).join(' and ');
+    // exam_practice is not a look-up: it serves the learner's exam goal (2026-11-14).
+    const lookups = tools.filter((key) => key !== 'exam_practice');
     return [
       '## Teaching from the curriculum',
       "The learner's plan below comes from the UK curriculum — teach from it. It is your source for what to teach and in what order.",
-      tools.length
-        ? `- Use ${tools.map((key) => `\`${key}\``).join(' or ')} only when the learner asks about something the plan does not cover — at most once per reply, never to re-check what the plan already says.`
+      lookups.length
+        ? `- Use ${lookups.map((key) => `\`${key}\``).join(' or ')} only when the learner asks about something the plan does not cover — at most once per reply, never to re-check what the plan already says.`
         : '- The curriculum cannot be checked right now; teach only from the plan.',
+      ...(tools.includes('exam_practice') ? ['- `exam_practice` gives one real past test question for the exam goal: use it when you practise the exam format, one question at a time — it counts as that reply\'s one look-up.'] : []),
       `- Stay at the learner's key stage (${stages}) and within your subjects: ${scope.subjects.join(', ')}.`,
       '- Never present something as a curriculum fact unless it is in the plan or in what you looked up.',
       '- Your own instructions above define your voice and how you teach; the plan defines what you teach.',

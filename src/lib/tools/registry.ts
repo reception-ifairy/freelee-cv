@@ -438,7 +438,7 @@ function formatHits(hits: SearchHit[]) {
  * same turn are answered without asking the curriculum, telling the tutor to
  * teach from the plan; each wasted round trip re-sends the whole prompt.
  */
-export async function curriculumTools(scope: CurriculumScope, options: { maxCalls?: number } = {}): Promise<ToolDefinition[]> {
+export async function curriculumTools(scope: CurriculumScope, options: { maxCalls?: number; extra?: ToolDefinition[] } = {}): Promise<ToolDefinition[]> {
   const config = await curriculumConfig();
   if (!config) return [];
 
@@ -638,7 +638,8 @@ export async function curriculumTools(scope: CurriculumScope, options: { maxCall
 
   // Listing objectives is the "objective" kind of material; a key that may not
   // see it would be refused on every call.
-  const tools = offeredTypes.includes('objective') ? [search, objectives] : [search];
+  // Extra lesson tools (exam practice, 2026-11-14) share the same per-turn budget.
+  const tools = [...(offeredTypes.includes('objective') ? [search, objectives] : [search]), ...(options.extra ?? [])];
   if (options.maxCalls === undefined) return tools;
   let calls = 0;
   const limit = options.maxCalls;
@@ -652,6 +653,55 @@ export async function curriculumTools(scope: CurriculumScope, options: { maxCall
       return (t.execute as (input: never) => Promise<unknown>)(input);
     }) as ToolDefinition['execute'],
   }));
+}
+
+/**
+ * `exam_practice` (child lessons, 2026-11-14): one published national test
+ * question at a time for the child's target exam, from the curriculum's
+ * GET /v1/exams/:id/practice (KS2 grammar paper 1 and arithmetic; never the
+ * extracted mark scheme). A question already asked is skipped: `onServed`
+ * records it in the child's plan. The OGL attribution is shown by the lesson
+ * page, not spoken by the tutor.
+ */
+export async function examPracticeTool(
+  targets: { exam: string; title: string; papers: { id: string; label: string }[] }[],
+  seen: ReadonlySet<string>,
+  onServed: (questionId: string) => void,
+): Promise<ToolDefinition | null> {
+  const config = await curriculumConfig();
+  if (!config || targets.length === 0) return null;
+  const meta = CURRICULUM_TOOL_CATALOG.find((item) => item.key === 'exam_practice')!;
+  const papers = Array.from(new Map(targets.flatMap((t) => t.papers).map((p) => [p.id, p])).values());
+  const shape: Record<string, z.ZodTypeAny> = {};
+  if (targets.length > 1) shape.exam = z.enum(targets.map((t) => t.exam) as [string, ...string[]]).optional().describe(`Which exam: ${targets.map((t) => `${t.exam} (${t.title})`).join(', ')}.`);
+  if (papers.length > 1) shape.paper = z.enum(papers.map((p) => p.id) as [string, ...string[]]).optional().describe(papers.map((p) => `${p.id}: ${p.label}`).join('. ') + '.');
+  return {
+    ...meta,
+    description: `Get one real past test question for the learner's exam goal (${targets.map((t) => t.title).join('; ')}), never one they had before. ` +
+      'Use it when the learner is ready to practise the exam format. Ask the question as written, one at a time; never give the answer first.',
+    inputSchema: z.object(shape),
+    execute: (async (input: { exam?: string; paper?: string }) => {
+      const target = targets.find((t) => t.exam === input.exam) ?? targets[0];
+      const paper = input.paper && target.papers.some((p) => p.id === input.paper) ? input.paper : undefined;
+      // Questions come in a fixed order, ten a page: start where the unseen ones should be.
+      const start = Math.floor(seen.size / 10) + 1;
+      for (const page of [start, start + 1, 1, 2, 3]) {
+        const result = await curriculumRequest<{ questions?: { questionId: string; text: string; paper: string; year: number }[]; papers?: { paper: string; year: number; label: string; markScheme?: { url?: string | null } | null }[] }>(
+          config, { method: 'GET', path: `/v1/exams/${encodeURIComponent(target.exam)}/practice?page=${page}${paper ? `&paper=${paper}` : ''}` }, { timeoutMs: 10_000 });
+        if (!result.ok) return { error: 'Practice questions are not available right now. Practise from the learning plan instead.' };
+        const q = (result.data?.questions ?? []).find((x) => !seen.has(x.questionId));
+        if (!q) continue;
+        onServed(q.questionId);
+        const info = (result.data?.papers ?? []).find((p) => p.paper === q.paper && p.year === q.year);
+        return {
+          question: q.text,
+          from: `${info?.label ?? q.paper}, ${q.year}`,
+          howToUse: 'Ask the learner this question as written. Let them answer first, then check it yourself and explain kindly. If you are not sure of the answer, say the grown-up can check the official mark scheme.',
+        };
+      }
+      return { error: 'The learner has had every practice question for now. Practise from the learning plan instead.' };
+    }) as ToolDefinition['execute'],
+  };
 }
 
 export { isToolKey, suggestedToolsFor, TOOL_CATALOG } from './catalog';

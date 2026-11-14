@@ -110,6 +110,13 @@ export const CURRICULUM_TOOL_CATALOG: ToolMeta[] = [
     suggestFor: [],
     needsKey: true,
   },
+  {
+    key: 'exam_practice',
+    label: 'Exam practice',
+    summary: 'In a child’s lesson, one published test question at a time for their target exam (KS2 grammar and arithmetic), never one they had before.',
+    suggestFor: [],
+    needsKey: true,
+  },
 ];
 
 export const TOOL_KEYS = TOOL_CATALOG.map((t) => t.key);
