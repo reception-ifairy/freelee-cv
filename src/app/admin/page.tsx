@@ -12,6 +12,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCredits, formatMoney, relativeTime } from '@/lib/utils';
+import { attentionFacts } from '@/lib/admin/attention-queries';
+import { attentionItems } from '@/lib/admin/attention';
+import { marketSummaries } from '@/lib/taxonomy/pillar-queries';
+import { AttentionPanel, MarketsCard } from '@/components/admin/attention-panel';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -39,7 +43,7 @@ export default async function AdminDashboardPage() {
 
   const [
     [userStats], [personaStats], [messageStats], [revenueStats],
-    perDay, topPersonas, recentOrders, activity, [previousStats],
+    perDay, topPersonas, recentOrders, activity, [previousStats], markets,
   ] = await Promise.all([
     db
       .select({
@@ -107,7 +111,9 @@ export default async function AdminDashboardPage() {
         credits: sql<number>`coalesce(sum(${messages.creditsCost}) filter (where ${messages.createdAt} >= ${previousSince.toISOString()} and ${messages.createdAt} < ${since.toISOString()}), 0)::int`,
       })
       .from(messages),
+    marketSummaries(),
   ]);
+  const attention = attentionItems(await attentionFacts({ markets }));
 
   const peak = Math.max(1, ...perDay.map((point) => point.total));
   const topPersonaPeak = Math.max(1, ...topPersonas.map((p) => p.messagesCount ?? 0));
@@ -117,7 +123,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="Platform activity over the last 30 days." />
+      <PageHeader title="Dashboard" description="What needs your attention, where the markets stand, and platform activity over the last 30 days." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
@@ -146,14 +152,12 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {(revenueStats?.pending ?? 0) > 0 ? (
-        <div className="mt-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-          {revenueStats?.pending} order(s) awaiting payment confirmation.
-          <Link href="/admin/sales" className="ml-auto font-semibold underline">
-            Review
-          </Link>
-        </div>
-      ) : null}
+      {/* What needs doing first, then where the markets stand. The old
+          pending-orders banner is the first item of the list now. */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <AttentionPanel items={attention} className="lg:col-span-2" />
+        <MarketsCard markets={markets} />
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card padding="md" className="lg:col-span-2">

@@ -11,6 +11,7 @@ import { AdminDrawer } from '@/components/admin/admin-drawer';
 import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb';
 import { ADMIN_OVERLAY_ROOT_ID } from '@/components/ui/overlay-root';
 import { BreadcrumbProvider } from '@/components/admin/breadcrumb-name';
+import { AttentionBadge } from '@/components/admin/attention-badge';
 import { NAV_GROUPS_COOKIE, parseOpenGroups } from '@/lib/admin/nav';
 
 /**
@@ -83,6 +84,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminDrawer initialOpen={openGroups} />
           <AdminBreadcrumb />
           <div className="ml-auto flex items-center gap-2">
+            <AttentionBadge />
             <span className="hidden text-sm font-medium text-slate-400 sm:block">{user.name}</span>
           </div>
         </header>

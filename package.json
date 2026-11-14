@@ -26,7 +26,7 @@
     "i18n:export": "tsx scripts/export-translations.ts",
     "i18n:import": "tsx scripts/import-translations.ts",
     "media:verify": "tsx scripts/verify-sigv4.ts && tsx scripts/verify-s3-store.ts",
-    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts && tsx scripts/verify-document-extract.ts && tsx scripts/verify-changelog.ts && tsx scripts/verify-persona-mark.ts && tsx scripts/verify-library-chunking.ts && tsx scripts/verify-taxonomy-brief.ts && tsx scripts/verify-crew-runner.ts && tsx scripts/verify-envelope.ts && tsx scripts/verify-turn-check.ts && tsx scripts/verify-curriculum-subjects.ts && tsx scripts/verify-exam-targets.ts && tsx scripts/verify-admin-nav.ts && tsx scripts/verify-prompt-audience.ts && tsx scripts/verify-dialog-stack.ts && tsx scripts/verify-list-query.ts && tsx scripts/verify-taxonomy-browser.ts && tsx scripts/verify-pillars.ts && tsx scripts/verify-tutor-coverage.ts",
+    "blocks:verify": "tsx scripts/verify-embed-url.ts && tsx scripts/verify-block-nesting.ts && tsx scripts/verify-menu-tree.ts && tsx scripts/verify-rate-limit.ts && tsx scripts/verify-palette.ts && tsx scripts/verify-document-extract.ts && tsx scripts/verify-changelog.ts && tsx scripts/verify-persona-mark.ts && tsx scripts/verify-library-chunking.ts && tsx scripts/verify-taxonomy-brief.ts && tsx scripts/verify-crew-runner.ts && tsx scripts/verify-envelope.ts && tsx scripts/verify-turn-check.ts && tsx scripts/verify-curriculum-subjects.ts && tsx scripts/verify-exam-targets.ts && tsx scripts/verify-admin-nav.ts && tsx scripts/verify-prompt-audience.ts && tsx scripts/verify-dialog-stack.ts && tsx scripts/verify-list-query.ts && tsx scripts/verify-taxonomy-browser.ts && tsx scripts/verify-pillars.ts && tsx scripts/verify-tutor-coverage.ts && tsx scripts/verify-attention.ts",
     "changelog:verify": "tsx scripts/verify-changelog.ts",
     "tutors:baseline": "tsx scripts/bench/baseline-tutor.ts",
     "tutors:bench": "tsx scripts/tutor-bench.ts",
@@ -41,7 +41,8 @@
     "admin:verify-list-query": "tsx scripts/verify-list-query.ts",
     "taxonomy:verify-browser": "tsx scripts/verify-taxonomy-browser.ts",
     "taxonomy:verify-pillars": "tsx scripts/verify-pillars.ts",
-    "children:verify-tutor-coverage": "tsx scripts/verify-tutor-coverage.ts"
+    "children:verify-tutor-coverage": "tsx scripts/verify-tutor-coverage.ts",
+    "admin:verify-attention": "tsx scripts/verify-attention.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",
