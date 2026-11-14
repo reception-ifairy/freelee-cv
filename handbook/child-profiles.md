@@ -24,6 +24,7 @@ Account menu → **Children** → **Add your child**. Every field shows three th
 | School year | Required. |
 | Subjects | Required: at least one. The list comes from the curriculum. Some subjects are part of another (Biology, Chemistry and Physics are part of Science): choose either or both — each topic is planned once. |
 | GCSE details | From Year 9. "Not sure" is fine. |
+| Exam goals | Optional, up to three: an exam from the list (school tests as practice, GCSE, International GCSE, Functional Skills, music, drama, dance, Cambridge English) and its month. The plan shows the months to go and the topics until then; the tutor practises the format. The month stays with you: the curriculum only learns which school year the exam falls in. |
 | Focus | Optional. |
 | Interests | Optional. |
 | Adaptations | Optional. Practical things like "one instruction at a time"; we never ask for a diagnosis. |

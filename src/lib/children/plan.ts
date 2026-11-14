@@ -7,6 +7,8 @@ import { openJson, sealJson, type ChildKey } from '@/lib/crypto/envelope';
 import { ADAPTATIONS, yearLabel, type ChildProfile } from './profile';
 import { sameFamily, subjectLabel as labelOf, subjectOptions, type SubjectsDictionary } from '@/lib/curriculum/subjects';
 import type { YearChecks } from './turn-check';
+import { getExamsCache } from '@/lib/curriculum/subjects-cache';
+import { monthsUntil, sittingLabel, targetRequest, type ExamOption } from './exams';
 
 /**
  * One learning plan per child, shared by every tutor (owner decision
@@ -92,6 +94,25 @@ export type YearProfile = {
   progression: { phase: string; subjectEmphasis: string; supportEmphasis: string; observableExample: string }[];
 };
 
+/**
+ * A target exam as the plan carries it (curriculum plan pack `targets`,
+ * 2026-11-14), with the calendar sitting from the profile. The curriculum
+ * computed everything but the date.
+ */
+export type PlanTarget = {
+  exam: string; title: string; family: string; kind: string; board?: string; code?: string;
+  atYear?: string; series?: string; tier?: string; route?: string; level?: string;
+  status: 'ahead' | 'this-year' | 'past'; schoolYearsLeft?: number; subjectInPlan: boolean; verified: boolean;
+  format: { grading?: string; components: { name: string; kind: string; minutes?: number; weight?: number }[]; neaShare?: number };
+  homeEducation: { access: string; barriers: string[] };
+  milestones: { id: string; monthsBefore: number }[];
+  coverage?: { basis: string; years: { year: string; units: number; estSessions: number; fromObjectives: boolean }[]; units: number; estSessions: number };
+  practice?: { pastPapersUrl: string };
+  notes: string[];
+  /** From the profile, never sent to the curriculum. */
+  sitting: string;
+};
+
 export type Plan = {
   curriculumVersion: string;
   builtAt: string;
@@ -107,10 +128,15 @@ export type Plan = {
   /** Since 2026-11-14: the domains and interfaces the plan uses; absent in older plans. */
   domains?: Record<string, { label: string; subject: string; interface: string }>;
   interfaces?: Record<string, PlanInterface>;
+  /** Since 2026-11-14: the child's target exams. */
+  targets?: PlanTarget[];
+  /** Practice questions already asked (curriculum ids), so the next one is new. */
+  practiceSeen?: string[];
   progress: Record<string, Progress>;
 };
 
-type Pack = Omit<Plan, 'builtAt' | 'subjects' | 'progress' | 'studyStrategy'> & {
+type Pack = Omit<Plan, 'builtAt' | 'subjects' | 'progress' | 'studyStrategy' | 'targets' | 'practiceSeen'> & {
+  targets?: Omit<PlanTarget, 'sitting'>[];
   subjects: { subject: string; fromObjectives: boolean; startAt: string | null; units: PlanUnit[]; categories?: PlanCategory[]; partOf?: string[]; source?: string; defaultDomain?: string | null }[];
   gcse?: { studyStrategy?: string[] };
 };
@@ -120,7 +146,15 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
   const config = await curriculumConfig();
   if (!config) return { ok: false, error: 'The curriculum connection is not set up.' };
   const pathway = Object.fromEntries(Object.entries(profile.pathway ?? {}).filter(([, v]) => v));
-  const result = await curriculumRequest<Pack>(config, {
+  // Target exams go as the exam and the school year it falls in, never the date (2026-11-14).
+  const exams = ((await getExamsCache())?.exams ?? []) as ExamOption[];
+  const notes: { subject: string; note: string }[] = [];
+  const targets = (profile.targets ?? []).flatMap((t) => {
+    const request = targetRequest(t, exams.find((e) => e.id === t.exam), profile.year);
+    if (!request) notes.push({ subject: 'exams', note: `${exams.find((e) => e.id === t.exam)?.title ?? t.exam} in ${sittingLabel(t.sitting)} falls after Year 11, so it is not planned.` });
+    return request ? [request] : [];
+  });
+  const ask = (withTargets: boolean) => curriculumRequest<Pack>(config, {
     method: 'POST',
     path: '/v1/plan-pack',
     body: {
@@ -128,8 +162,15 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
       subjects: profile.subjects,
       ...(Object.keys(pathway).length ? { pathway } : {}),
       ...(profile.includePshe ? { includeSensitive: true } : {}),
+      ...(withTargets && targets.length ? { targets } : {}),
     },
   }, { timeoutMs: 15_000 });
+  let result = await ask(true);
+  // An exam the curriculum no longer knows must not stop the plan: build it without the targets and say so.
+  if (!result.ok && result.status === 400 && targets.length) {
+    notes.push({ subject: 'exams', note: `The exam goals could not be planned (${result.error || 'refused'}); the plan was built without them. Check them in the profile.` });
+    result = await ask(false);
+  }
   if (!result.ok) return { ok: false, error: result.status === 404 ? 'The curriculum service does not offer plans yet.' : `The curriculum service answered: ${result.error || result.status}` };
 
   const pack = result.data;
@@ -145,11 +186,19 @@ export async function buildPlan(profile: ChildProfile, previous?: Plan | null): 
       subject: s.subject, fromObjectives: s.fromObjectives, current: s.startAt, units: s.units, categories: s.categories ?? [],
       ...(s.partOf ? { partOf: s.partOf, source: s.source } : {}), ...(s.defaultDomain !== undefined ? { defaultDomain: s.defaultDomain } : {}),
     })),
-    gaps: pack.gaps,
+    gaps: [...pack.gaps, ...notes],
     reviewIntervalsDays: pack.reviewIntervalsDays?.length ? pack.reviewIntervalsDays : [1, 3, 7, 21],
     studyStrategy: pack.gcse?.studyStrategy,
     ...(pack.domains ? { domains: pack.domains } : {}),
     ...(pack.interfaces ? { interfaces: pack.interfaces } : {}),
+    ...(pack.targets?.length ? {
+      targets: pack.targets.map((t) => ({
+        ...t,
+        sitting: profile.targets?.find((p) => p.exam === t.exam && (p.level ?? undefined) === (t.level ?? undefined))?.sitting
+          ?? profile.targets?.find((p) => p.exam === t.exam)?.sitting ?? '',
+      })),
+    } : {}),
+    ...(previous?.practiceSeen?.length ? { practiceSeen: previous.practiceSeen } : {}),
     // Progress is kept per objective code / unit id, so a refreshed programme keeps it.
     progress: previous?.progress ?? {},
   };
@@ -297,6 +346,18 @@ export function learnerSection(profile: ChildProfile, plan: Plan | null, tutorSu
     .map(([code]) => code);
   if (due.length) lines.push('', `Due for a quick review today: ${due.join(', ')} — start with one short recall question.`);
   if (plan.studyStrategy?.length) lines.push('', `Study habits for this year: ${plan.studyStrategy.join('; ')}.`);
+  // Target exams (2026-11-14): at most two lines on the format to practise — never a score, never pressure.
+  const goals = (plan.targets ?? []).filter((t) => t.status !== 'past').slice(0, 2);
+  for (const t of goals) {
+    const months = t.sitting ? monthsUntil(t.sitting, now) : -1;
+    const when = months > 0 ? ` in about ${months} month${months === 1 ? '' : 's'}` : months === 0 ? ' this month' : '';
+    const papers = t.format.components.slice(0, 4).map((c) => `${c.name}${c.minutes ? ` (${c.minutes} min)` : ''}`).join('; ');
+    const home = t.homeEducation.access === 'practice-only' ? ' — practice at home, not sat' : '';
+    lines.push(`Exam goal: ${t.title}${t.tier ? `, ${t.tier} tier` : ''}${t.level ? `, ${t.level.replace(/-/g, ' ')}` : ''}${when}${home}.${papers ? ` Format: ${papers}.` : ''}`);
+  }
+  if (goals.length) {
+    lines.push('When you practise for it: questions of that kind, calm and untimed unless the grown-up asks. Never predict a score or grade, never talk about pressure or failing, and never write coursework or any assessed work for them.');
+  }
   lines.push(
     '',
     '## Recording progress',

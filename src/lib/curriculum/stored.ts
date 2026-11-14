@@ -95,3 +95,47 @@ export function readSubjectsCache(value: unknown): SubjectsDictionary | null {
   const parsed = subjectsCacheSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
+
+/* -------------------------- the exams layer (2026-11-14) -------------------------- */
+
+/**
+ * The compact copy of `GET /v1/exams` kept as `curriculum_exams_cache`: what a
+ * parent can choose as a child's target exam — the exam's identity, years,
+ * series, tiers or levels, home-education access and barriers. The format and
+ * coverage come back in each plan pack.
+ */
+const examOptionSchema = z.object({
+  id: z.string().min(1).max(80),
+  title: z.string().min(1).max(160),
+  family: z.enum(['school-check', 'entrance', 'qualification', 'graded']),
+  kind: z.string().max(20),
+  board: z.string().max(40).optional(),
+  code: z.string().max(20).optional(),
+  years: z.object({ typical: z.string().max(10), from: z.string().max(10).optional() }).optional(),
+  series: z.array(z.string().max(20)).catch([]),
+  tiers: z.array(z.string().max(40)).optional(),
+  levels: z.array(z.object({ id: z.string().max(40), label: z.string().max(80) })).optional(),
+  subjects: z.array(z.string().max(80)).catch([]),
+  access: z.string().max(40),
+  barriers: z.array(z.string().max(40)).catch([]),
+  note: z.string().max(400).optional(),
+  verified: z.boolean(),
+  practice: z.array(z.object({ id: z.string().max(40), label: z.string().max(120) })).optional(),
+});
+
+export const examsCacheSchema = z.object({
+  version: z.string(),
+  hash: z.string(),
+  fetchedAt: z.string(),
+  boards: z.record(z.string(), z.string()).catch({}),
+  exams: z.array(examOptionSchema).min(1),
+});
+
+export type ExamsCache = z.infer<typeof examsCacheSchema>;
+
+export const CURRICULUM_EXAMS_CACHE_KEY = 'curriculum_exams_cache';
+
+export function readExamsCache(value: unknown): ExamsCache | null {
+  const parsed = examsCacheSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}

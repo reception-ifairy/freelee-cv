@@ -20,7 +20,7 @@ import {
   type CurriculumResult,
 } from '@/lib/curriculum/client';
 import { isKeyStage } from '@/lib/curriculum/scope';
-import { CURRICULUM_SCOPE_CACHE_KEY, CURRICULUM_SUBJECTS_CACHE_KEY, readScopeCache, readSubjectsCache, type CurriculumScopeCache } from '@/lib/curriculum/stored';
+import { CURRICULUM_EXAMS_CACHE_KEY, CURRICULUM_SCOPE_CACHE_KEY, CURRICULUM_SUBJECTS_CACHE_KEY, readExamsCache, readScopeCache, readSubjectsCache, type CurriculumScopeCache } from '@/lib/curriculum/stored';
 import {
   TEST_STATES,
   type ConnectionField,
@@ -412,6 +412,42 @@ async function fetchSubjectsDictionary(config: NonNullable<Awaited<ReturnType<ty
   return `subject dictionary: ${dict.options.length} subjects`;
 }
 
+type ExamsAnswer = { version?: unknown; hash?: unknown; boards?: unknown; exams?: unknown };
+
+/**
+ * The curriculum's exams, kept as `curriculum_exams_cache` for the child form:
+ * identity, years, series, tiers or levels, home-education access and
+ * barriers, and which exams have practice papers. Returns a line for the
+ * Fetch summary.
+ */
+async function fetchExams(config: NonNullable<Awaited<ReturnType<typeof curriculumConfig>>>): Promise<string> {
+  const result = await curriculumRequest<ExamsAnswer>(config, { method: 'GET', path: '/v1/exams' }, { timeoutMs: 15_000 });
+  if (!result.ok) return result.status === 404 ? 'no exams layer on this curriculum server yet' : 'exams not fetched (the last copy stays)';
+  const data = result.data ?? {};
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined);
+  const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const boards: Record<string, string> = {};
+  for (const [id, b] of Object.entries((data.boards ?? {}) as Record<string, Record<string, unknown>>)) if (str(b?.label)) boards[id] = String(b.label);
+  const exams = asArray(data.exams).filter((e) => str(e.id) && str(e.title)).map((e) => {
+    const he = (e.homeEducation ?? {}) as Record<string, unknown>;
+    const years = (e.years ?? null) as Record<string, unknown> | null;
+    const practice = asArray((e.practice as Record<string, unknown> | undefined)?.papers).filter((p) => str(p.id) && str(p.label)).map((p) => ({ id: String(p.id), label: String(p.label) }));
+    const levels = asArray(e.levels).filter((l) => str(l.id) && str(l.label)).map((l) => ({ id: String(l.id), label: String(l.label) }));
+    return {
+      id: String(e.id), title: String(e.title), family: String(e.family), kind: String(e.kind ?? ''),
+      ...(str(e.board) ? { board: str(e.board) } : {}), ...(str(e.code) ? { code: str(e.code) } : {}),
+      ...(years && str(years.typical) ? { years: { typical: String(years.typical), ...(str(years.from) ? { from: str(years.from) } : {}) } } : {}),
+      series: strs(e.series), ...(strs(e.tiers).length ? { tiers: strs(e.tiers) } : {}), ...(levels.length ? { levels } : {}),
+      subjects: strs(e.subjects), access: str(he.access) ?? 'provider', barriers: strs(he.barriers), ...(str(he.note) ? { note: String(he.note).slice(0, 400) } : {}),
+      verified: e.status === 'verified', ...(practice.length ? { practice } : {}),
+    };
+  });
+  const cache = readExamsCache({ version: str(data.version) ?? 'unknown', hash: str(data.hash) ?? '', fetchedAt: new Date().toISOString(), boards, exams });
+  if (!cache) return 'the exams came back in an unexpected shape (the last copy stays)';
+  await upsertSetting(CURRICULUM_EXAMS_CACHE_KEY, JSON.stringify(cache), 'json', 'connections');
+  return `exams: ${cache.exams.length}`;
+}
+
 /**
  * Fetch = what this key may see, kept as `curriculum_scope_cache` for the
  * persona form. A compact copy (labels and counts), rebuilt on every Fetch:
@@ -451,6 +487,8 @@ async function fetchCurriculumScope(): Promise<FetchResult> {
   await upsertSetting(CURRICULUM_SCOPE_CACHE_KEY, JSON.stringify(cache), 'json', 'connections');
   // The subject dictionary (2026-11-14): what a parent can choose for a child. A curriculum without it is a note, not a failure.
   const dictionaryNote = await fetchSubjectsDictionary(config);
+  // The exams layer (2026-11-14): what a parent can choose as a child's target exam.
+  const examsNote = await fetchExams(config);
 
   const stages = cache.keyStages.filter((row) => isKeyStage(row.keyStage));
   if (stages.length === 0 || cache.subjects.length === 0) {
@@ -469,6 +507,7 @@ async function fetchCurriculumScope(): Promise<FetchResult> {
     cache.limits.perDay ? `${usedToday.toLocaleString('en-GB')} of ${cache.limits.perDay.toLocaleString('en-GB')} requests used today` : null,
     cache.commercialOnly ? 'text of licence-restricted documents withheld (title and link only)' : null,
     dictionaryNote,
+    examsNote,
   ].filter(Boolean);
 
   return {

@@ -11,7 +11,7 @@ import { getModel, resolveProviderId, resolveProviderKeys, resolveTierModel, pro
 import { searchGrounding } from '@/lib/knowledge/grounding';
 import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { narrativePromptFragment } from '@/lib/chat/layouts';
-import { curriculumTools, findTool } from '@/lib/tools/registry';
+import { curriculumTools, examPracticeTool, findTool } from '@/lib/tools/registry';
 import { readCurriculumScope } from '@/lib/curriculum/stored';
 import { buildSystemPrompt } from '@/lib/persona/prompt';
 import {
@@ -23,7 +23,7 @@ import { moderateInput } from '@/lib/moderation/filter';
 import { storeDataUrl } from '@/lib/media/store';
 import { childContext, ensurePlan, type ChildContext } from '@/lib/children/child-mode';
 import { applyProgress, learnerSection, parseProgress, savePlan, type Plan } from '@/lib/children/plan';
-import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { getExamsCache, getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
 import { sealText, openText } from '@/lib/crypto/envelope';
 import { childProfiles } from '@/db/schema';
 
@@ -261,7 +261,20 @@ export async function POST(request: Request) {
   // tells the tutor it cannot check, rather than to call tools it lacks.
   const curriculumScope = readCurriculumScope(version?.curriculumScope);
   // In a lesson the plan is in the prompt, so at most one look-up per turn (docs/53, docs/54).
-  const curriculumToolDefs = curriculumScope ? await curriculumTools(curriculumScope, child ? { maxCalls: 1 } : {}) : [];
+  // Exam practice (2026-11-14): for a child whose plan has a target exam with practice papers.
+  const practiceSeen = new Set(childPlan?.practiceSeen ?? []);
+  const servedPractice: string[] = [];
+  const practiceTargets = child && childPlan?.targets?.length
+    ? await (async () => {
+        const exams = (await getExamsCache())?.exams ?? [];
+        return childPlan!.targets!.filter((t) => t.status !== 'past').flatMap((t) => {
+          const papers = exams.find((e) => e.id === t.exam)?.practice ?? [];
+          return papers.length ? [{ exam: t.exam, title: t.title, papers }] : [];
+        });
+      })()
+    : [];
+  const practiceTool = practiceTargets.length ? await examPracticeTool(practiceTargets, practiceSeen, (id) => { practiceSeen.add(id); servedPractice.push(id); }) : null;
+  const curriculumToolDefs = curriculumScope ? await curriculumTools(curriculumScope, child ? { maxCalls: 1, ...(practiceTool ? { extra: [practiceTool] } : {}) } : {}) : [];
 
   const system =
     persona && version
@@ -406,7 +419,10 @@ export async function POST(request: Request) {
       });
 
       if (child) {
-        if (childPlan && marks.length && applyProgress(childPlan, marks)) await savePlan(child.row, child.key, childPlan);
+        const progressed = Boolean(childPlan && marks.length && applyProgress(childPlan, marks));
+        // Practice questions asked in this reply are remembered, so the next one is new.
+        if (childPlan && servedPractice.length) childPlan.practiceSeen = Array.from(new Set([...(childPlan.practiceSeen ?? []), ...servedPractice])).slice(-500);
+        if (childPlan && (progressed || servedPractice.length)) await savePlan(child.row, child.key, childPlan);
         await db.update(childProfiles).set({ lastActiveAt: new Date() }).where(eq(childProfiles.id, child.row.id));
       }
 

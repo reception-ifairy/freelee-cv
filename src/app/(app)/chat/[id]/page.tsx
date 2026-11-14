@@ -169,6 +169,9 @@ export default async function ChatPage({ params }: { params: Params }) {
               {activeChild ? 'Your grown-up can read our chats. ' : `A lesson for ${lesson.profile.pseudonym} — sealed with their key; only you can read it. `}
               Your tutor is a computer program (AI), not a person.
               {deliveryNotice(lesson.profile.year) ? <span className="mt-1 block font-medium">{deliveryNotice(lesson.profile.year)}</span> : null}
+              {lesson.profile.targets?.some((t) => t.exam.startsWith('sta-')) ? (
+                <span className="mt-1 block text-xs">Practice questions contain material developed by the Standards and Testing Agency for national curriculum assessments and licensed under the <a className="underline" href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.</span>
+              ) : null}
             </p>
           ) : null}
 

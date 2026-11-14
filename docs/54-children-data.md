@@ -50,6 +50,7 @@ creates the wallet with the team, as `src/lib/billing/credits.ts` always assumed
 | School year (Y1–Y11) | yes | the right curriculum and the right way to talk at that age | curriculum receives the year only | until deleted |
 | Subjects | ≥ 1 | builds the plan | curriculum receives the subject names | until deleted |
 | GCSE pathway (Y9+) | no | when GCSE starts, tier, science route; "not sure" allowed | curriculum receives these settings | until deleted |
+| Exam goals (≤ 3, since 2026-11-14) | no | the exam, its month, tier or grade — paces the plan and the exam practice | the month stays in the profile; curriculum receives the exam and the school year it falls in, never the date; AI tutor sees the exam, its format and months to go | until changed or deleted |
 | Focus | no | what to concentrate on | AI tutor | until changed or deleted |
 | Interests (≤ 5) | no | familiar examples | AI tutor | until changed or deleted |
 | Adaptations (checklist) | no | pace and form — practical instructions, never a diagnosis | AI tutor, as instructions | until changed or deleted |
@@ -252,11 +253,12 @@ launch. This draft is the engineering view. The owner signs it off and keeps it 
 |---|---|---|---|---|---|
 | Parent name, email, password hash | the account | contract | Postgres (password bcrypt) | the parent; the platform admin | until account deletion |
 | 18+ declaration, consents | proof of who agreed to what | legal obligation / consent | `users`, `consents` | the platform admin | with the account |
-| Child nickname, year, subjects, pathway, focus, interests, adaptations | plan and lessons | consent of the parent | `child_profiles.data`, sealed | the parent; the tutor (AI) during lessons | until deletion, or 12 months unused |
+| Child nickname, year, subjects, pathway, exam goals, focus, interests, adaptations | plan and lessons | consent of the parent | `child_profiles.data`, sealed | the parent; the tutor (AI) during lessons | until deletion, or 12 months unused |
 | Learning plan and progress | teaching in order | consent | `child_plans.data`, sealed | the parent; the tutor (slice) | as the profile |
 | Lesson messages | the lesson itself; parent oversight | consent | `messages.content`, sealed | the parent | 90 days after the last message |
 | "Anything else?" text | choosing adaptations | explicit consent (may be health) | memory only, one AI call | nobody (not stored) | not kept |
-| Year, subjects, pathway | building the plan | consent | sent to curriculum | curriculum, which logs item ids only | curriculum `served_log`, 90 days |
+| Year, subjects, pathway, exam id and school year of each goal (never the month) | building the plan | consent | sent to curriculum | curriculum, which logs item ids only (`exam-<id>`) | curriculum `served_log`, 90 days |
+| Practice questions already asked (curriculum ids) | the next question is a new one | consent | `child_plans.data` (`practiceSeen`), sealed | the parent (export) | as the profile |
 
 **Risks and measures**
 

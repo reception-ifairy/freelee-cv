@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { childFeaturesAvailable } from '@/lib/crypto/envelope';
 import { listChildren } from '@/lib/children/store';
 import { NOT_COLLECTED, yearLabel } from '@/lib/children/profile';
-import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { getExamsCache, getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { BARRIER_LABEL, monthsUntil, sittingLabel, type ExamOption } from '@/lib/children/exams';
 import { subjectLabel as labelOf, subjectOptions } from '@/lib/curriculum/subjects';
 import { deleteChildAction, refreshPlanAction, startLearningAction } from '@/server/actions/children';
 import { childContext } from '@/lib/children/child-mode';
@@ -34,6 +35,11 @@ export default async function ChildrenPage() {
   // The curriculum's subject dictionary after a Fetch, the built-in list before (2026-11-14).
   const options = subjectOptions(await getSubjectsDictionary());
   const subjectLabel = (id: string) => labelOf(id, options);
+  // School years change in September: exam goals are worked out from the year in the profile.
+  const newSchoolYear = [8, 9].includes(new Date().getUTCMonth());
+  const examsCache = await getExamsCache();
+  const exams = (examsCache?.exams ?? []) as ExamOption[];
+  const boards = examsCache?.boards ?? {};
   // The plan summary per child: what each subject is on now (decrypted for the parent only).
   const plans = new Map(
     await Promise.all(children.map(async (c) => {
@@ -71,6 +77,11 @@ export default async function ChildrenPage() {
         {available && !account?.emailVerified && <ResendVerification />}
         {available && account?.emailVerified && !account?.adult && <DeclareAdult />}
 
+        {newSchoolYear && children.length > 0 && (
+          <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            A new school year: please check the year in each profile, then refresh the plan — exam goals are worked out from it.
+          </p>
+        )}
         {children.map((child) => (
           <Card key={child.id} className="p-6">
             <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -100,6 +111,26 @@ export default async function ChildrenPage() {
             ) : (
               <p className="mb-4 text-sm text-slate-500">No learning plan yet.</p>
             )}
+            {(plans.get(child.id)?.targets ?? []).length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium">Exam goals</p>
+                <ul className="mt-1 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  {plans.get(child.id)!.targets!.map((t) => {
+                    const months = t.sitting ? monthsUntil(t.sitting) : null;
+                    return (
+                      <li key={`${t.exam}-${t.level ?? ''}`}>
+                        <span className="font-medium">{t.title}</span>
+                        {t.sitting ? ` · ${sittingLabel(t.sitting)}` : ''}
+                        {months !== null && months > 0 ? ` · ${months} month${months === 1 ? '' : 's'} to go` : ''}
+                        {t.coverage ? ` · ${t.coverage.units} topics, about ${t.coverage.estSessions} sessions until then` : ''}
+                        {t.homeEducation.barriers.length ? <span className="block text-xs">Needs {t.homeEducation.barriers.map((b) => BARRIER_LABEL[b] ?? b).join(', ')}.</span> : null}
+                        {t.notes.map((n) => <span key={n} className="block text-xs text-slate-500">{n}</span>)}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             {(lessons.get(child.id) ?? []).length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-medium">Lessons <span className="font-normal text-slate-500">(kept {LESSON_DAYS} days after the last message)</span></p>
@@ -127,7 +158,7 @@ export default async function ChildrenPage() {
                 <span className="mt-1 block text-xs text-brand-600">Edit profile</span>
               </summary>
               <div className="mt-6">
-                <ChildForm id={child.id} profile={child.profile} subjectOptions={options} />
+                <ChildForm id={child.id} profile={child.profile} subjectOptions={options} exams={exams} boards={boards} />
                 <form action={deleteChildAction} className="mt-8 border-t border-slate-100 pt-4 dark:border-slate-800">
                   <input type="hidden" name="id" value={child.id} />
                   <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -146,7 +177,7 @@ export default async function ChildrenPage() {
         {ready && (
           <Card className="p-6">
             <h2 className="mb-4 text-lg font-semibold">{children.length ? 'Add another child' : 'Add your child'}</h2>
-            <ChildForm subjectOptions={options} />
+            <ChildForm subjectOptions={options} exams={exams} boards={boards} />
           </Card>
         )}
       </div>

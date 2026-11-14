@@ -6,6 +6,7 @@ import type { ActionState } from '@/server/actions/auth';
 import { Checkbox, FormMessage, Input, Label, Select, Textarea } from '@/components/ui/field';
 import { ADAPTATIONS, FIELD_NOTES, NOTES_NOTE, YEARS, isGcseYear, yearLabel, type ChildProfile, type FieldNote } from '@/lib/children/profile';
 import { FALLBACK_SUBJECTS, displayLabel, hasParts, subjectsForYear, type SubjectOption } from '@/lib/curriculum/subjects';
+import { BARRIER_LABEL, FAMILY_LABEL, FORM_TARGETS, examLabel, examsForYear, type ExamOption, type ExamTarget } from '@/lib/children/exams';
 
 /** "Why we ask · Where it goes · How long we keep it" under every field (owner decision 2026-11-12). */
 function Note({ note }: { note: FieldNote }) {
@@ -18,6 +19,67 @@ function Note({ note }: { note: FieldNote }) {
   );
 }
 
+const ACCESS_TEXT: Record<string, string> = {
+  'practice-only': 'Schools give this test; at home it is practice with the published papers.',
+  none: 'Not open to home-educated children, and no practice version is published.',
+  'private-candidate': 'Sat as a private candidate at an exam centre that accepts them.',
+  centre: 'Taken through a centre or training provider that offers it.',
+  provider: 'Booked with the exam body.',
+  'local-admissions': 'Through the local admissions process.',
+};
+
+/** One target exam: which exam, the month it is sat, and its tier or level when it has them. */
+function TargetRow({ i, prefix, exams, boards, target }: { i: number; prefix: string; exams: ExamOption[]; boards: Record<string, string>; target?: ExamTarget }) {
+  const [examId, setExamId] = useState(target?.exam ?? '');
+  const exam = exams.find((e) => e.id === examId);
+  const families = (['school-check', 'entrance', 'qualification', 'graded'] as const).filter((f) => exams.some((e) => e.family === f));
+  return (
+    <div className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[2fr_1fr_1fr] dark:border-slate-800">
+      <div>
+        <Label htmlFor={`${prefix}targetExam${i}`}>Exam {i + 1}</Label>
+        <Select id={`${prefix}targetExam${i}`} name={`targetExam${i}`} value={examId} onChange={(e) => setExamId(e.target.value)}>
+          <option value="">None</option>
+          {families.map((f) => (
+            <optgroup key={f} label={FAMILY_LABEL[f]}>
+              {exams.filter((e) => e.family === f).map((e) => <option key={e.id} value={e.id}>{examLabel(e, boards)}</option>)}
+            </optgroup>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor={`${prefix}targetSitting${i}`}>Month</Label>
+        <Input id={`${prefix}targetSitting${i}`} name={`targetSitting${i}`} type="month" defaultValue={target?.sitting} />
+      </div>
+      <div>
+        {exam?.tiers?.length ? (
+          <>
+            <Label htmlFor={`${prefix}targetTier${i}`}>Tier</Label>
+            <Select id={`${prefix}targetTier${i}`} name={`targetTier${i}`} defaultValue={target?.tier ?? ''}>
+              <option value="">Not sure</option>
+              {exam.tiers.map((t) => <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>)}
+            </Select>
+          </>
+        ) : exam?.levels?.length ? (
+          <>
+            <Label htmlFor={`${prefix}targetLevel${i}`}>Grade or level</Label>
+            <Select id={`${prefix}targetLevel${i}`} name={`targetLevel${i}`} defaultValue={target?.level ?? ''}>
+              <option value="">Not sure</option>
+              {exam.levels.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            </Select>
+          </>
+        ) : null}
+      </div>
+      {exam && (
+        <p className="text-xs text-slate-600 sm:col-span-3 dark:text-slate-400">
+          {ACCESS_TEXT[exam.access] ?? ''}
+          {exam.barriers.length ? ` Needs ${exam.barriers.map((b) => BARRIER_LABEL[b] ?? b).join(', ')}.` : ''}
+          {!exam.verified ? ' Format not checked at source yet.' : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Submit({ label, pending }: { label: string; pending: boolean }) {
   return (
     <button type="submit" disabled={pending} className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand transition hover:bg-brand-700 disabled:opacity-60">
@@ -26,7 +88,7 @@ function Submit({ label, pending }: { label: string; pending: boolean }) {
   );
 }
 
-export function ChildForm({ id, profile, subjectOptions = FALLBACK_SUBJECTS }: { id?: string; profile?: ChildProfile; subjectOptions?: SubjectOption[] }) {
+export function ChildForm({ id, profile, subjectOptions = FALLBACK_SUBJECTS, exams = [], boards = {} }: { id?: string; profile?: ChildProfile; subjectOptions?: SubjectOption[]; exams?: ExamOption[]; boards?: Record<string, string> }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(saveChildAction, null);
   const [year, setYear] = useState<string>(profile?.year ?? 'Y4');
   // From the curriculum's subject dictionary (2026-11-14): parts such as biology show what they belong to.
@@ -115,6 +177,18 @@ export function ChildForm({ id, profile, subjectOptions = FALLBACK_SUBJECTS }: {
             </div>
           </div>
           <Note note={FIELD_NOTES.pathway} />
+        </fieldset>
+      )}
+
+      {exams.length > 0 && (
+        <fieldset>
+          <legend className="text-sm font-medium">Exam goals (optional)</legend>
+          <div className="mt-2 space-y-2">
+            {Array.from({ length: FORM_TARGETS }, (_, i) => (
+              <TargetRow key={i} i={i} prefix={prefix} exams={examsForYear(exams, year)} boards={boards} target={profile?.targets?.[i]} />
+            ))}
+          </div>
+          <Note note={FIELD_NOTES.targets} />
         </fieldset>
       )}
 
