@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMountTransition } from './use-mount-transition';
+import { useDialog } from './use-dialog';
 
 /**
  * A focus-trapping dialog, hand-written like the rest of the UI primitives here.
@@ -11,6 +12,8 @@ import { useMountTransition } from './use-mount-transition';
  * What it has to get right: Escape closes, focus moves in on open and back to
  * whatever opened it on close, Tab cycles inside rather than wandering into the
  * page behind, and the background does not scroll.
+ *
+ * Those four live in `useDialog`, shared with Sheet and the admin drawer.
  *
  * `dirty` guards against losing typed content — closing with unsaved changes
  * asks first. That matters most here, because this dialog sits on top of the
@@ -38,7 +41,6 @@ export function Modal({
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const returnFocusTo = useRef<HTMLElement | null>(null);
   const { mounted, closing } = useMountTransition(open);
 
   function requestClose() {
@@ -46,49 +48,10 @@ export function Modal({
     onClose();
   }
 
-  useEffect(() => {
-    if (!open) return;
-
-    returnFocusTo.current = document.activeElement as HTMLElement | null;
-    const { overflow } = document.body.style;
-    document.body.style.overflow = 'hidden';
-
-    // Focus the panel itself rather than the first control: a text input
-    // grabbing focus scrolls a long form to wherever that input happens to be.
-    panelRef.current?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        requestClose();
-        return;
-      }
-      if (event.key !== 'Tab' || !panelRef.current) return;
-
-      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = overflow;
-      returnFocusTo.current?.focus();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestClose closes over `dirty`, which is read at call time
-  }, [open, dirty]);
+  // `&& mounted`: in the render where `open` turns true the panel is not in
+  // the DOM yet (useMountTransition mounts it one effect later), so focus used
+  // to land on nothing and stay on the page behind.
+  useDialog({ open: open && mounted, onClose: requestClose, panelRef });
 
   // Stays mounted through the exit animation — see useMountTransition. The
   // dialog used to vanish in the frame the state flipped, so it faded in and

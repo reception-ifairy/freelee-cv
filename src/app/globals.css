@@ -86,6 +86,8 @@
      This also fixes `scroll-behavior: smooth` above, which has been
      unconditional since it was added. */
   @media (prefers-reduced-motion: reduce) {
+    /* ::details-content is not ::before/::after, so name it (Disclosure). */
+    .disclosure::details-content { transition-duration: .01ms !important; }
     *, *::before, *::after {
       animation-duration: .01ms !important;
       animation-iteration-count: 1 !important;
@@ -290,6 +292,25 @@
   @keyframes drawer-right-in {
     from { opacity: 0; transform: translateX(100%); }
     to   { opacity: 1; transform: none; }
+  }
+
+  /* Disclosure (src/components/ui/disclosure.tsx) folds open rather than
+     snapping. `::details-content` is the slot holding everything after the
+     <summary>; animating its height to `auto` needs `interpolate-size`.
+     Where either is missing the section simply opens at once — the rules are
+     ignored, never half-applied. */
+  .disclosure {
+    interpolate-size: allow-keywords;
+  }
+  .disclosure::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      block-size var(--duration-base) var(--ease-out),
+      content-visibility var(--duration-base) var(--ease-out) allow-discrete;
+  }
+  .disclosure[open]::details-content {
+    block-size: auto;
   }
 
   /* Staggered list entrance. The delay is set per item with a CSS variable so

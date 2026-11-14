@@ -21,6 +21,7 @@ import type { ProviderRegistry } from '@/lib/ai/registry';
 import { AUDIENCE_TYPES, APPROACH_TO_UNKNOWN, INTERACTION_STYLES, PROMPT_TECHNIQUES } from '@/lib/persona/prompt';
 import { GUARDRAILS } from '@/lib/persona/guardrails';
 import { segmentsForAudienceType } from '@/lib/persona/audience-segments';
+import { Disclosure } from '@/components/ui/disclosure';
 import type { CurriculumScopeCache } from '@/lib/curriculum/stored';
 import { PersonaCurriculumSection } from './persona-curriculum-section';
 import { cn, initialsOf } from '@/lib/utils';
@@ -658,13 +659,15 @@ export function PersonaForm({
               <Label>Audience segments</Label>
               <div className="space-y-2">
                 {(['B2C', 'B2B', 'B2G'] as const).map((type) => (
-                  <details
+                  <Disclosure
                     key={type}
-                    className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"
-                    open={type === version?.audienceType}
+                    className="rounded-xl border border-slate-200 p-1.5 dark:border-slate-700"
+                    defaultOpen={type === version?.audienceType}
+                    title={type}
+                    // The select above is uncontrolled, so this marks the saved type only.
+                    meta={type === version?.audienceType ? 'saved type' : undefined}
                   >
-                    <summary className="cursor-pointer text-sm font-semibold">{type}</summary>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2 px-1.5 sm:grid-cols-2">
                       {segmentsForAudienceType(type).map((segment) => (
                         <label
                           key={segment.code}
@@ -683,10 +686,10 @@ export function PersonaForm({
                         </label>
                       ))}
                     </div>
-                  </details>
+                  </Disclosure>
                 ))}
               </div>
-              <Hint>Admin/data only — not compiled into the system prompt yet.</Hint>
+              <Hint>Up to four segments of the persona’s own audience type are named in its prompt; segments of another type are kept but never reach the model.</Hint>
             </div>
 
             <div>
