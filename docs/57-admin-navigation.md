@@ -192,6 +192,41 @@ Checked by `npm run taxonomy:verify-pillars` (15 checks):
 
 The browser's market links are in `taxonomy:verify-browser` (now 24 checks).
 
+## A field's workspace (freelee #82)
+
+`/admin/taxonomy/[id]` used to be one long page, with the workbench, sector tiles, the audience picker and three fact cards stacked on top of each other. It is now a workspace with three tabs (`?tab=`, via `TabNav`):
+- **Overview:**
+  - **Bots:** live/total, split by the markets of this field's bots, with a link into the browser at this field.
+  - **Specialisms:** each with live/total and risk, each a link to that sector in the browser, plus the bots with no sector.
+  - **Who it serves:** the audience groups as text.
+  - On the right, as before: the market card, the field's lean, and what the slug decides.
+- **Audiences** (`audiences-tab.tsx`):
+  - the linked groups by kind, each with its market;
+  - the first of each kind marked **decides**: rule 3 of a bot's market (`pillars.ts`) takes it;
+  - a note you can edit in place.
+
+  "Choose audiences" opens the 70 groups, folded by family, with search and a market dot on each. Existing picks keep their position and new ones go after them in catalogue order, so saving never changes which group decides.
+- **AI workbench:** the design workbench. The field's AI steward (a later plan) moves in here.
+
+**A departure from the plan:** there are no Sectors or Bots tabs. The taxonomy browser already lists a field's sectors and bots with a card on demand, and a second copy is how a maze starts. So Overview summarises them and links into the browser.
+
+**`setCategoryAudienceNoteAction`** (`src/server/actions/admin-taxonomy.ts`) writes `category_audience_segments.note`. Notes are trimmed, at most 500 characters, and an empty note clears it. Until now only a migration could write one.
+
+**Ties in position:** five of Education's links share position 0. `categoryBrief` and `categorySegments` now both order by (position, code), so the brief's first group and the market rule's first group are always the same one.
+
+**Verified live** on Education (1280 and 390px):
+- **Header and Overview:** 16/32 live, R2, serving Homeschooling & family and Schools & educators. Overview shows Family 13/26 and Schools 3/6, and its 6 sectors link to the browser.
+- **Audiences tab:** 12 consumer, 2 business and 3 public groups. **decides** marks Home Educated, Education (Private) and State Schools (Maintained).
+- **Editing a note:**
+  - the textarea takes focus;
+  - Save writes to the database;
+  - Escape cancels without saving.
+
+  The original notes were backed up first and restored, with 0 differences.
+- **Choose audiences:** searching "SEND" finds SEND Learners, and Save stays disabled until something changes.
+- **AI tab and phone:** the AI tab renders the workbench (no message sent). On a phone the page does not scroll sideways.
+- No page errors.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

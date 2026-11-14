@@ -34,7 +34,22 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #81 · `pending` — Six markets worked out from who each bot serves: a Markets screen, a page per market, and the taxonomy browser filtered by market
+### #82 · `pending` — A field's workspace in three tabs: an overview that links into the browser, audiences with notes you can edit, the AI workbench
+
+Step 7 of the admin redesign. `/admin/taxonomy/[id]` stacked the workbench, sector tiles, the audience
+picker and three fact cards on one long page. It is now a workspace with tabs. **Overview** has the
+bots (live/total, split by market), each specialism with its live/total linking to that sector in
+the browser, the audiences, and the market facts. **Audiences** lists the linked groups by kind with
+their market, marks the first of each kind that decides a bot's market, and edits each group's note
+in place (`setCategoryAudienceNoteAction`; until now only a migration could write a note). The
+chooser has search, families that fold and market dots, and keeps existing picks in place so saving
+never changes which group decides. **AI workbench** holds the design workbench. There are no Sectors
+or Bots tabs: the browser already has them, and a second copy is how a maze starts. The brief and the
+market rule now break position ties by code, so they agree on which group is first.
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md
+
+### #81 · `04b4738` — Six markets worked out from who each bot serves: a Markets screen, a page per market, and the taxonomy browser filtered by market
 
 Step 6 of the admin redesign. The owner decided on six markets, based on the audience: Business and
 Homeschooling & family are sold now; Schools & educators, Adults, Interests and Public sector are

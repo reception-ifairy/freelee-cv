@@ -76,16 +76,20 @@ On a phone, the tree folds into a **Browse** line above the list.
 
 ## Opening a field
 
-Press **Workspace** on a field (or open */admin/taxonomy/34* directly) and you get its brief on one page:
+Press **Workspace** on a field (or open */admin/taxonomy/34* directly). Under its name you see how many of
+its bots are live, its risk level and the markets it serves. Three tabs:
 
-- **The market** — size, growth, regulation, industry bodies, risk level.
-- **What the address decides** — the chat layout persons in this field get, and the tools they are
-  offered. These are keyed to the category's web address, which is why that address never changes
-  when you rename a category. Renaming is safe; the address is fixed.
-- **Specialisms** — every sector, with how well the work suits consumers, businesses and the public
-  sector.
-- **Who this field serves** — the audiences you have attached.
-- **The workbench** — where you design a new bot.
+- **Overview** — the field at a glance:
+  - **Bots** — how many are live, split by market. **Browse them** opens the taxonomy browser at this
+    field.
+  - **Specialisms** — every sector with its live/all bots; click one to see its bots in the browser.
+  - **Who it serves** — the audiences attached.
+  - **The market** — size, growth, regulation, industry bodies, risk level.
+  - **What the address decides** — the chat layout bots in this field get, and the tools they are
+    offered. These are keyed to the category's web address, which is why that address never changes
+    when you rename a category. Renaming is safe; the address is fixed.
+- **Audiences** — the groups this field serves, and why (below).
+- **AI workbench** — where you design a new bot.
 
 ## Designing a bot
 
@@ -108,12 +112,20 @@ whatever you like, and publish it when it is ready.
 
 ## Attaching audiences
 
-On a category page, **Choose audiences** opens the full list of seventy. Each one shows what those
-people actually need and how they want to be spoken to — not just a name.
+The **Audiences** tab of a field lists the groups it serves, by kind (consumers, businesses, public
+sector), each with its market and **a note on why it matters to this field**. Press **Edit note** to
+write or change one: notes go into the field's brief, beside the group. **Ctrl+Enter** saves; **Esc**
+cancels.
+
+The first group of each kind is marked **decides**. A bot in this field that names no group of its own
+kind takes its market from that one. Groups you add later go to the end, so adding never changes
+which one decides.
+
+**Choose audiences** opens all seventy, folded by family. Type in the box to find a group (*parents*,
+*SEND*, *councils*). Each shows what those people actually need, with a dot for its market.
 
 This matters more than it looks. Whatever you attach here becomes part of the brief every bot in this
-field is designed against, and a wrong audience is worse than none. Seventeen of the twenty fields
-already have a starting set; the rest is yours to decide.
+field is designed against, and a wrong audience is worse than none.
 
 > **It also changes how bots talk.** A persona tagged with an audience segment now carries that
 > group's real needs and preferred tone into every reply — so a tutor written for Early Years is told

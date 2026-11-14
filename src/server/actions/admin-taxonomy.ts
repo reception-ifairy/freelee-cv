@@ -61,6 +61,35 @@ export async function setCategoryAudiencesAction(categoryId: number, codes: stri
   return { success: `${valid.length} audience${valid.length === 1 ? '' : 's'} attached to this field.` };
 }
 
+const noteSchema = z.object({
+  categoryId: z.coerce.number().int(),
+  code: z.string().refine(isAudienceSegmentCode),
+  note: z.string().max(500).transform((v) => v.trim()),
+});
+
+/**
+ * Why one audience matters to this field, in the operator's own words — the
+ * note compiled into the field's brief beside the group. It existed in the
+ * table since the workbench shipped but nothing could write it except a
+ * migration; the workspace's Audiences tab edits it in place now.
+ * An empty note clears it.
+ */
+export async function setCategoryAudienceNoteAction(categoryId: number, code: string, note: string): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = noteSchema.safeParse({ categoryId, code, note });
+  if (!parsed.success) return { error: 'Notes are up to 500 characters, for an audience this field has.' };
+
+  const updated = await db
+    .update(categoryAudienceSegments)
+    .set({ note: parsed.data.note || null })
+    .where(and(eq(categoryAudienceSegments.categoryId, parsed.data.categoryId), eq(categoryAudienceSegments.segmentCode, parsed.data.code)))
+    .returning({ code: categoryAudienceSegments.segmentCode });
+  if (updated.length === 0) return { error: 'This field no longer has that audience — reload the page.' };
+
+  revalidatePath(`/admin/taxonomy/${parsed.data.categoryId}`);
+  return { success: parsed.data.note ? 'Note saved.' : 'Note cleared.' };
+}
+
 /* ------------------------------- Workbench -------------------------------- */
 
 /**
