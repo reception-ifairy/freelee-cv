@@ -8,6 +8,7 @@ import { Logo } from '@/components/site/logo';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { AdminDrawer } from '@/components/admin/admin-drawer';
 import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb';
+import { ADMIN_OVERLAY_ROOT_ID } from '@/components/ui/overlay-root';
 
 /**
  * The admin's mono face, self-hosted via next/font.
@@ -84,6 +85,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             stretch to unreadable line lengths on an ultrawide display. */}
         <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+
+      {/* Sheets and the phone drawer portal here (overlay-root.ts): inside the
+          console, so they keep its tokens and `dark`, but outside the header,
+          whose backdrop-filter would trap anything `fixed` inside it. */}
+      <div id={ADMIN_OVERLAY_ROOT_ID} />
     </div>
   );
 }

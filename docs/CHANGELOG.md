@@ -34,7 +34,25 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #77 · `pending` — Honest data: a prompt names only its own kind of people, the homeschooling page says tutors are coming, Education serves families
+### #78 · `pending` — Admin building blocks: a card that opens on demand, sections that fold, one focus trap; the Audiences screen first
+
+Step 3 of the admin redesign (owner, 2026-11-14: "a list where the card opens when you want it").
+`useDialog` is the one focus trap for every overlay, and only the top overlay answers Escape (a
+Modal over a Sheet used to close both). Modal never actually moved focus into itself — the panel
+was not in the DOM yet in that render — and the phone nav drawer let Tab walk out into the page
+behind; both now use it. `Sheet` slides in from the right; `RouteSheet` keeps it in the URL
+(`?open=…`), so a card can be linked, Back closes it, and closing returns focus to its row.
+`Disclosure` folds on native `<details>`, so Ctrl+F still finds folded text. Overlays portal into
+`#admin-overlay-root` inside the console, keeping its colours (the drawer had been portalled to
+`<body>`, outside them). First use: Audiences — ten folded families with one row per segment
+instead of 70 expanded cards, the card in a sheet with Previous/Next, and where each segment is used
+(categories, personas, and how many never pass it to the model). The persona form's segment lists
+fold the same way, and its hint no longer says segments are "not compiled into the prompt". New
+check `npm run admin:verify-dialogs` (9).
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md
+
+### #77 · `5f56253` — Honest data: a prompt names only its own kind of people, the homeschooling page says tutors are coming, Education serves families
 
 Three decisions the owner made on 2026-11-14, from the admin analysis. A persona's prompt now
 describes only audience segments of its own kind (`buildSystemPrompt`): segments had been copied

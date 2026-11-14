@@ -71,8 +71,16 @@ Seventy groups, in three families:
 - **Business (B2B)** — by size, by industry, by function.
 - **Public sector (B2G)** — central government, local government, public services.
 
-Each shows its age range where it has one, its UK context, what it needs, how badly a wrong answer
-lands, and — where the catalogue records it — the tone it responds to.
+Each family is one folded line listing the groups in it — click it to open a row per group. Click a
+row and the whole card slides in from the right: its age range where it has one, its UK context, what
+it needs, how badly a wrong answer lands, and — where the catalogue records it — the tone it responds
+to. The card also says **where the group is used**: which categories link it (with your note) and
+which personas list it. If a persona of another kind lists it — a consumer tutor carrying a
+public-sector group, say — the card says so: that group is kept but never reaches the persona's prompt.
+
+The arrows at the top of the card step to the previous or next group; **Esc** or a click beside the
+card closes it, and your browser's Back button does too. The address in the bar opens the same card,
+so you can send someone a link to it.
 
 This list lives in the code rather than the database, so changing it is a developer job. Attaching
 segments to a field is not.

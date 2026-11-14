@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { AdminNav } from './admin-nav';
 import { useMountTransition } from '@/components/ui/use-mount-transition';
+import { useDialog } from '@/components/ui/use-dialog';
+import { overlayRoot } from '@/components/ui/overlay-root';
 import { Logo } from '@/components/site/logo';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +29,6 @@ export function AdminDrawer() {
   const pathname = usePathname();
   const { mounted, closing } = useMountTransition(open);
   const panelRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Navigating is the whole point of the drawer, so it closes itself on
   // arrival rather than leaving the destination hidden behind it.
@@ -35,33 +36,14 @@ export function AdminDrawer() {
     setOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-
-    // Scroll-lock, same reasoning as Modal: a drawer over a page that still
-    // scrolls underneath feels broken on touch.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKeyDown);
-    panelRef.current?.focus();
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+  // The shared focus trap: Escape, Tab kept inside, scroll lock, focus back
+  // to the menu button however the drawer closes. It used to have Escape only
+  // — Tab walked out into the page hidden behind it.
+  useDialog({ open: open && mounted, onClose: () => setOpen(false), panelRef });
 
   return (
     <>
       <button
-        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open navigation"
@@ -72,15 +54,17 @@ export function AdminDrawer() {
       </button>
 
       {/*
-        Rendered into <body>, not in place.
+        Rendered through a portal, not in place.
 
         The trigger lives inside the sticky admin header, which carries
         `backdrop-blur`. A `backdrop-filter` makes an element a **containing
         block for fixed-position descendants**, so `fixed inset-0` sized itself
         to the 64px-tall header rather than the viewport and the drawer
-        collapsed to just its own header row. A portal escapes that entirely,
-        and is the right answer regardless: an overlay belongs at the top of
-        the stacking context, not nested in whatever happened to trigger it.
+        collapsed to just its own header row. A portal escapes that.
+
+        Into the console's overlay root rather than <body> (since 2026-11-14):
+        under <body> the drawer sat outside `.admin-console dark`, so the nav
+        inside it lost the console's colour tokens and every `dark:` style.
       */}
       {mounted
         ? createPortal(
@@ -126,7 +110,7 @@ export function AdminDrawer() {
             </div>
           </div>
         </div>,
-            document.body,
+            overlayRoot(),
           )
         : null}
     </>
