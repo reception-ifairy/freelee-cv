@@ -34,7 +34,22 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #82 · `pending` — A field's workspace in three tabs: an overview that links into the browser, audiences with notes you can edit, the AI workbench
+### #83 · `pending` — The homeschool hub: tutors, the curriculum with a who-teaches-what grid, and families as numbers only
+
+Step 8 of the admin redesign ("homeschooling is starting to look like a maze"). Homeschooling's tutors,
+curriculum and families had no place in the admin. `/admin/markets/homeschooling` gains four tabs.
+**Tutors**: every persona with a curriculum scope, its key stages, subjects and status. **Curriculum**:
+the connection's state, the subject dictionary, the exams and the scope with when each was fetched, a
+link to the one connection card in Settings, and a grid of every subject a parent can choose against
+KS1–KS4, counting live/all tutors by the rule lessons use (`src/lib/curriculum/coverage.ts`).
+**Families**: profiles, parents, activity, plans and consents as counts only — the queries
+(`src/lib/children/admin-counts.ts`) never read a sealed column, and a check guards the source. A
+banner on every hub tab sets the public page's promise against the live tutors. New check
+`npm run children:verify-tutor-coverage` (14).
+
+📄 docs/57-admin-navigation.md · docs/54-children-data.md · handbook/child-profiles.md
+
+### #82 · `0a5ffdd` — A field's workspace in three tabs: an overview that links into the browser, audiences with notes you can edit, the AI workbench
 
 Step 7 of the admin redesign. `/admin/taxonomy/[id]` stacked the workbench, sector tiles, the audience
 picker and three fact cards on one long page. It is now a workspace with tabs. **Overview** has the

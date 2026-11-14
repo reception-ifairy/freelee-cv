@@ -235,6 +235,17 @@ through a parent's account. #68 adds child mode, the per-child plan and encrypte
   Payment records stay without personal details, because the law requires them. Platform admin
   accounts cannot be deleted there.
 
+## What the admin sees (#83)
+
+**Numbers only.** The homeschool hub's Families tab (`/admin/markets/homeschooling?tab=families`, `src/lib/children/admin-counts.ts`) counts:
+- profiles: all, active, paused, active in 30 days, new in 30 days;
+- parents with at least one profile;
+- retention notices sent;
+- plans, by curriculum version;
+- consents by kind, given and withdrawn.
+
+Every query names its columns and aggregates them. None reads `data` or `wrapped_key`, none decrypts, and none returns a row per child or parent. `npm run children:verify-tutor-coverage` checks the source for exactly that, so an edit that reaches for content fails the checks.
+
 ## DPIA (data protection impact assessment) — draft for the owner
 
 **Why one is needed.** freelee processes data about children, profiles their learning for a
