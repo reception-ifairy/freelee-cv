@@ -233,7 +233,7 @@ function ResourceTable({
   openInPlace,
   dense = false,
 }: { items: ResourceItem[]; badgeHeader?: string; sortHrefs?: Record<string, SortHref>; dense?: boolean } & RowOptions) {
-  const cell = dense ? 'px-3 py-2 whitespace-nowrap' : undefined;
+  const cell = dense ? 'px-2.5 py-2 whitespace-nowrap' : undefined;
   // Dense tables drop an all-empty badge column: beside a tree every column
   // costs ~70px, and an empty one pushed the ⋯ menu out of sight.
   const badgeColumn = !dense || items.some((item) => item.badges?.length);
@@ -265,7 +265,7 @@ function ResourceTable({
             items.map((item) => (
               <TR key={item.id} className={cn(openInPlace && 'relative', item.id === selectedId && 'bg-brand-500/10')}>
                 <TD className={cell}>
-                  <span className={cn('flex items-center gap-2', dense && 'max-w-[15rem]')}>
+                  <span className={cn('flex items-center gap-2', dense && 'max-w-[14rem]')}>
                     {item.media}
                     <span className="min-w-0">
                       <TitleLink
@@ -281,7 +281,7 @@ function ResourceTable({
                 {(item.meta ?? []).map((field) => (
                   <TD key={field.key ?? field.label} className={cell}>
                     {/* max-width on a <td> itself is not honoured in an auto-layout table; on a block inside it is. */}
-                    {dense ? <span className="block max-w-[10rem] truncate">{field.value}</span> : field.value}
+                    {dense ? <span className="block max-w-[8.5rem] truncate">{field.value}</span> : field.value}
                   </TD>
                 ))}
                 {badgeColumn ? (

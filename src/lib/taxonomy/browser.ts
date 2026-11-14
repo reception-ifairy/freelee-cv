@@ -6,8 +6,10 @@
  *
  * All state is in the URL, read by the server:
  *
- *   /admin/taxonomy?cat=34&sec=42&tab=sectors&q=…&status=live&sort=…&page=2&open=persona-123
+ *   /admin/taxonomy?pillar=business&cat=34&sec=42&tab=sectors&q=…&status=live&sort=…&page=2&open=persona-123
  *
+ * - `pillar` — one of the six markets (src/lib/taxonomy/pillars.ts): only its
+ *   bots, and only the categories that serve it;
  * - `cat` — a category id, or `none` for personas filed under no category;
  * - `sec` — a sector id (its category is implied, and corrected if `cat` disagrees);
  * - `tab` — `personas` (default) or `sectors`, the latter only above sector level;
@@ -15,12 +17,13 @@
  * - `open` — the card in the sheet: `persona-123` or `sector-42`.
  */
 import { listHref, parseListParams, type ListConfig, type ListParams } from '@/lib/admin/list-query';
+import { isPillarId, type PillarId } from './pillars';
 
 export const BROWSER_PATH = '/admin/taxonomy';
 
 export type BrowserTab = 'personas' | 'sectors';
 export type CategorySelection = number | 'none' | null;
-export type Selection = { cat: CategorySelection; sec: number | null; tab: BrowserTab };
+export type Selection = { pillar: PillarId | null; cat: CategorySelection; sec: number | null; tab: BrowserTab };
 export type OpenRef = { kind: 'persona' | 'sector'; id: number };
 
 export type TreeCategoryInput = {
@@ -63,7 +66,7 @@ export function buildTree(categories: TreeCategoryInput[], sectors: TreeSectorIn
   };
 }
 
-const KEEP = ['cat', 'sec', 'tab'];
+const KEEP = ['pillar', 'cat', 'sec', 'tab'];
 
 export const PERSONA_LIST: ListConfig = {
   filters: [
@@ -124,6 +127,8 @@ export function parseBrowser(
   searchParams: Record<string, string | string[] | undefined>,
   tree: Tree,
 ): { selection: Selection; config: ListConfig; params: ListParams; open: OpenRef | null } {
+  const rawPillar = first(searchParams.pillar);
+  const pillar = isPillarId(rawPillar) ? rawPillar : null;
   const rawCat = first(searchParams.cat);
   const rawSec = Number(first(searchParams.sec));
 
@@ -143,13 +148,14 @@ export function parseBrowser(
   const tab: BrowserTab = first(searchParams.tab) === 'sectors' && sec === null && cat !== 'none' ? 'sectors' : 'personas';
   const config = tab === 'sectors' ? SECTOR_LIST : PERSONA_LIST;
   const params = parseListParams(searchParams, config);
-  params.kept = keptFor({ cat, sec, tab });
+  params.kept = keptFor({ pillar, cat, sec, tab });
 
-  return { selection: { cat, sec, tab }, config, params, open: parseOpen(searchParams.open) };
+  return { selection: { pillar, cat, sec, tab }, config, params, open: parseOpen(searchParams.open) };
 }
 
-function keptFor({ cat, sec, tab }: Selection): Record<string, string> {
+function keptFor({ pillar, cat, sec, tab }: Selection): Record<string, string> {
   const kept: Record<string, string> = {};
+  if (pillar !== null) kept.pillar = pillar;
   if (cat !== null) kept.cat = String(cat);
   if (sec !== null) kept.sec = String(sec);
   if (tab === 'sectors') kept.tab = 'sectors';
@@ -164,14 +170,16 @@ export function withOpen(params: ListParams, config: ListConfig, open: OpenRef |
 }
 
 /**
- * A link to another node of the tree, or another tab. Search and filters
+ * A link to another node of the tree, another market, or another tab. Search and filters
  * stay (searching "maths" and then clicking through categories keeps the
  * search), but only when the list kind stays the same — a sectors filter
  * means nothing on personas. Paging restarts; a card closes.
  */
 export function selectionHref(params: ListParams, config: ListConfig, current: Selection, next: Partial<Selection>): string {
   const target: Selection = { ...current, ...next };
-  if (next.cat !== undefined && next.sec === undefined) target.sec = null;
+  // Another market starts from its top: the picked category may not serve it.
+  if (next.pillar !== undefined && next.cat === undefined) target.cat = null;
+  if ((next.cat !== undefined || next.pillar !== undefined) && next.sec === undefined) target.sec = null;
   if (target.sec !== null || target.cat === 'none') target.tab = 'personas';
   const nextConfig = target.tab === 'sectors' ? SECTOR_LIST : PERSONA_LIST;
   const sameKind = nextConfig === config;

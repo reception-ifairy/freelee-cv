@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, personaCategories, personas, personaVersions, sectors } from '@/db/schema';
 import type { ListParams } from '@/lib/admin/list-query';
@@ -43,7 +43,9 @@ export async function treeInputs(): Promise<{ categories: TreeCategoryInput[]; s
  * category and overall, live and in all. `count(distinct)` so a persona
  * filed in two categories would still count once overall (none is today).
  */
-export async function treeCounts(): Promise<CountRow[]> {
+export async function treeCounts(personaIds: number[] | null = null): Promise<CountRow[]> {
+  // Within a market, only its bots are counted (`personaIds`, worked out in code — see pillar-queries.ts).
+  const within = personaIds === null ? sql`true` : inArray(sql`p.id`, personaIds);
   const rows = await db.execute<{ category_id: number | null; sector_id: number | null; g: number; total: number; live: number }>(sql`
     select pc.category_id, p.sector_id,
            grouping(pc.category_id, p.sector_id)::int as g,
@@ -51,6 +53,7 @@ export async function treeCounts(): Promise<CountRow[]> {
            (count(distinct p.id) filter (where p.is_active))::int as live
     from ${personas} p
     left join ${personaCategories} pc on pc.persona_id = p.id
+    where ${within}
     group by grouping sets ((pc.category_id, p.sector_id), (pc.category_id), ())
   `);
   return [...rows].map((r) => ({
@@ -89,8 +92,14 @@ export type BrowserPersonaRow = {
 };
 
 /** One page of personas under the selected node, with the toolbar's search, filters and sort. */
-export async function browserPersonas(selection: Selection, params: ListParams): Promise<{ rows: BrowserPersonaRow[]; total: number }> {
+export async function browserPersonas(
+  selection: Selection,
+  params: ListParams,
+  /** Within a market: its bots only. */
+  personaIds: number[] | null = null,
+): Promise<{ rows: BrowserPersonaRow[]; total: number }> {
   const conditions: SQL[] = [];
+  if (personaIds !== null) conditions.push(inArray(personas.id, personaIds));
   if (selection.sec !== null) conditions.push(eq(personas.sectorId, selection.sec));
   else if (selection.cat === 'none') conditions.push(inNoCategory);
   else if (selection.cat !== null) conditions.push(inCategory(selection.cat));
@@ -176,8 +185,14 @@ export type BrowserSectorRow = {
 };
 
 /** One page of sectors under the selected category (or all of them), with their persona counts. */
-export async function browserSectors(selection: Selection, params: ListParams): Promise<{ rows: BrowserSectorRow[]; total: number }> {
+export async function browserSectors(
+  selection: Selection,
+  params: ListParams,
+  /** Within a market: the sectors of the categories that serve it. */
+  categoryIds: number[] | null = null,
+): Promise<{ rows: BrowserSectorRow[]; total: number }> {
   const conditions: SQL[] = [];
+  if (categoryIds !== null) conditions.push(inArray(sectors.categoryId, categoryIds));
   if (typeof selection.cat === 'number') conditions.push(eq(sectors.categoryId, selection.cat));
   if (params.q) {
     const term = `%${params.q}%`;

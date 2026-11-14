@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the pillars and the sidebar by job, each as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the sidebar by job and the homeschool hub, each as its own section here.
 
 ## Building blocks (freelee #78)
 
@@ -89,7 +89,7 @@ Checked by `npm run admin:verify-list-query` (11 checks, part of `blocks:verify`
   - Filter: active or switched off.
   - Sort: catalogue order, name, number of bots.
   - Columns: category (at the top level only), bots live, risk.
-- **The width budget.** At 1280px the table gets about 700px beside a 15rem tree. So `dense` caps the name at 15rem and other cells at 10rem, makes subtitles one line, and drops an empty badge column. Messages and suitability are kept off the table and stay in Sort and on the card. Measured at 1280px, 1600px and 390px, with no sideways page scroll.
+- **The width budget.** At 1280px the table gets about 700px beside a 15rem tree. So `dense` caps the name at 14rem and other cells at 8.5rem, makes subtitles one line, and drops an empty badge column. Messages and suitability are kept off the table and stay in Sort and on the card. Measured at 1280px, 1600px and 390px, with no sideways page scroll.
 
 **The card** is a RouteSheet at `open=persona-N` or `open=sector-N`. Previous/Next step through the rows on screen, never across a page.
 - **Bot card.**
@@ -130,6 +130,67 @@ Checked by `npm run taxonomy:verify-browser` (20 checks):
 - **Other views:** `cat=none` shows 1 bot; junk params fall back to the top level.
 - **Phone:** the tree is folded and the page does not scroll sideways (the table scrolls inside its frame).
 - No page errors.
+
+## Markets (freelee #81)
+
+**Owner decisions, 2026-11-14:** six markets ("pillars") based on the audience, not just Business and Homeschooling; and they are computed, not assigned. They live in `src/lib/taxonomy/pillars.ts`, with no migration.
+
+| Market | Audience segments | Status | Page | Risk floor |
+|---|---|---|---|---|
+| Business | B2B-SIZE, B2B-SEC, B2B-FUN (except the three below) | sold now | /business | – |
+| Homeschooling & family | B2C-CYP, B2C-GK, B2C-ADU-03 | sold now | /homeschooling | R2 |
+| Schools & educators | B2G-PUB-01..04, B2B-SEC-01/02, B2B-FUN-01 | planned | – | R2 |
+| Adults: life & career | the other B2C-ADU | planned | – | R1 |
+| Interests | B2C-INT | planned | – | – |
+| Public sector | B2G-CEN, B2G-LOC, B2G-PUB-05..10 | planned | – | R2 |
+
+Every one of the 70 segments belongs to exactly one market (`pillarOfSegment`).
+
+**A bot's market** (`pillarOfPersona`): the first rule that applies wins.
+1. A curriculum tutor goes to Homeschooling & family.
+2. Otherwise its first own segment of its own audience type decides.
+3. Otherwise its category's first linked segment of that type decides.
+4. Otherwise the default for its type: B2B → Business, B2G → Public sector, B2C → Adults.
+
+Segments of another type never decide, just as they never reach the prompt (#77).
+
+**A field's markets** (`pillarsOfCategory`) are those of its linked segments plus those of its bots. Education, for example, serves Homeschooling & family and Schools & educators.
+
+**Computed in code, every time.** `botPillars()` in `pillar-queries.ts` reads every bot's type, segments and tutor scope, and every category's linked segments: two light queries over 123 bots. Past a few thousand bots, a generated column would be the next step.
+
+**Screens:**
+- **`/admin/markets`** shows the six markets with a share bar, each market's status, risk floor, live/total bots, fields, audience groups linked, and offering page. It shows coverage, not revenue.
+- **`/admin/markets/[pillar]`** shows, for one market:
+  - the fields serving it, with their bots there and whether they link the market's groups;
+  - a warning when a field's risk is below the market's floor;
+  - its audience groups, with how many fields link each and how many bots list it (own type only);
+  - "Browse its bots".
+- **The taxonomy browser** gets `?pillar=`:
+  - market chips above the tree, each with its bot count;
+  - within a market, the tree shows only the fields serving it, the counts and list only its bots, and the Sectors tab only those fields' sectors;
+  - outside a market, a field shows a dot per market it serves.
+- **Sidebar:** Markets heads the Taxonomy section until the sidebar is reorganised by job.
+
+**Moved:** the audience family names are now `AUDIENCE_FAMILY_LABEL` and `familyOf` in `audience-segments.ts`, one place for Audiences and Markets.
+
+**On live data (2026-11-14):**
+- every bot falls in exactly one market (123 in all);
+- **Business** 55 bots (47 live), 16 fields;
+- **Homeschooling & family** 27 (13 live), Education only;
+- **Schools & educators** 6;
+- **Adults: life & career** 35;
+- **Interests** 0;
+- **Public sector** 0, though 2 fields link its groups.
+
+Note that the 26 consumer bots in Education count as Homeschooling & family through rule 3. Education has linked family groups since #77, and those bots name no consumer group of their own.
+
+Checked by `npm run taxonomy:verify-pillars` (15 checks):
+- the 70 segments are partitioned and the per-market counts are right;
+- the education exceptions go to Schools;
+- each persona rule works, in order;
+- a field's markets are its segments' plus its bots', each once.
+
+The browser's market links are in `taxonomy:verify-browser` (now 24 checks).
 
 ## First use: the Audiences screen (freelee #78)
 

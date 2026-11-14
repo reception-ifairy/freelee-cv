@@ -34,7 +34,24 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #80 · `pending` — The taxonomy as a browser: a tree of categories and sectors, the bots of the picked node in a table, a card on demand
+### #81 · `pending` — Six markets worked out from who each bot serves: a Markets screen, a page per market, and the taxonomy browser filtered by market
+
+Step 6 of the admin redesign. The owner decided on six markets, based on the audience: Business and
+Homeschooling & family are sold now; Schools & educators, Adults, Interests and Public sector are
+planned. They are computed, not assigned (`src/lib/taxonomy/pillars.ts`, no migration). Every one
+of the 70 audience segments belongs to exactly one market (education segments filed under B2B or
+B2G go to Schools). A bot follows rules in order: a tutor is Family, else its first own segment of
+its own type, else its field's, else its type's default. A field serves the markets of its groups
+and its bots. `/admin/markets` shows each market's coverage — bots live, fields, audience groups
+linked, offering page, risk floor — not revenue. `/admin/markets/[pillar]` lists its fields (with a
+warning below the risk floor) and its groups with where each is used. The taxonomy browser gains
+`?pillar=` chips that narrow the tree, counts and list, and dots per field for the markets it
+serves. Audience family names move to `audience-segments.ts`. New check
+`npm run taxonomy:verify-pillars` (15).
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md
+
+### #80 · `61643cc` — The taxonomy as a browser: a tree of categories and sectors, the bots of the picked node in a table, a card on demand
 
 Step 5 of the admin redesign, and the owner's main request ("instead of the card view, a system that
 makes browsing clear, with the card opening on demand"). `/admin/taxonomy` was one long column of 20

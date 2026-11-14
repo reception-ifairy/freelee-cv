@@ -19,6 +19,8 @@ import {
   browserPersonas, browserSectors, categoryHeader, personaCard, sectorCard, treeCounts, treeInputs,
   type BrowserPersonaRow, type BrowserSectorRow,
 } from '@/lib/taxonomy/browser-queries';
+import { botPillars, categoryPillars, categorySegments } from '@/lib/taxonomy/pillar-queries';
+import { PILLARS, PILLAR_BY_ID, isPillarId, type PillarId } from '@/lib/taxonomy/pillars';
 import { PersonaSheetBody, SectorSheetBody } from './browser-cards';
 import { TaxonomyTree } from './taxonomy-tree';
 
@@ -40,12 +42,24 @@ export default async function TaxonomyBrowserPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [raw, inputs, counts] = await Promise.all([searchParams, treeInputs(), treeCounts()]);
-  const tree = buildTree(inputs.categories, inputs.sectors, counts);
+  const [raw, inputs, bySegments] = await Promise.all([searchParams, treeInputs(), categorySegments()]);
+  // Markets are computed in code from each bot's audience (pillars.ts), so the
+  // market's bots are found first and the counts and list narrowed to them.
+  const bots = await botPillars(bySegments);
+  const rawPillar = Array.isArray(raw.pillar) ? raw.pillar[0] : raw.pillar;
+  const pillar: PillarId | null = rawPillar && isPillarId(rawPillar) ? rawPillar : null;
+  const pillarBots = pillar ? bots.filter((b) => b.pillar === pillar).map((b) => b.id) : null;
+  const pillarsByCategory = categoryPillars(bots, bySegments, inputs.categories.map((c) => c.id));
+  const marketCategories = pillar ? inputs.categories.filter((c) => pillarsByCategory.get(c.id)?.includes(pillar)) : inputs.categories;
+
+  const counts = await treeCounts(pillarBots);
+  const tree = buildTree(marketCategories, inputs.sectors, counts);
   const { selection, config, params, open } = parseBrowser(raw, tree);
 
   const [list, header, card] = await Promise.all([
-    selection.tab === 'sectors' ? browserSectors(selection, params) : browserPersonas(selection, params),
+    selection.tab === 'sectors'
+      ? browserSectors(selection, params, pillar ? marketCategories.map((c) => c.id) : null)
+      : browserPersonas(selection, params, pillarBots),
     typeof selection.cat === 'number' && selection.sec === null ? categoryHeader(selection.cat) : null,
     open?.kind === 'persona' ? personaCard(open.id) : open?.kind === 'sector' ? sectorCard(open.id) : null,
   ]);
@@ -83,12 +97,16 @@ export default async function TaxonomyBrowserPage({
             neither a tree nor a table. */}
         <aside className="hidden lg:block">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 pb-4">
-            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} />
+            <MarketPicker bots={bots} selection={selection} params={params} config={config} />
+            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} pillarsByCategory={Object.fromEntries(pillarsByCategory)} />
           </div>
         </aside>
         <div className="mb-4 rounded-card border hairline px-2 lg:hidden">
-          <Disclosure title={`Browse: ${sector ? `${category?.name} › ${sector.name}` : category?.name ?? (selection.cat === 'none' ? 'No category' : 'All categories')}`}>
-            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} />
+          <Disclosure
+            title={`Browse: ${[pillar ? PILLAR_BY_ID[pillar].label : null, sector ? `${category?.name} › ${sector.name}` : category?.name ?? (selection.cat === 'none' ? 'No category' : pillar ? null : 'All categories')].filter(Boolean).join(' · ')}`}
+          >
+            <MarketPicker bots={bots} selection={selection} params={params} config={config} />
+            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} pillarsByCategory={Object.fromEntries(pillarsByCategory)} />
           </Disclosure>
         </div>
 
@@ -308,6 +326,29 @@ function NodeHeader({
     );
   }
 
+  if (selection.pillar) {
+    const pillar = PILLAR_BY_ID[selection.pillar];
+    return (
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow mb-1">Market</p>
+          <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+            <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: pillar.color }} />
+            {pillar.label}
+            <Badge tone={pillar.status === 'live' ? 'green' : 'slate'}>{pillar.status === 'live' ? 'Sold now' : 'Planned'}</Badge>
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">{pillar.description}</p>
+          <p className="mt-1 font-mono text-xs text-slate-500">
+            {tree.categories.length} {tree.categories.length === 1 ? 'category' : 'categories'} · {tree.all.live}/{tree.all.total} bots live
+          </p>
+        </div>
+        <Link href={`/admin/markets/${pillar.id}`} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-control border hairline px-3 text-xs font-semibold hover:bg-white/[0.03]">
+          Market page
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-4">
       <h2 className="text-xl font-bold tracking-tight">All categories</h2>
@@ -315,6 +356,54 @@ function NodeHeader({
         {tree.categories.length} categories · {tree.sectorCount} sectors · {tree.all.live}/{tree.all.total} bots live
       </p>
     </div>
+  );
+}
+
+/**
+ * The six markets as chips above the tree. Picking one narrows the tree to
+ * the fields that serve it and the list to its bots (`?pillar=`).
+ */
+function MarketPicker({
+  bots,
+  selection,
+  params,
+  config,
+}: {
+  bots: Awaited<ReturnType<typeof botPillars>>;
+  selection: Selection;
+  params: Params;
+  config: Config;
+}) {
+  const chip = 'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors';
+  return (
+    <nav aria-label="Markets" className="mb-3 flex flex-wrap gap-1">
+      <Link
+        href={selectionHref(params, config, selection, { pillar: null })}
+        scroll={false}
+        aria-current={selection.pillar === null ? 'page' : undefined}
+        className={`${chip} ${selection.pillar === null ? 'border-brand-500/60 bg-brand-500/15 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-200 dark:border-white/10'}`}
+      >
+        All markets
+      </Link>
+      {PILLARS.map((pillar) => {
+        const mine = bots.filter((b) => b.pillar === pillar.id);
+        const current = selection.pillar === pillar.id;
+        return (
+          <Link
+            key={pillar.id}
+            href={selectionHref(params, config, selection, { pillar: pillar.id })}
+            scroll={false}
+            aria-current={current ? 'page' : undefined}
+            title={`${pillar.label} — ${mine.filter((b) => b.isActive).length} of ${mine.length} bots live${pillar.status === 'planned' ? ' · planned' : ''}`}
+            className={`${chip} ${current ? 'border-brand-500/60 bg-brand-500/15 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-200 dark:border-white/10'} ${pillar.status === 'planned' && !current ? 'opacity-70' : ''}`}
+          >
+            <span aria-hidden className="size-1.5 rounded-full" style={{ backgroundColor: pillar.color }} />
+            {pillar.short}
+            <span className="font-mono text-[10px] text-slate-500">{mine.length}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 

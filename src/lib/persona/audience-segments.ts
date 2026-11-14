@@ -124,3 +124,22 @@ export function isAudienceSegmentCode(value: string): value is keyof typeof AUDI
 export function segmentsForAudienceType(type: 'B2C' | 'B2B' | 'B2G'): AudienceSegmentConfig[] {
   return Object.values(AUDIENCE_SEGMENTS).filter((s) => s.audienceType === type);
 }
+
+/** `B2C-CYP-01` → `B2C-CYP`: the family a segment belongs to. */
+export function familyOf(code: string): string {
+  return code.split('-').slice(0, 2).join('-');
+}
+
+/** The catalogue groups by family but never named them; one place for the names (Audiences, Markets). */
+export const AUDIENCE_FAMILY_LABEL: Record<string, string> = {
+  'B2C-CYP': 'Children and young people',
+  'B2C-GK': 'Gatekeepers',
+  'B2C-ADU': 'Adults',
+  'B2C-INT': 'Interest groups',
+  'B2B-SIZE': 'By organisation size',
+  'B2B-SEC': 'By industry',
+  'B2B-FUN': 'By function',
+  'B2G-CEN': 'Central government',
+  'B2G-LOC': 'Local government',
+  'B2G-PUB': 'Public services',
+};
