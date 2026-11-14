@@ -1,7 +1,7 @@
 # AI models
 
 **Settings → Models.** Which models your personas can use, at what tier and price. Keys, and
-the **Test** and **Fetch models** buttons, are one tab up in **Settings → Providers & keys**.
+the **Test** and **Fetch models** buttons, are on **System → Connections**.
 
 ## Providers
 
@@ -13,7 +13,7 @@ the **Test** and **Fetch models** buttons, are one tab up in **Settings → Prov
 | **Ollama** | A local server | Models on your own machine. No per-message cost, slower. |
 | **Stability AI** | API key | Image generation only — catalogue only for now, see below. |
 
-Keys go in **Settings → Providers & keys**, one card per provider. A key saved there overrides one
+Keys go in **System → Connections**, one card per provider. A key saved there overrides one
 in the environment, so you can rotate a key without a deploy. The same page holds the services bots
 use while they answer — web search, voice, and the Curriculum for tutors (see
 [Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors)) — with the same three

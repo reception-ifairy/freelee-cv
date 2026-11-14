@@ -34,7 +34,22 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #85 · `pending` — The dashboard opens with what needs your attention, the markets beside it, and a header badge when someone is waiting
+### #86 · `pending` — Every connection on one page, and Settings holding only values — one home per key
+
+Step 11, the last of the admin redesign. The 13 connection cards were spread over four settings
+sections (Providers & keys held nine and a 23-key form; Billing, Email and Media storage a card each),
+so checking that everything was connected took four screens. **/admin/connections** holds all of them
+in groups — AI providers, tools, knowledge, email, payments, storage — with a summary marking each
+working, failing, never tested or not set up, and an anchor per card that links land on. **Settings**
+keeps only values, each key in one section (`SECTION_FIELDS`): AI defaults, a new **Safety**
+(moderation, blocked words), Billing with **free use** moved in (a pricing decision), Email with
+the From address only; Media storage went with its card, and old links redirect. Every
+"Providers & keys" pointer now says Connections. New check `npm run admin:verify-settings-map` (8):
+all 13 connections grouped once, each of the 39 keys with exactly one home.
+
+📄 docs/57-admin-navigation.md · docs/51-connection-checks.md · docs/40-settings-and-models.md · handbook/settings.md · handbook/ai-models.md · handbook/curriculum-tutors.md
+
+### #85 · `80fbf49` — The dashboard opens with what needs your attention, the markets beside it, and a header badge when someone is waiting
 
 Step 10 of the admin redesign. The dashboard showed platform totals and a pending-orders banner;
 what needed doing was spread over a dozen screens. **Needs your attention** lists it, most urgent

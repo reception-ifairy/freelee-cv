@@ -33,7 +33,7 @@ export type ProviderCardData = {
  * error, which is a poor place to learn about a typo.
  *
  * Test and Fetch used to sit at the bottom of this card. They moved to the
- * provider's connection card in Providers & keys, next to the key they check:
+ * provider's connection card on /admin/connections, next to the key they check:
  * this card is now only about which models are offered and at what price.
  */
 export function ProviderCard({
@@ -148,7 +148,7 @@ export function ProviderCard({
         {!provider.isImageOnly ? (
           <Section
             title="Chat models"
-            empty="No chat models yet — Fetch models under Providers & keys, then mark the ones you want Stable."
+            empty="No chat models yet — Fetch models under Connections, then mark the ones you want Stable."
             models={chatModels}
           />
         ) : null}
@@ -159,7 +159,7 @@ export function ProviderCard({
         {provider.supportsImages || imageModels.length > 0 ? (
           <Section
             title="Image models"
-            empty="No image models yet — Fetch models under Providers & keys, then mark one Stable."
+            empty="No image models yet — Fetch models under Connections, then mark one Stable."
             models={imageModels}
           />
         ) : null}

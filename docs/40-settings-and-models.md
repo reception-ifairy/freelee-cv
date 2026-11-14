@@ -1,5 +1,7 @@
 # Settings, the model catalog, and provider health
 
+> **Since freelee #86 (2026-11-14):** the sections are General, Language, Analytics · AI defaults, Models, Safety, Site assistant · Billing (with free use), Email · and links to Connections and Branding. Keys and outside services moved to /admin/connections; Media storage went with them. Each key's one home is in `SECTION_FIELDS` (`src/lib/admin/settings-sections.ts`), checked by `npm run admin:verify-settings-map`.
+
 ## Settings was a strip of seven words
 
 `general · ai · assistant · email · billing · analytics · localization` — no grouping, no

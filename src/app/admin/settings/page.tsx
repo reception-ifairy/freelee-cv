@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { aiProviders, aiModels } from '@/db/schema';
@@ -9,19 +9,12 @@ import { SettingsNav } from '@/components/admin/settings-nav';
 import { SettingsForm } from '@/components/admin/settings-form';
 import { AiDefaultsForm } from '@/components/admin/ai-settings-form';
 import { ModelsManager, type ProviderBundle } from '@/components/admin/models-manager';
-import { ConnectionCard } from '@/components/admin/connection-card';
 import { EmbeddingModelPicker } from '@/components/admin/embedding-model-picker';
 import { SETTINGS_SCHEMA } from '@/lib/settings-schema';
-import { DEFAULT_SECTION, settingsSection, type SettingsSection } from '@/lib/admin/settings-sections';
+import { DEFAULT_SECTION, MOVED_SECTIONS, SECTION_FIELDS, settingsSection, type SettingsSection } from '@/lib/admin/settings-sections';
+import type { SettingsGroup } from '@/lib/settings-schema';
 import { getSettings, getSettingString, type SettingValue } from '@/lib/settings';
 import { CHAT_PROVIDER_IDS, findEmbeddingModel, getProviderRegistry } from '@/lib/ai/registry';
-import { connectionView, type ConnectionId } from '@/lib/connections/registry';
-import {
-  chooseConnectionItemAction,
-  fetchConnectionAction,
-  saveConnectionAction,
-  testConnectionAction,
-} from '@/server/actions/admin-connections';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -38,6 +31,9 @@ export default async function AdminSettingsPage({
   // `group` is the old parameter name — kept so existing links and bookmarks
   // still land somewhere sensible rather than silently on General.
   const { section: sectionParam, group } = await searchParams;
+  // Sections that moved off this page (Media storage, the connection cards) — old links land where they went.
+  const moved = MOVED_SECTIONS[sectionParam ?? group ?? ''];
+  if (moved) redirect(moved);
   const active = settingsSection(sectionParam ?? group ?? DEFAULT_SECTION) ?? settingsSection(DEFAULT_SECTION)!;
 
   const settings = await getSettings();
@@ -46,7 +42,7 @@ export default async function AdminSettingsPage({
     <div>
       <PageHeader
         title="Settings"
-        description="Everything that configures the platform, grouped by what it affects. Changes take effect immediately."
+        description="The values that configure the platform, grouped by what they affect. Keys and outside services are under Connections. Changes take effect immediately."
       />
 
       <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -69,126 +65,78 @@ export default async function AdminSettingsPage({
 
 type Settings = Map<string, SettingValue>;
 
-const AI_PROVIDER_CONNECTIONS: ConnectionId[] = ['openai', 'anthropic', 'google', 'openrouter', 'ollama', 'stability'];
-
 /**
- * What each section shows. Connection cards come first wherever a section has
- * an outside service behind it, because "is it connected?" is the question to
- * answer before any of the settings under it can matter.
+ * What each section shows: the values in SECTION_FIELDS, nothing else. The
+ * connection cards that used to sit here (providers, tools, the curriculum,
+ * Resend, Stripe, PayPal, S3) live on /admin/connections now — one home per
+ * key, checked by scripts/verify-settings-map.ts.
  */
 async function SectionBody({ section, settings }: { section: SettingsSection; settings: Settings }) {
   switch (section.id) {
     case 'models':
       return <ModelsSection />;
 
-    case 'ai':
+    case 'billing':
       return (
-        <div className="space-y-10">
-          <Block heading="AI providers" blurb="Save a key, press Test, then Fetch models to bring in what the provider offers.">
-            <Connections ids={AI_PROVIDER_CONNECTIONS} settings={settings} />
-          </Block>
-          <Block heading="Tools" blurb="Services bots call on while they answer.">
-            <Connections ids={['tavily', 'elevenlabs']} settings={settings} />
-          </Block>
-          <Block
-            heading="Knowledge"
-            blurb="Outside libraries bots look things up in. The curriculum is what tutor bots teach from."
-          >
-            <Connections ids={['curriculum']} settings={settings} />
-          </Block>
-          <Block heading="Defaults" blurb="What bots fall back to, what visitors get for free, and how input is checked.">
-            <SchemaSection sectionId="ai" settings={settings} />
-          </Block>
+        <div className="space-y-8">
+          <ConnectionsHint text="Stripe and PayPal checks are under" anchor="group-payments" />
+          <SchemaSection group="billing" keys={['bank_transfer_details', 'invoice_vendor']} settings={settings} />
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Free use</h3>
+            <SchemaSection group="ai" keys={['guest_free_messages', 'signup_bonus_credits']} settings={settings} />
+          </div>
         </div>
       );
 
     case 'email':
       return (
         <div className="space-y-6">
-          <Connections ids={['resend']} settings={settings} />
-          <SchemaSection sectionId="email" settings={settings} omit={['resend_api_key']} />
+          <ConnectionsHint text="The Resend key and its Test are under" anchor="conn-resend" />
+          <SchemaSection group="email" keys={SECTION_FIELDS.email} settings={settings} />
         </div>
       );
 
-    case 'billing':
+    case 'ai':
       return (
         <div className="space-y-6">
-          <Connections ids={['stripe', 'paypal']} settings={settings} />
-          <SchemaSection sectionId="billing" settings={settings} />
+          <ConnectionsHint text="Provider keys, Test and Fetch models are under" anchor="group-ai" />
+          <SchemaSection group="ai" keys={SECTION_FIELDS.ai} settings={settings} />
         </div>
       );
 
-    case 'storage':
-      return <Connections ids={['s3']} settings={settings} />;
-
     default:
-      return <SchemaSection sectionId={section.id} settings={settings} />;
+      if (!section.schemaGroup) notFound();
+      return <SchemaSection group={section.schemaGroup} keys={SECTION_FIELDS[section.id] ?? []} settings={settings} />;
   }
 }
 
-function Block({ heading, blurb, children }: { heading: string; blurb: string; children: React.ReactNode }) {
+function ConnectionsHint({ text, anchor }: { text: string; anchor: string }) {
   return (
-    <section className="space-y-3">
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{heading}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{blurb}</p>
-      </div>
-      {children}
-    </section>
+    <p className="text-sm text-slate-500 dark:text-slate-400">
+      {text}{' '}
+      <Link href={`/admin/connections#${anchor}`} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+        Connections
+      </Link>
+      .
+    </p>
   );
 }
 
-/**
- * One card per connection. The actions are bound to the connection id here,
- * on the server, so the card itself knows nothing about which service it is
- * talking to.
- */
-function Connections({ ids, settings }: { ids: ConnectionId[]; settings: Settings }) {
-  return (
-    <div className="space-y-4">
-      {ids.map((id) => {
-        const { canFetch, canChoose, ...view } = connectionView(id, settings);
-        return (
-          <ConnectionCard
-            key={id}
-            {...view}
-            save={view.envOnly ? undefined : saveConnectionAction.bind(null, id)}
-            test={testConnectionAction.bind(null, id)}
-            fetch={canFetch ? fetchConnectionAction.bind(null, id) : undefined}
-            choose={canChoose ? chooseConnectionItemAction.bind(null, id) : undefined}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-/** A plain settings group driven by SETTINGS_SCHEMA. */
-async function SchemaSection({
-  sectionId,
-  settings,
-  omit,
-}: {
-  sectionId: string;
-  settings: Settings;
-  omit?: string[];
-}) {
-  const section = settingsSection(sectionId);
-  if (!section?.schemaGroup) notFound();
-
+/** Some keys of one SETTINGS_SCHEMA group, as a form. */
+async function SchemaSection({ group, keys, settings }: { group: SettingsGroup; keys: readonly string[]; settings: Settings }) {
   // Secrets are never echoed back into the DOM; a blank field keeps the value.
   const values: Record<string, string | boolean> = {};
-  for (const field of SETTINGS_SCHEMA[section.schemaGroup]) {
+  for (const field of SETTINGS_SCHEMA[group]) {
     const raw = settings.get(field.key);
     values[field.key] =
       field.type === 'secret' ? '' : field.type === 'bool' ? Boolean(raw) : String(raw ?? '');
   }
 
-  if (section.schemaGroup === 'ai') {
-    return <AiDefaultsForm values={values} providers={await getProviderRegistry()} />;
+  if (group === 'ai') {
+    return <AiDefaultsForm values={values} providers={await getProviderRegistry()} keys={keys} />;
   }
-
-  return <SettingsForm group={section.schemaGroup} values={values} omit={omit} />;
+  const omit = SETTINGS_SCHEMA[group].map((field) => field.key).filter((key) => !keys.includes(key));
+  return <SettingsForm group={group} values={values} omit={omit} />;
 }
 
 /**
@@ -267,8 +215,8 @@ async function ModelsSection() {
     <div className="space-y-4">
       <p className="text-sm text-slate-500 dark:text-slate-400">
         To check a key or bring in new models, use <strong>Test</strong> and <strong>Fetch models</strong> under{' '}
-        <Link href="/admin/settings?section=ai" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
-          Providers &amp; keys
+        <Link href="/admin/connections#group-ai" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+          Connections
         </Link>
         .
       </p>
