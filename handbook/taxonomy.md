@@ -11,7 +11,9 @@ bodies matter, how risky the work is, and who it serves.
 Three screens:
 
 - **Categories** — the twenty fields. Open one to see everything known about it.
-- **Prototypes** — bots you have designed but not yet published.
+- **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
+
+The badges count live bots apart: **16/32 personas live** means 16 of the field's 32 bots are switched on. The workbench shows which AI model answers it.
 - **Audiences** — seventy groups of people, and what each of them needs.
 
 ## Opening a field

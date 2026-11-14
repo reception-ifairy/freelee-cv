@@ -101,7 +101,7 @@ where the converter deliberately guesses and here we know:
   actually leans towards — the average of hand-scored sector suitability, not a guess.
 
 Created `isActive: false` with `pinVersioning`, so it lands as a genuine `draft` version rather than a
-published 1.0.0. `/admin/taxonomy/prototypes` lists them.
+published 1.0.0. `/admin/taxonomy/drafts` lists them (every persona that is not live; it was `/prototypes` until 2026-11-14, which now redirects).
 
 ## The taxonomy is now in git
 
@@ -158,3 +158,13 @@ slug, so on an empty database it inserted **nothing** — the categories did not
 - The workbench takes JSON by paste rather than through a tool call. `stopWhen: stepCountIs(5)` makes
   a tool round trip resend the whole brief on every step, which is the same "pay twice" problem
   documented in docs/48; paste costs nothing and is honest about what it does.
+
+## Fixes on 2026-11-14 (freelee #76)
+
+- **The thread is keyed by the category's id** (`conversations.settings.categoryId`), not by its title: renaming a category used to orphan its workbench thread.
+- **The screen says which model answers.** It is the platform's default provider and model (`workbenchModel()`, `src/lib/taxonomy/workbench-model.ts`), shared with the route. It had been hidden; on this server the default is Google `gemini-flash-latest`.
+- **A draft keeps only the field's audiences of its own kind.** A B2C tutor drafted in Education used to inherit the schools and universities the field is also sold to (`AUDIENCE_SEGMENTS[code].audienceType === audienceType`).
+- **Saving a category's audiences also refreshes `/admin/taxonomy`.**
+- **The overview counts live personas apart:** "16/32 personas live" instead of "32 personas", which counted switched-off ones too.
+- **"Prototypes" is now "Drafts"** (`/admin/taxonomy/drafts`; the old address redirects). It lists every persona that is not live.
+

@@ -93,7 +93,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'lime',
     items: [
       { href: '/admin/taxonomy', label: 'Categories', icon: Tags },
-      { href: '/admin/taxonomy/prototypes', label: 'Prototypes', icon: FlaskConical },
+      { href: '/admin/taxonomy/drafts', label: 'Drafts', icon: FlaskConical },
       { href: '/admin/taxonomy/audiences', label: 'Audiences', icon: Users2 },
     ],
   },
@@ -201,6 +201,14 @@ export function isNavItemCurrent(item: AdminNavItem, pathname: string): boolean 
   if (adopted) return item.href === adopted;
   if (!isNavItemActive(item, pathname)) return false;
   return findActiveNavItem(pathname)?.item.href === item.href;
+}
+
+/** The nav item with exactly this href, with its section (adopted routes resolve through it). */
+export function findNavItemByHref(href: string): { section: AdminNavSection; item: AdminNavItem } | null {
+  for (const section of ADMIN_NAV) {
+    for (const item of section.items) if (item.href === href) return { section, item };
+  }
+  return null;
 }
 
 /** The item owning this route, or null. Used for the header breadcrumb. */

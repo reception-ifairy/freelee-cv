@@ -118,14 +118,9 @@ export default async function AdminPersonasPage({
     conditions.push(
       exists(
         db
-          .select({
-        // Taxonomy for the generated mark. The category comes from a correlated
-        // subquery rather than a join: persona_categories is many-to-many and
-        // joining it multiplies rows, which is what once made /admin/packs 500.
-        categoryId: sql<number | null>`(select c.id from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        categorySlug: sql<string | null>`(select c.slug from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        categoryColor: sql<string | null>`(select c.color from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        sectorSlug: sectors.slug, one: sql`1` })
+          // Only existence matters here. (Until 2026-11-14 this select carried columns pasted from the main
+          // query, including sectors.slug — the count query has no sectors join, so ?category= failed.)
+          .select({ one: sql`1` })
           .from(personaCategories)
           .where(
             and(
