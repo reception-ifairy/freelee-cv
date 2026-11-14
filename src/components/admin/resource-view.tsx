@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutGrid, List } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { EmptyState, type EmptyStateProps } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -30,10 +30,16 @@ export type ResourceItem = {
   /** Avatar, icon or colour swatch. */
   media?: React.ReactNode;
   badges?: { label: string; tone?: BadgeTone; title?: string }[];
-  /** Shown as fields in the card and as columns in the table, in this order. */
-  meta?: { label: string; value: React.ReactNode }[];
+  /**
+   * Shown as fields in the card and as columns in the table, in this order.
+   * `key` names the column for `sortHrefs` (the label is used when it is absent).
+   */
+  meta?: { key?: string; label: string; value: React.ReactNode }[];
   actions?: ActionItem[];
 };
+
+/** A sortable column: where its header links to, and how the list is sorted by it now (see `sortToggle`). */
+export type SortHref = { href: string; direction: 'asc' | 'desc' | null };
 
 export function ResourceView({
   module,
@@ -43,6 +49,10 @@ export function ResourceView({
   columns = 3,
   showCount = true,
   badgeHeader,
+  sortHrefs,
+  selectedId,
+  openInPlace = false,
+  toggle = true,
 }: {
   /** Cookie key for the grid/list preference. */
   module: string;
@@ -63,7 +73,20 @@ export function ResourceView({
   badgeHeader?: string;
   /** Off when a ListToolbar above already reports the total, which is the real one when filters are applied. */
   showCount?: boolean;
+  /** Table view: sortable column headers, keyed by `meta[].key` (or label), `title` for the Name column. */
+  sortHrefs?: Record<string, SortHref>;
+  /** The item whose card is open beside the list — highlighted and marked `aria-current`. */
+  selectedId?: string | number | null;
+  /**
+   * Rows open a card on this page (a RouteSheet) rather than leave it: the
+   * title link keeps the scroll position, stretches over the whole row and
+   * carries `id="row-<item id>"`, which is where focus goes when the card closes.
+   */
+  openInPlace?: boolean;
+  /** Off for a list that only makes sense as a table (a browser beside a tree). */
+  toggle?: boolean;
 }) {
+  const rowOptions = { selectedId: selectedId ?? null, openInPlace };
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -74,15 +97,15 @@ export function ResourceView({
         ) : (
           <span />
         )}
-        <ViewToggle module={module} view={view} />
+        {toggle ? <ViewToggle module={module} view={view} /> : null}
       </div>
 
       {items.length === 0 ? (
         typeof empty === 'string' ? <EmptyState title={empty} /> : <EmptyState {...empty} />
-      ) : view === 'grid' ? (
-        <ResourceGrid items={items} columns={columns} />
+      ) : view === 'grid' && toggle ? (
+        <ResourceGrid items={items} columns={columns} {...rowOptions} />
       ) : (
-        <ResourceTable items={items} badgeHeader={badgeHeader} />
+        <ResourceTable items={items} badgeHeader={badgeHeader} sortHrefs={sortHrefs} {...rowOptions} />
       )}
     </div>
   );
@@ -94,7 +117,29 @@ const GRID_COLUMNS: Record<2 | 3 | 4, string> = {
   4: 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4',
 };
 
-function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 3 | 4 }) {
+type RowOptions = { selectedId: string | number | null; openInPlace: boolean };
+
+/** The title link. In place: keeps the scroll, covers the whole row or card, and is where focus returns. */
+function TitleLink({ item, openInPlace, selected, className }: { item: ResourceItem; openInPlace: boolean; selected: boolean; className: string }) {
+  if (!item.href) return <span className={className}>{item.title}</span>;
+  return (
+    <Link
+      href={item.href}
+      id={openInPlace ? `row-${item.id}` : undefined}
+      scroll={openInPlace ? false : undefined}
+      aria-current={selected ? 'true' : undefined}
+      className={cn(
+        className,
+        openInPlace &&
+          'after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-control focus-visible:after:ring-2 focus-visible:after:ring-brand-500',
+      )}
+    >
+      {item.title}
+    </Link>
+  );
+}
+
+function ResourceGrid({ items, columns, selectedId, openInPlace }: { items: ResourceItem[]; columns: 2 | 3 | 4 } & RowOptions) {
   return (
     <div className={cn('grid gap-3', GRID_COLUMNS[columns])}>
       {items.map((item, index) => (
@@ -106,25 +151,25 @@ function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 
           // starts reading as "slow", and a 200-row list would take four
           // seconds to finish appearing.
           style={{ '--stagger-index': Math.min(index, 8) } as React.CSSProperties}
-          className="animate-stagger group relative flex flex-col gap-3"
+          className={cn('animate-stagger group relative flex flex-col gap-3', item.id === selectedId && 'ring-2 ring-brand-500/60')}
         >
           <div className="flex items-start gap-3">
             {item.media ? <div className="shrink-0">{item.media}</div> : null}
 
             <div className="min-w-0 flex-1">
               {/* The title is the link, not the whole card: a card-wide anchor
-                  would swallow the ⋯ menu and make text unselectable. */}
-              {item.href ? (
-                <Link href={item.href} className="block truncate font-semibold transition-colors group-hover:text-brand-500 focus:outline-none focus-visible:underline">
-                  {item.title}
-                </Link>
-              ) : (
-                <p className="truncate font-semibold">{item.title}</p>
-              )}
+                  would swallow the ⋯ menu and make text unselectable. (In
+                  place, it does cover the card — the menu sits above it.) */}
+              <TitleLink
+                item={item}
+                openInPlace={openInPlace}
+                selected={item.id === selectedId}
+                className="block truncate font-semibold transition-colors group-hover:text-brand-500 focus:outline-none focus-visible:underline"
+              />
               {item.subtitle ? <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">{item.subtitle}</p> : null}
             </div>
 
-            {item.actions?.length ? <ActionMenu items={item.actions} /> : null}
+            {item.actions?.length ? <div className="relative z-10"><ActionMenu items={item.actions} /></div> : null}
           </div>
 
           {item.badges?.length ? (
@@ -153,20 +198,45 @@ function ResourceGrid({ items, columns }: { items: ResourceItem[]; columns: 2 | 
   );
 }
 
-function ResourceTable({ items, badgeHeader = 'Status' }: { items: ResourceItem[]; badgeHeader?: string }) {
+function SortableTH({ label, sort }: { label: string; sort?: SortHref }) {
+  if (!sort) return <TH>{label}</TH>;
+  const Icon = sort.direction === 'asc' ? ArrowUp : sort.direction === 'desc' ? ArrowDown : ArrowUpDown;
+  return (
+    <TH aria-sort={sort.direction === 'asc' ? 'ascending' : sort.direction === 'desc' ? 'descending' : undefined}>
+      <Link
+        href={sort.href}
+        scroll={false}
+        replace
+        className={cn('inline-flex items-center gap-1 hover:text-slate-200', sort.direction && 'text-slate-200')}
+        title={`Sort by ${label.toLowerCase()}`}
+      >
+        {label}
+        <Icon className={cn('size-3', !sort.direction && 'opacity-40')} aria-hidden />
+      </Link>
+    </TH>
+  );
+}
+
+function ResourceTable({
+  items,
+  badgeHeader = 'Status',
+  sortHrefs,
+  selectedId,
+  openInPlace,
+}: { items: ResourceItem[]; badgeHeader?: string; sortHrefs?: Record<string, SortHref> } & RowOptions) {
   // Columns come from the first item, so every item must describe the same
   // `meta` keys — which is a property of how a page builds its items, not
   // something this component can enforce.
-  const columns = items[0]?.meta?.map((field) => field.label) ?? [];
+  const columns = items[0]?.meta?.map((field) => ({ key: field.key ?? field.label, label: field.label })) ?? [];
 
   return (
     <Card className="overflow-hidden">
       <Table>
         <THead>
           <tr>
-            <TH>Name</TH>
-            {columns.map((label) => (
-              <TH key={label}>{label}</TH>
+            <SortableTH label="Name" sort={sortHrefs?.title} />
+            {columns.map((column) => (
+              <SortableTH key={column.key} label={column.label} sort={sortHrefs?.[column.key]} />
             ))}
             {/* Not always "Status": menus put a visibility scope here, sales
                 the payment gateway. Naming the column after whatever the badges
@@ -180,24 +250,23 @@ function ResourceTable({ items, badgeHeader = 'Status' }: { items: ResourceItem[
             <EmptyRow colSpan={columns.length + 3}>Nothing here yet.</EmptyRow>
           ) : (
             items.map((item) => (
-              <TR key={item.id}>
+              <TR key={item.id} className={cn(openInPlace && 'relative', item.id === selectedId && 'bg-brand-500/10')}>
                 <TD>
                   <span className="flex items-center gap-2">
                     {item.media}
                     <span className="min-w-0">
-                      {item.href ? (
-                        <Link href={item.href} className="block truncate font-medium hover:text-brand-600">
-                          {item.title}
-                        </Link>
-                      ) : (
-                        <span className="block truncate font-medium">{item.title}</span>
-                      )}
+                      <TitleLink
+                        item={item}
+                        openInPlace={openInPlace}
+                        selected={item.id === selectedId}
+                        className="block truncate font-medium hover:text-brand-600"
+                      />
                       {item.subtitle ? <span className="block truncate text-xs text-slate-400">{item.subtitle}</span> : null}
                     </span>
                   </span>
                 </TD>
                 {(item.meta ?? []).map((field) => (
-                  <TD key={field.label}>{field.value}</TD>
+                  <TD key={field.key ?? field.label}>{field.value}</TD>
                 ))}
                 <TD>
                   <span className="flex flex-wrap gap-1">
@@ -209,7 +278,7 @@ function ResourceTable({ items, badgeHeader = 'Status' }: { items: ResourceItem[
                   </span>
                 </TD>
                 <TD className="text-right">
-                  <span className="inline-flex justify-end">{item.actions?.length ? <ActionMenu items={item.actions} /> : null}</span>
+                  <span className="relative z-10 inline-flex justify-end">{item.actions?.length ? <ActionMenu items={item.actions} /> : null}</span>
                 </TD>
               </TR>
             ))

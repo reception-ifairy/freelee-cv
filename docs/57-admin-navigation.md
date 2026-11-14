@@ -54,6 +54,21 @@ Built on native `<details>`/`<summary>`:
 
 **`defaultOpen` only ever opens the section after the first render, never closes it.** A server page re-renders on every soft navigation. Passed straight to `<details open>`, the section opened for a card snapped shut as the card closed, taking with it the row that should get focus.
 
+## Lists and tabs (freelee #79)
+
+- **`ListConfig.keep`** (`src/lib/admin/list-query.ts`): URL params a list carries but its toolbar does not edit, such as a tree selection (`cat`, `sec`). Search, filters, "Clear all", sorting and paging keep them. See `docs/35-admin-lists.md`.
+- **`sortToggle`**: a sortable column header and the direction it is sorted now.
+- **`ResourceView`** (`src/components/admin/resource-view.tsx`) gains four options:
+  - `sortHrefs`: clickable column headers with `aria-sort`, keyed by `meta[].key`;
+  - `selectedId`: the row whose card is open, highlighted and marked `aria-current`;
+  - `openInPlace`: the title link keeps the scroll position, covers the whole row, and carries `id="row-<id>"`, where RouteSheet returns focus; the ⋯ menu stays above it;
+  - `toggle={false}`: a table-only list, without the grid/list switch.
+
+  Existing lists are unchanged; every option defaults to the old behaviour.
+- **`TabNav`** (`src/components/admin/tab-nav.tsx`): tabs as server-rendered links (`?tab=…`) with an optional count. The admin had tabs four ways. Links are the one that survives a reload, can be linked to, works before hydration, and runs only the open tab's queries. They are announced as links (`aria-current="page"`), not as the ARIA tab pattern, because each tab is another URL. The bot team page uses it ("Runs 3"). The category workspace and the homeschool hub will too.
+
+Checked by `npm run admin:verify-list-query` (11 checks, part of `blocks:verify`).
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

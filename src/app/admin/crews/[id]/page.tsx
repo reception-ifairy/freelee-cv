@@ -12,9 +12,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TeamBuilder } from '@/components/admin/team-builder';
-import { relativeTime, cn } from '@/lib/utils';
+import { relativeTime } from '@/lib/utils';
 import { loadTeamBuilderOptions } from '../builder-data';
 import { TestRun } from './test-run';
+import { TabNav } from '@/components/admin/tab-nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export default async function AdminCrewPage({
   const base = `/admin/crews/${crew.id}`;
   const tabs = [
     { id: 'build', label: 'Build', href: base },
-    { id: 'runs', label: runCount ? `Runs (${runCount})` : 'Runs', href: `${base}?tab=runs` },
+    { id: 'runs', label: 'Runs', href: `${base}?tab=runs`, count: runCount || undefined },
   ] as const;
 
   return (
@@ -91,23 +92,7 @@ export default async function AdminCrewPage({
         </Card>
       ) : null}
 
-      <nav aria-label="Team sections" className="mb-6 flex gap-1 border-b border-slate-200 dark:border-white/10">
-        {tabs.map((t) => (
-          <Link
-            key={t.id}
-            href={t.href}
-            aria-current={active === t.id ? 'page' : undefined}
-            className={cn(
-              '-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors',
-              active === t.id
-                ? 'border-brand-500 text-brand-700 dark:text-brand-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
-            )}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      <TabNav label="Team sections" tabs={tabs} active={active} />
 
       {active === 'build' ? (
         <BuildTab crew={crew} members={members} />
