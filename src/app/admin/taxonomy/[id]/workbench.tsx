@@ -42,6 +42,7 @@ export function Workbench({
   const [json, setJson] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
+  const [model, setModel] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   // The conversation is opened lazily, on first use — the same shape the site
@@ -65,6 +66,7 @@ export function Workbench({
           metadata: { index },
         })),
       );
+      setModel(result.model);
       setConversationId(result.conversationId);
       setOpening(false);
     });
@@ -106,6 +108,7 @@ export function Workbench({
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <FlaskConical className="size-4 text-lime-500" />
         <p className="text-sm font-medium">Workbench — {categoryName}</p>
+        {model ? <span className="text-xs text-slate-500" title="The platform's default provider and model (Settings → Providers & keys)">{model}</span> : null}
         <div className="ms-auto flex items-center gap-2">
           <Select
             value={sectorId}

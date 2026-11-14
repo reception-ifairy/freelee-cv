@@ -39,7 +39,8 @@ export default async function AdminTaxonomyPage() {
         // to the inner table, which is how three earlier admin screens ended up
         // silently counting zero.
         personaCount: sql<number>`(select count(*)::int from persona_categories pc where pc.category_id = ${sql.raw('"categories"."id"')})`,
-        directCount: sql<number>`(select count(*)::int from personas p join sectors s on s.id = p.sector_id where s.category_id = ${sql.raw('"categories"."id"')})`,
+        // Live ones apart (2026-11-14): "32 personas" read as 32 live when 16 were drafts or switched off.
+        activeCount: sql<number>`(select count(*)::int from persona_categories pc join personas p on p.id = pc.persona_id where p.is_active and pc.category_id = ${sql.raw('"categories"."id"')})`,
       })
       .from(categories)
       .orderBy(asc(categories.position)),
@@ -55,6 +56,7 @@ export default async function AdminTaxonomyPage() {
         b2b: sectors.b2bSuitability,
         b2g: sectors.b2gSuitability,
         personaCount: sql<number>`(select count(*)::int from personas p where p.sector_id = ${sql.raw('"sectors"."id"')})`,
+        activeCount: sql<number>`(select count(*)::int from personas p where p.is_active and p.sector_id = ${sql.raw('"sectors"."id"')})`,
       })
       .from(sectors)
       .orderBy(asc(sectors.position), asc(sectors.name)),
@@ -111,8 +113,8 @@ export default async function AdminTaxonomyPage() {
                       </h2>
                       {!category.isActive ? <Badge tone="slate">Hidden</Badge> : null}
                       <Badge tone="slate">{own.length} sector{own.length === 1 ? '' : 's'}</Badge>
-                      <Badge tone={category.personaCount > 0 ? 'brand' : 'slate'}>
-                        {category.personaCount} persona{category.personaCount === 1 ? '' : 's'}
+                      <Badge tone={category.activeCount > 0 ? 'brand' : 'slate'} title={`${category.activeCount} live, ${category.personaCount} in all`}>
+                        {category.activeCount}/{category.personaCount} personas live
                       </Badge>
                     </div>
                     {category.description ? (
@@ -147,7 +149,7 @@ export default async function AdminTaxonomyPage() {
                         <div className="flex items-center gap-2">
                           <span className="min-w-0 flex-1 truncate text-sm font-medium">{sector.name}</span>
                           {sector.personaCount > 0 ? (
-                            <Badge tone="brand">{sector.personaCount}</Badge>
+                            <Badge tone="brand" title={`${sector.activeCount} live, ${sector.personaCount} in all`}>{sector.activeCount}/{sector.personaCount}</Badge>
                           ) : null}
                           {!sector.isActive ? <Badge tone="slate">off</Badge> : null}
                         </div>

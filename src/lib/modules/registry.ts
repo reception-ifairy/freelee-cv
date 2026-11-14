@@ -545,7 +545,7 @@ export const MODULES: ModuleManifest[] = [
     permissions: [],
     navigation: [
       { label: 'Categories', href: '/admin/taxonomy', group: 'admin', order: 11 },
-      { label: 'Prototypes', href: '/admin/taxonomy/prototypes', group: 'admin', order: 12 },
+      { label: 'Drafts', href: '/admin/taxonomy/drafts', group: 'admin', order: 12 },
       { label: 'Audiences', href: '/admin/taxonomy/audiences', group: 'admin', order: 13 },
     ],
   },

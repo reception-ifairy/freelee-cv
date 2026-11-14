@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
-import { ADMIN_NAV_ALIASES, findActiveNavItem } from '@/lib/admin/nav';
+import { ADMIN_NAV_ALIASES, adoptedHref, findActiveNavItem, findNavItemByHref } from '@/lib/admin/nav';
 
 /**
  * Where you are, in the header.
@@ -19,17 +19,22 @@ import { ADMIN_NAV_ALIASES, findActiveNavItem } from '@/lib/admin/nav';
  */
 export function AdminBreadcrumb() {
   const pathname = usePathname();
-  const match = findActiveNavItem(pathname);
+  // Routes kept outside their section (category and sector editors live under /admin/categories and
+  // /admin/sectors, owned by Taxonomy) resolve through their adopting item, so they are never blank.
+  const adopted = adoptedHref(pathname);
+  const match = adopted ? findNavItemByHref(adopted) : findActiveNavItem(pathname);
+  const prefix = adopted ? Object.keys(ADMIN_NAV_ALIASES).find((p) => pathname === p || pathname.startsWith(`${p}/`)) : undefined;
 
-  const alias = ADMIN_NAV_ALIASES[pathname];
   if (!match) {
+    const alias = ADMIN_NAV_ALIASES[pathname];
     return alias ? <span className="truncate text-sm font-semibold">{alias}</span> : null;
   }
 
   const { item } = match;
   // Everything after the section's own href — `/769`, `/convert`,
   // `/12/builder` — tells us this is a detail view rather than the list.
-  const rest = pathname.slice(item.href.length).split('/').filter(Boolean);
+  const rest = pathname.slice((prefix ?? item.href).length).split('/').filter(Boolean);
+  const middle = prefix && ADMIN_NAV_ALIASES[prefix] !== item.label ? ADMIN_NAV_ALIASES[prefix] : null;
 
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
@@ -40,6 +45,13 @@ export function AdminBreadcrumb() {
       >
         {item.label}
       </Link>
+
+      {middle ? (
+        <>
+          <ChevronRight className="size-3.5 shrink-0 text-slate-600" aria-hidden />
+          <span className="truncate text-slate-400">{middle}</span>
+        </>
+      ) : null}
 
       {rest.length > 0 ? (
         <>

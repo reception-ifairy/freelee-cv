@@ -34,7 +34,26 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #75 · `pending` — Exam goals in a child's profile: the plan works back from them, the tutor practises the format
+### #76 · `pending` — Admin fixes before the redesign: the category filter, breadcrumbs, live counts, Drafts, the workbench
+
+The first step of the admin redesign the owner approved on 2026-11-14 (pillars by audience, a
+taxonomy browser, a sidebar by job): fix what is broken before rebuilding. The personas list's
+category filter failed (its EXISTS subquery carried columns pasted from the main query, including
+`sectors.slug`, which the count query does not join — the server log showed the error on every
+`?category=`). Category and sector editors had no breadcrumb; they now resolve through the item that
+adopts them ("Categories › Sectors › Details"). The taxonomy overview counts live personas apart
+("16/32 personas live"; Education said "32"). "Prototypes" is "Drafts" — it lists every persona
+that is not live — and the old address redirects. The workbench thread is keyed by the category's
+id, not its title (a rename orphaned it); the screen names the model that answers (shared
+`workbenchModel()`); a draft keeps only the field's audiences of its own kind (a B2C tutor in
+Education inherited schools and universities); saving audiences refreshes the overview. The persona
+form's models link points at Settings → Models. New check `npm run admin:verify-nav`: every admin
+page (52) has exactly one current sidebar item and a breadcrumb, sidebar hrefs are unique pages,
+module-registry admin links are pages.
+
+📄 docs/49-taxonomy-workbench.md · handbook/taxonomy.md
+
+### #75 · `c57a706` — Exam goals in a child's profile: the plan works back from them, the tutor practises the format
 
 The owner's decision (2026-11-14): the parent picks a target exam and the plan works back from it.
 Curriculum serves the exams layer since its PRs #37–#39 (deployed). Fetch now also saves the exams

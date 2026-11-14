@@ -4,8 +4,8 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { conversations, conversationMessages } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
-import { getProviderRegistry, getModel, resolveProviderKeys, resolveProviderId } from '@/lib/ai/registry';
-import { getSettingString } from '@/lib/settings';
+import { getProviderRegistry, getModel, resolveProviderKeys } from '@/lib/ai/registry';
+import { workbenchModel } from '@/lib/taxonomy/workbench-model';
 import { categoryBrief, briefForModel } from '@/lib/taxonomy/brief';
 
 /**
@@ -78,9 +78,7 @@ export async function POST(request: Request) {
   if (!brief) return new Response('Unknown category', { status: 404 });
 
   const registry = await getProviderRegistry();
-  const providerId = resolveProviderId(await getSettingString('ai_default_provider', 'openai'));
-  const modelId =
-    (await getSettingString(`${providerId}_default_model`)) || registry[providerId]?.defaultModel;
+  const { providerId, modelId } = await workbenchModel();
   if (!modelId) return new Response('No model configured', { status: 503 });
   const keys = await resolveProviderKeys(providerId);
 

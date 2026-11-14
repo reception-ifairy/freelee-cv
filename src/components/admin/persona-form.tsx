@@ -486,7 +486,7 @@ export function PersonaForm({
                         />
                         <Hint>
                           A model id not yet in the catalog — see{' '}
-                          <Link href="/admin/ai-models" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+                          <Link href="/admin/settings?section=models" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
                             AI models
                           </Link>{' '}
                           to fetch and add it properly.{' '}

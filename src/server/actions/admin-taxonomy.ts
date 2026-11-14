@@ -4,7 +4,7 @@
 // already exists as a file. Same collision workaround as admin-ai-models.ts.
 
 import { z } from 'zod';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import {
@@ -13,10 +13,11 @@ import {
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
 import { getPlatformTeamId } from '@/lib/teams';
-import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
+import { AUDIENCE_SEGMENTS, isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 import { uniquePersonaSlug } from '@/lib/persona/slug';
 import { convertedPersonaSchema } from '@/lib/persona/convert';
 import { categoryBrief } from '@/lib/taxonomy/brief';
+import { workbenchModel } from '@/lib/taxonomy/workbench-model';
 import type { ActionState } from './auth';
 
 /** Codes are validated against the TypeScript catalogue — there is no FK to check them. */
@@ -55,6 +56,8 @@ export async function setCategoryAudiencesAction(categoryId: number, codes: stri
   });
 
   revalidatePath(`/admin/taxonomy/${parsed.data.categoryId}`);
+  // The taxonomy overview shows audience coverage too.
+  revalidatePath('/admin/taxonomy');
   return { success: `${valid.length} audience${valid.length === 1 ? '' : 's'} attached to this field.` };
 }
 
@@ -76,18 +79,22 @@ export async function setCategoryAudiencesAction(categoryId: number, codes: stri
  * One conversation per category, reopened rather than recreated, so the thinking
  * accumulates instead of scattering across a dozen abandoned threads.
  */
-export async function openWorkbenchAction(categoryId: number): Promise<{ conversationId: string } | { error: string }> {
+export async function openWorkbenchAction(categoryId: number): Promise<{ conversationId: string; model: string } | { error: string }> {
   const admin = await requireAdmin();
 
   const [category] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
   if (!category) return { error: 'That category is no longer here.' };
 
+  // Keyed by the category's id (in settings), not its title: renaming a category used to orphan its thread.
   const [existing] = await db
     .select({ id: conversations.id })
     .from(conversations)
-    .where(and(eq(conversations.kind, 'playground'), eq(conversations.title, workbenchTitle(category.name))))
+    .where(and(eq(conversations.kind, 'playground'), sql`${conversations.settings}->>'categoryId' = ${String(category.id)}`))
     .limit(1);
-  if (existing) return { conversationId: existing.id };
+  // Which model answers, said on screen (it was hidden until 2026-11-14).
+  const { providerLabel, modelId } = await workbenchModel();
+  const model = modelId ? `${providerLabel} · ${modelId}` : `${providerLabel} · no model set`;
+  if (existing) return { conversationId: existing.id, model };
 
   const teamId = await getPlatformTeamId();
   const [created] = await db
@@ -98,10 +105,11 @@ export async function openWorkbenchAction(categoryId: number): Promise<{ convers
       title: workbenchTitle(category.name),
       createdBy: admin.id,
       visibility: 'private',
+      settings: { categoryId: category.id },
     })
     .returning({ id: conversations.id });
 
-  return { conversationId: created.id };
+  return { conversationId: created.id, model };
 }
 
 function workbenchTitle(categoryName: string): string {
@@ -207,7 +215,9 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
         suggestions: draft.suggestions,
         knowledgeDomains: draft.knowledgeDomains,
         audienceType,
-        audienceSegments: brief.audiences.map((a) => a.code),
+        // Only the field's audiences of this persona's own kind (2026-11-14): a B2C tutor drafted in
+        // Education used to inherit the schools and universities the field is also sold to.
+        audienceSegments: brief.audiences.map((a) => a.code).filter((code) => AUDIENCE_SEGMENTS[code]?.audienceType === audienceType),
         guardrails: brief.guardrails.filter((g) => g.isMandatory).map((g) => g.code),
         interactionStyle: draft.interactionStyle ?? null,
         approachToUnknown: draft.approachToUnknown ?? null,
@@ -223,7 +233,7 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
     return persona.id;
   });
 
-  revalidatePath('/admin/taxonomy/prototypes');
+  revalidatePath('/admin/taxonomy/drafts');
   revalidatePath('/admin/personas');
   return { success: `“${draft.name}” saved as a prototype.`, personaId };
 }
