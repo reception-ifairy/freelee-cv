@@ -11,6 +11,7 @@ import { Pipeline } from './pipeline';
 import { PassageViewer } from './passage-viewer';
 import { TestQuestion } from './test-question';
 import { DocumentControls } from './controls';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Document' };
@@ -41,6 +42,7 @@ export default async function DocumentPage({
 
   return (
     <div>
+      <BreadcrumbName name={doc.title} />
       <Link
         href="/admin/knowledgebase"
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"

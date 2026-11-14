@@ -26,7 +26,7 @@ freelee-library/
 That is the whole filing system, and it is why you should get the folders right before copying 500
 books in: moving a file later means re-scanning.
 
-Then open **Admin → Knowledgebase** and press **Scan folder**. Your books appear, marked *Not
+Then open **Admin → Knowledge → Library** and press **Scan folder**. Your books appear, marked *Not
 processed yet*.
 
 > **PDFs only, for now** (plus plain `.txt` and `.md`). Word documents and EPUBs are not read yet.

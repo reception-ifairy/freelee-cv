@@ -16,6 +16,7 @@ import { jobForCrewRun } from '@/lib/jobs/queue';
 import { runOutcome } from '@/modules/crews/labels';
 import { RunTranscript } from './run-transcript';
 import { RunControls } from './run-controls';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Run' };
@@ -55,6 +56,7 @@ export default async function AdminCrewRunPage({ params }: { params: Promise<{ i
 
   return (
     <div>
+      <BreadcrumbName name={crew?.name ? `${crew.name} — run` : 'Run'} />
       <PageHeader
         title={crew?.name ? `${crew.name} — run` : 'Run'}
         description={run.input}

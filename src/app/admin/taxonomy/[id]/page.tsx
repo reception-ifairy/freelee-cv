@@ -15,6 +15,7 @@ import { botPillars, categoryPillars, categorySegments } from '@/lib/taxonomy/pi
 import { PILLAR_BY_ID } from '@/lib/taxonomy/pillars';
 import { AudiencesTab } from './audiences-tab';
 import { Workbench } from './workbench';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,7 @@ export default async function CategoryWorkspace({
 
   return (
     <div>
+      <BreadcrumbName name={brief.name} />
       <Link href={browse} className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
         <ArrowLeft className="size-4" /> Taxonomy
       </Link>

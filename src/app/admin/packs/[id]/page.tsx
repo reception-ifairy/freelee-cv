@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { creditPacks } from '@/db/schema';
 import { PackForm } from '@/components/admin/pack-form';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -20,5 +21,10 @@ export default async function EditPackPage({ params }: { params: Promise<{ id: s
   const [pack] = await db.select().from(creditPacks).where(eq(creditPacks.id, packId)).limit(1);
   if (!pack) notFound();
 
-  return <PackForm pack={pack} />;
+  return (
+    <>
+      <BreadcrumbName name={pack.name} />
+      <PackForm pack={pack} />
+    </>
+  );
 }

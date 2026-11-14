@@ -158,12 +158,15 @@ reports `visible`, so every functional assertion passed while the thing was unus
 
 Fixed with `createPortal` to `document.body`, which is the right answer regardless: an overlay
 belongs at the top of the stacking context, not nested inside whatever happened to trigger it.
+(Since freelee #78 it portals to `#admin-overlay-root` inside the console instead, so it keeps the
+console's colours. Since #84 the sidebar is grouped by job and folds; see docs/57.)
 
 ## Also
 
 - **Breadcrumbs** in the header, which previously held one mobile-only link and the user's name.
   Deliberately shallow — section, then leaf — since a full path would repeat the sidebar. Ids
-  resolve to "Details" rather than costing a query per header render.
+  resolve to "Details" rather than costing a query per header render. (Since #84 a detail page that
+  knows its own name passes it with `<BreadcrumbName>`, so the leaf reads "Education and Training".)
 - **`next/font`** replaces three raw Google Fonts `<link>` tags that were render-blocking and
   re-shipped on every admin navigation.
 - **`max-w-[1600px]`** on `<main>` — the panel's two- and three-column layouts stretched to

@@ -16,6 +16,7 @@ import { relativeTime } from '@/lib/utils';
 import { loadTeamBuilderOptions } from '../builder-data';
 import { TestRun } from './test-run';
 import { TabNav } from '@/components/admin/tab-nav';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,7 @@ export default async function AdminCrewPage({
 
   return (
     <div>
+      <BreadcrumbName name={crew.name} />
       <Link
         href="/admin/crews"
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"

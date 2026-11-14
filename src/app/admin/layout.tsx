@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { ExternalLink, LogOut } from 'lucide-react';
 import { JetBrains_Mono } from 'next/font/google';
 import { currentUser } from '@/lib/auth';
@@ -9,6 +10,8 @@ import { AdminNav } from '@/components/admin/admin-nav';
 import { AdminDrawer } from '@/components/admin/admin-drawer';
 import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb';
 import { ADMIN_OVERLAY_ROOT_ID } from '@/components/ui/overlay-root';
+import { BreadcrumbProvider } from '@/components/admin/breadcrumb-name';
+import { NAV_GROUPS_COOKIE, parseOpenGroups } from '@/lib/admin/nav';
 
 /**
  * The admin's mono face, self-hosted via next/font.
@@ -32,6 +35,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await currentUser();
   if (!user) redirect('/login?callbackUrl=/admin');
   if (!user.isAdmin) redirect('/');
+  // Which sidebar groups are open, so the server renders them that way (admin-nav.tsx).
+  const openGroups = parseOpenGroups((await cookies()).get(NAV_GROUPS_COOKIE)?.value);
 
   return (
     // The admin console always renders dark — this aesthetic has no light
@@ -49,7 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         <div className="flex h-[calc(100%-4rem)] flex-col overflow-y-auto p-3">
-          <AdminNav />
+          <AdminNav initialOpen={openGroups} />
 
           <div className="mt-auto space-y-1 border-t border-slate-200 pt-3 dark:border-white/10">
             <Link
@@ -72,9 +77,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </aside>
 
+      <BreadcrumbProvider>
       <div className="flex w-full flex-col lg:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 dark:border-white/10 dark:bg-black/60 dark:backdrop-blur-md">
-          <AdminDrawer />
+          <AdminDrawer initialOpen={openGroups} />
           <AdminBreadcrumb />
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-sm font-medium text-slate-400 sm:block">{user.name}</span>
@@ -85,6 +91,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             stretch to unreadable line lengths on an ultrawide display. */}
         <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+      </BreadcrumbProvider>
 
       {/* Sheets and the phone drawer portal here (overlay-root.ts): inside the
           console, so they keep its tokens and `dark`, but outside the header,

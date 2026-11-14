@@ -1,6 +1,6 @@
 # Taxonomy
 
-**Admin → Taxonomy** is where the twenty fields your bots work in are described — and where you
+**Admin → Catalogue → Taxonomy** is where the twenty fields your bots work in are described — and where you
 design new ones.
 
 A *category* is a field: Marketing and Advertising, Legal and Compliance, Health and Medicine. A
@@ -8,9 +8,9 @@ A *category* is a field: Marketing and Advertising, Legal and Compliance, Health
 real research — how big the UK market is, how fast it grows, which regulations apply, which industry
 bodies matter, how risky the work is, and who it serves.
 
-Three screens:
+Under **Catalogue** in the sidebar, three screens:
 
-- **Categories** — the twenty fields, their sectors and the bots filed there, as a browser (below).
+- **Taxonomy** — the twenty fields, their sectors and the bots filed there, as a browser (below).
 - **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
 - **Audiences** — seventy groups of people, and what each of them needs.
 

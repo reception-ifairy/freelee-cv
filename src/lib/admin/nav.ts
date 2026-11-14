@@ -33,6 +33,7 @@ import {
   type LucideIcon,
   Compass,
 } from 'lucide-react';
+import { PILLARS } from '@/lib/taxonomy/pillars';
 
 /**
  * The admin sidebar, as data.
@@ -88,9 +89,15 @@ export type AdminNavItem = {
    * every single page.
    */
   exact?: boolean;
+  /** A colour dot in place of the icon (the markets). */
+  dot?: string;
+  /** Dimmed: there, but not in use yet (a planned market). */
+  muted?: boolean;
 };
 
 export type AdminNavSection = {
+  /** Stable id for the fold state (cookie) — never shown. */
+  id: string;
   heading: string | null;
   tone: AdminNavTone;
   items: AdminNavItem[];
@@ -98,59 +105,51 @@ export type AdminNavSection = {
 
 export const ADMIN_NAV: AdminNavSection[] = [
   {
+    id: 'overview',
     heading: null,
     tone: 'sky',
     items: [{ href: '/admin', label: 'Dashboard', icon: LayoutGrid, exact: true }],
   },
   {
-    heading: 'AI',
+    // The six markets (src/lib/taxonomy/pillars.ts), each with its colour. Planned ones are dimmed.
+    id: 'markets',
+    heading: 'Markets',
+    tone: 'lime',
+    items: [
+      { href: '/admin/markets', label: 'All markets', icon: Compass },
+      ...PILLARS.map((pillar) => ({
+        href: `/admin/markets/${pillar.id}`,
+        label: pillar.label,
+        icon: Compass,
+        dot: pillar.color,
+        muted: pillar.status === 'planned',
+      })),
+    ],
+  },
+  {
+    id: 'catalogue',
+    heading: 'Catalogue',
     tone: 'violet',
     items: [
       { href: '/admin/personas', label: 'Personas', icon: Sparkles },
+      { href: '/admin/taxonomy', label: 'Taxonomy', icon: Tags },
+      { href: '/admin/taxonomy/audiences', label: 'Audiences', icon: Users2 },
+      { href: '/admin/taxonomy/drafts', label: 'Drafts', icon: FlaskConical },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
     ],
   },
   {
-    // Its own section rather than one entry inside AI, because this stopped
-    // being a filing cabinet. A category carries the market, the regulations,
-    // the risk level and the audiences of a whole field — the brief a
-    // specialist gets designed against — and designing them is work that
-    // happens here. Sits directly after AI and before Knowledge: what a bot
-    // is, then what it is for, then what it reads.
-    heading: 'Taxonomy',
-    tone: 'lime',
-    items: [
-      { href: '/admin/markets', label: 'Markets', icon: Compass },
-      { href: '/admin/taxonomy', label: 'Categories', icon: Tags },
-      { href: '/admin/taxonomy/drafts', label: 'Drafts', icon: FlaskConical },
-      { href: '/admin/taxonomy/audiences', label: 'Audiences', icon: Users2 },
-    ],
-  },
-  {
-    // Its own section rather than two entries inside AI, because "what the
-    // bots know" is a body of work in its own right — books to file, shelves
-    // to curate, sources to wire up — and it grows independently of how
-    // personas are configured. Sits directly after AI: a persona is nothing
-    // without a model, and not much without something to read.
+    id: 'knowledge',
     heading: 'Knowledge',
     tone: 'rose',
     items: [
       { href: '/admin/knowledgebase', label: 'Library', icon: Library },
       { href: '/admin/knowledgebase/collections', label: 'Shelves', icon: LibraryBig },
-      // Remote search APIs a persona can cite from — the same `## Grounding`
-      // prompt section as the library, a completely different mechanism.
       { href: '/admin/knowledge-sources', label: 'External sources', icon: Search },
     ],
   },
   {
-    // Sits after AI rather than in System: a bot team is personas working
-    // together, so it belongs beside personas. Named "Teamwork" because
-    // `teams` already means *tenant* everywhere in this schema and a nav item
-    // called "Teams" would collide with the most load-bearing noun in the app.
-    //
-    // Bot teams first: it is what the section is for and what the owner asked
-    // to be easiest to reach. Projects last — it is a folder for the other
-    // two, and nobody starts there.
+    id: 'teamwork',
     heading: 'Teamwork',
     tone: 'cyan',
     items: [
@@ -160,41 +159,72 @@ export const ADMIN_NAV: AdminNavSection[] = [
     ],
   },
   {
+    // What is sold (packs, plans, passes), then who bought (sales, customers), then the rest.
+    id: 'commerce',
     heading: 'Commerce',
     tone: 'emerald',
     items: [
       { href: '/admin/packs', label: 'Credit packs', icon: Package },
       { href: '/admin/plans', label: 'Subscription plans', icon: RefreshCw },
       { href: '/admin/passes', label: 'Access passes', icon: Clock },
-      { href: '/admin/marketplace', label: 'Marketplace', icon: Store },
       { href: '/admin/sales', label: 'Sales', icon: Receipt },
       { href: '/admin/customers', label: 'Customers', icon: Users },
+      { href: '/admin/marketplace', label: 'Marketplace', icon: Store },
       { href: '/admin/leads', label: 'Leads', icon: Inbox },
     ],
   },
   {
-    heading: 'Content',
+    // Everything a visitor sees, wording included — Translations and Branding
+    // sat under System, beside keys and settings they have nothing to do with.
+    id: 'site',
+    heading: 'Site',
     tone: 'amber',
     items: [
       { href: '/admin/frontpage', label: 'Frontpage', icon: LayoutTemplate },
+      { href: '/admin/pages', label: 'Pages', icon: FileText },
       { href: '/admin/showcase', label: 'Showcase', icon: Images },
       { href: '/admin/posts', label: 'Blog', icon: PenLine },
-      { href: '/admin/pages', label: 'Pages', icon: FileText },
       { href: '/admin/menus', label: 'Menus', icon: MenuIcon },
+      { href: '/admin/translations', label: 'Translations', icon: Languages },
+      { href: '/admin/theme', label: 'Branding', icon: Palette },
     ],
   },
   {
+    id: 'system',
     heading: 'System',
     tone: 'slate',
     items: [
-      { href: '/admin/translations', label: 'Translations', icon: Languages },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
-      { href: '/admin/theme', label: 'Branding', icon: Palette },
       { href: '/admin/handbook', label: 'Handbook', icon: LifeBuoy },
       { href: '/admin/docs', label: 'Documentation', icon: BookOpen },
     ],
   },
 ];
+
+/**
+ * Groups open when no choice has been saved: where the owner works most. Every
+ * other group folds to one line until opened, and the group of the page you
+ * are on is always open.
+ */
+export const DEFAULT_OPEN_GROUPS = ['markets', 'catalogue'];
+
+/** Cookie holding the groups the reader has open (comma-separated ids), so the server renders them that way. */
+export const NAV_GROUPS_COOKIE = 'admin_nav_open';
+
+/** Reads the cookie value; missing or empty means the defaults. Unknown ids are dropped. */
+export function parseOpenGroups(value: string | undefined | null): string[] {
+  if (value === undefined || value === null) return DEFAULT_OPEN_GROUPS;
+  const known = new Set(ADMIN_NAV.map((s) => s.id));
+  return value.split(',').map((v) => v.trim()).filter((v) => known.has(v));
+}
+
+/** The group that owns a route (through its current item), if any. */
+export function groupOfPath(pathname: string): string | null {
+  for (const section of ADMIN_NAV) {
+    if (section.items.some((item) => isNavItemCurrent(item, pathname))) return section.id;
+  }
+  return null;
+}
 
 /**
  * Whether a nav item owns the current route.

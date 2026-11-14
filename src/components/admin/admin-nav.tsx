@@ -1,78 +1,136 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ADMIN_NAV, TONE_CLASSES, isNavItemCurrent, type AdminNavSection } from '@/lib/admin/nav';
+import { ChevronRight } from 'lucide-react';
+import { ADMIN_NAV, NAV_GROUPS_COOKIE, TONE_CLASSES, groupOfPath, isNavItemCurrent, type AdminNavSection } from '@/lib/admin/nav';
 import { cn } from '@/lib/utils';
 
 /**
- * The admin sidebar links.
+ * The admin sidebar links, grouped by job (2026-11-14): Markets, Catalogue,
+ * Knowledge, Teamwork, Commerce, Site, System.
  *
- * A client component purely so it can read `usePathname`. Until now the whole
- * layout was a Server Component that never knew which route was open, so every
- * one of the 23 links rendered identically — the panel could not tell you
- * where you were. `settings-nav.tsx` already did this correctly; this brings
- * the main nav up to the same standard.
+ * A client component so it can read `usePathname`. The active treatment is
+ * three signals at once, because one is fragile: a left rail (position), a
+ * tinted background (area), and a full-strength icon (colour).
  *
- * The active treatment is three signals at once, because one is fragile:
- * a left rail (position), a tinted background (area), and a full-strength icon
- * (colour). Colour alone would fail for anyone who cannot distinguish it.
+ * Groups fold. Thirty-odd links do not fit a screen, and most visits use two
+ * groups. Which groups are open is kept in a cookie (`admin_nav_open`), read by
+ * the layout on the server, so the sidebar arrives already folded the way it
+ * was left — no flash of every group opening and closing. The group of the
+ * page you are on is always open: a sidebar hiding where you are is worse
+ * than a long one.
  */
-export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+export function AdminNav({ onNavigate, initialOpen }: { onNavigate?: () => void; initialOpen: string[] }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState<Set<string>>(() => new Set(initialOpen));
+  const current = groupOfPath(pathname);
+
+  function toggle(id: string) {
+    const next = new Set(open);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setOpen(next);
+    // Path /admin: the choice is the admin's, nothing outside it needs the cookie.
+    document.cookie = `${NAV_GROUPS_COOKIE}=${[...next].join(',')}; path=/admin; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  }
 
   return (
     <nav className="flex flex-col gap-1 text-sm" aria-label="Admin sections">
       {ADMIN_NAV.map((section) => (
-        <NavSection key={section.heading ?? 'root'} section={section} pathname={pathname} onNavigate={onNavigate} />
+        <NavSection
+          key={section.id}
+          section={section}
+          pathname={pathname}
+          onNavigate={onNavigate}
+          open={section.heading === null || section.id === current || open.has(section.id)}
+          pinned={section.id === current}
+          onToggle={() => toggle(section.id)}
+        />
       ))}
     </nav>
   );
 }
 
 function NavSection({
-  section, pathname, onNavigate,
+  section,
+  pathname,
+  onNavigate,
+  open,
+  pinned,
+  onToggle,
 }: {
   section: AdminNavSection;
   pathname: string;
   onNavigate?: () => void;
+  open: boolean;
+  pinned: boolean;
+  onToggle: () => void;
 }) {
   const tone = TONE_CLASSES[section.tone];
+  const listId = `admin-nav-${section.id}`;
+  const dots = section.items.filter((item) => item.dot);
 
   return (
     <div>
       {section.heading ? (
-        <p className="mt-4 px-3 pb-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          {section.heading}
-        </p>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={listId}
+          disabled={pinned}
+          title={pinned ? 'The page you are on is in this group' : undefined}
+          className="group mt-3 flex w-full items-center gap-1.5 rounded px-3 py-1 text-left font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition-colors enabled:hover:text-slate-300 disabled:cursor-default"
+        >
+          <span className="flex-1">{section.heading}</span>
+          {/* Folded, the markets still show their colours — the group says what is in it. */}
+          {!open && dots.length ? (
+            <span className="flex gap-0.5" aria-hidden>
+              {dots.map((item) => (
+                <span key={item.href} className={cn('size-1.5 rounded-full', item.muted && 'opacity-40')} style={{ backgroundColor: item.dot }} />
+              ))}
+            </span>
+          ) : null}
+          {pinned ? null : (
+            <ChevronRight aria-hidden className={cn('size-3 transition-transform duration-[--duration-fast]', open && 'rotate-90')} />
+          )}
+        </button>
       ) : null}
 
-      {section.items.map((item) => {
-        const active = isNavItemCurrent(item, pathname);
+      <div id={listId} hidden={!open}>
+        {section.items.map((item) => {
+          const active = isNavItemCurrent(item, pathname);
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'relative flex items-center gap-3 rounded-control px-3 py-2 font-medium transition-colors duration-[--duration-fast]',
-              active
-                ? 'bg-white/[0.06] text-white'
-                : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200',
-            )}
-          >
-            {/* The rail sits inside the row rather than on its border so it
-                cannot shift the text by a pixel when it appears. */}
-            {active ? (
-              <span className={cn('absolute inset-y-1.5 left-0 w-0.5 rounded-full', tone.rail)} aria-hidden />
-            ) : null}
-            <item.icon className={cn('size-4 shrink-0 transition-colors duration-[--duration-fast]', active ? tone.active : tone.idle)} />
-            <span className="truncate">{item.label}</span>
-          </Link>
-        );
-      })}
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              aria-current={active ? 'page' : undefined}
+              title={item.muted ? `${item.label} — planned` : undefined}
+              className={cn(
+                'relative flex items-center gap-3 rounded-control px-3 py-1.5 font-medium transition-colors duration-[--duration-fast]',
+                active ? 'bg-white/[0.06] text-white' : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200',
+                item.muted && !active && 'text-slate-500',
+              )}
+            >
+              {/* The rail sits inside the row rather than on its border so it
+                  cannot shift the text by a pixel when it appears. */}
+              {active ? <span className={cn('absolute inset-y-1.5 left-0 w-0.5 rounded-full', tone.rail)} aria-hidden /> : null}
+              {item.dot ? (
+                <span className="grid size-4 shrink-0 place-items-center" aria-hidden>
+                  <span className={cn('size-2 rounded-full', item.muted && 'opacity-50')} style={{ backgroundColor: item.dot }} />
+                </span>
+              ) : (
+                <item.icon className={cn('size-4 shrink-0 transition-colors duration-[--duration-fast]', active ? tone.active : tone.idle)} />
+              )}
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

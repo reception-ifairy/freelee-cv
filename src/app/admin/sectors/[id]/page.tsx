@@ -4,6 +4,7 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { categories, sectors } from '@/db/schema';
 import { SectorForm } from '@/components/admin/sector-form';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -23,5 +24,10 @@ export default async function EditSectorPage({ params }: { params: Promise<{ id:
   ]);
   if (!sector) notFound();
 
-  return <SectorForm sector={sector} categories={categoryRows} />;
+  return (
+    <>
+      <BreadcrumbName name={sector.name} />
+      <SectorForm sector={sector} categories={categoryRows} />
+    </>
+  );
 }

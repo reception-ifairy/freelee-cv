@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatTile } from '@/components/ui/stat-tile';
 import { RunTranscript } from '../../crews/runs/[id]/run-transcript';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Room' };
@@ -46,6 +47,7 @@ export default async function AdminRoomPage({ params }: { params: Promise<{ id: 
 
   return (
     <div>
+      <BreadcrumbName name={room.title ?? 'Untitled room'} />
       <PageHeader
         title={room.title ?? 'Untitled room'}
         description={`${room.teamName ?? 'Unknown team'}${room.projectName ? ` · ${room.projectName}` : ''}`}
