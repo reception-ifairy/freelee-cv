@@ -101,6 +101,27 @@ Only the adaptations are saved, and you can untick them later.
 - **Export.** **Download everything about <nickname>** gives you one file with the profile, the
   learning plan with progress, every lesson and the consents you gave.
 
+## In the admin: the homeschool hub
+
+**Admin → Markets → Homeschooling & family** is the one place for homeschooling. Four tabs:
+
+- **Overview** — the fields serving the market and its audience groups.
+- **Tutors** — every curriculum tutor, with the key stages and subjects it teaches and whether it is live.
+  A tutor is any bot with a curriculum scope: you give it one in the bot's editor, under Curriculum.
+- **Curriculum** — two things:
+  - **The connection.** What freelee holds from the curriculum: whether the connection works, the subject
+    list, the exams and the objectives, with when each was last fetched. **Manage the connection** takes
+    you to the card in Settings.
+  - **Who teaches what.** A grid of every subject a parent can choose against Key Stages 1–4:
+    - **green** — a live tutor teaches it;
+    - **amber** — only a tutor that is not live yet;
+    - **grey** — nobody.
+- **Families** — how many child profiles, parents, plans and consents there are. **Numbers only**: a
+  child's profile and plan are sealed, and the admin cannot open them.
+
+A banner at the top compares the public page with the tutors behind it. While no tutor is live, the
+page says tutors are in preparation. When the first one goes live, the banner reminds you to change it.
+
 ## How long we keep things
 
 | What | How long |

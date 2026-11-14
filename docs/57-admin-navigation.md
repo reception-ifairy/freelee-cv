@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the sidebar by job and the homeschool hub, each as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the sidebar by job, the dashboard and the connections page, each as its own section here.
 
 ## Building blocks (freelee #78)
 
@@ -226,6 +226,47 @@ The browser's market links are in `taxonomy:verify-browser` (now 24 checks).
 - **Choose audiences:** searching "SEND" finds SEND Learners, and Save stays disabled until something changes.
 - **AI tab and phone:** the AI tab renders the workbench (no message sent). On a phone the page does not scroll sideways.
 - No page errors.
+
+## The homeschool hub (freelee #83)
+
+The owner said "homeschooling is starting to look like a maze": its tutors, its curriculum and its families had no place in the admin, and the curriculum connection sat three levels down in Settings. `/admin/markets/homeschooling` is now the hub, with four tabs (`?tab=`, each reading only its own data):
+- **Overview:** the market page every market has (fields, audience groups, risk floor).
+- **Tutors** (`hubTutors()`, `src/lib/curriculum/hub-queries.ts`): every persona whose current version has a curriculum scope, live ones first, with key stages, subjects, messages and status. Each links to its card in the browser and to its editor.
+- **Curriculum:**
+  - **What freelee holds:**
+    - the connection: key saved, last test;
+    - the subject dictionary: version, Fetch date, subjects and parts;
+    - the exams: count, checked at source, by family;
+    - the scope: objectives per key stage.
+
+    It links to the connection card in Settings rather than repeating it; every key keeps one home.
+  - **The coverage grid** (`src/lib/curriculum/coverage.ts`, pure): each subject a parent can choose × KS1–KS4, with live/all tutors who would teach it. A tutor counts by the rule lessons already use: the key stage is in its scope, and `sameFamily` matches the subject (the same subject, or a part of the same whole, so a science tutor counts for biology). Cells outside a subject's years (the dictionary's `from`/`to`) are not offered and never count as gaps.
+- **Families** (`familyCounts()`, `src/lib/children/admin-counts.ts`): numbers only (docs/54).
+
+**A banner on every hub tab** compares the public page's promise with live tutors:
+- while none is live, it says the published /homeschooling says "in preparation" (#77) and should stay so;
+- once one is live, it reminds the owner to change that copy.
+
+Other markets ignore `?tab=`.
+
+Checked by `npm run children:verify-tutor-coverage` (14 checks):
+- the grid rules (synonyms, scope key stages, one whole, live versus all, years, the summary);
+- static checks that the family counts never name `data` or `wrappedKey`, never select whole rows, import nothing that can decrypt, and only aggregate.
+
+**Verified live (2026-11-14):**
+- all four tabs return 200;
+- the banner says no tutor is live;
+- Tutors lists the Baseline Tutor (KS1–KS4, not live);
+- **Curriculum:**
+  - the key works, tested 2 days ago;
+  - 27 subjects, 9 of them parts;
+  - 74 exams, 57 checked;
+  - 1,452 objectives;
+  - the grid has 26 subjects, and 0 of 87 offered cells have a live tutor (28 have any);
+- Families shows zeros (there are no profiles);
+- Business ignores `?tab=families`;
+- on a phone the page does not scroll sideways;
+- no page errors.
 
 ## First use: the Audiences screen (freelee #78)
 

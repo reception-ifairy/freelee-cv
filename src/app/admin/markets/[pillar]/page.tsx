@@ -3,12 +3,19 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ExternalLink, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { TabNav } from '@/components/admin/tab-nav';
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { treeInputs } from '@/lib/taxonomy/browser-queries';
 import { RISK_MEANING, RISK_TONE } from '@/lib/taxonomy/browser';
 import { marketSummaries } from '@/lib/taxonomy/pillar-queries';
 import { PILLAR_BY_ID, isPillarId } from '@/lib/taxonomy/pillars';
+import { familyCounts } from '@/lib/children/admin-counts';
+import { coverageGrid } from '@/lib/curriculum/coverage';
+import { curriculumStatus, hubTutors } from '@/lib/curriculum/hub-queries';
+import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { subjectOptions } from '@/lib/curriculum/subjects';
+import { CurriculumTab, FamiliesTab, PromiseBanner, TutorsTab } from './homeschool';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,17 +26,39 @@ export async function generateMetadata({ params }: { params: Promise<{ pillar: s
 
 const RISK_ORDER = ['R0', 'R1', 'R2', 'R3'];
 
+type HubTab = 'overview' | 'tutors' | 'curriculum' | 'families';
+const HUB_TABS: HubTab[] = ['overview', 'tutors', 'curriculum', 'families'];
+
 /**
  * One market: the fields that serve it, its audience groups and where each is
  * used, and a way into its bots in the taxonomy browser (`?pillar=`).
- * Homeschooling gains its own tabs (tutors, curriculum, families) next.
+ *
+ * Homeschooling & family is also the homeschool hub (`?tab=`): Tutors,
+ * Curriculum (what freelee holds from it, and a subject × key stage coverage
+ * grid) and Families (numbers only). Its tutors, curriculum and families had
+ * no place in the admin at all; the curriculum connection was three levels
+ * down in Settings.
  */
-export default async function MarketPage({ params }: { params: Promise<{ pillar: string }> }) {
-  const { pillar: id } = await params;
+export default async function MarketPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ pillar: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ pillar: id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
   if (!isPillarId(id)) notFound();
+  const hub = id === 'homeschooling';
+  const tab: HubTab = hub && HUB_TABS.includes(rawTab as HubTab) ? (rawTab as HubTab) : 'overview';
 
-  const [markets, inputs] = await Promise.all([marketSummaries(), treeInputs()]);
+  const [markets, inputs, tutors] = await Promise.all([marketSummaries(), treeInputs(), hub ? hubTutors() : Promise.resolve([])]);
   const market = markets.find((m) => m.pillar.id === id)!;
+  // Only the open tab's data is read.
+  const [dict, status, families] = await Promise.all([
+    tab === 'tutors' || tab === 'curriculum' ? getSubjectsDictionary() : null,
+    tab === 'curriculum' ? curriculumStatus() : null,
+    tab === 'families' ? familyCounts() : null,
+  ]);
   const { pillar } = market;
   const riskOf = new Map(inputs.categories.map((c) => [c.id, c.riskLevel]));
   const belowFloor = (risk: string | null | undefined) =>
@@ -68,6 +97,30 @@ export default async function MarketPage({ params }: { params: Promise<{ pillar:
         </div>
       </header>
 
+      {hub ? (
+        <>
+          <PromiseBanner liveTutors={tutors.filter((t) => t.isActive).length} page={market.offering} />
+          <TabNav
+            label="Homeschool hub"
+            active={tab}
+            tabs={[
+              { id: 'overview', label: 'Overview', href: `/admin/markets/${pillar.id}` },
+              { id: 'tutors', label: 'Tutors', href: `/admin/markets/${pillar.id}?tab=tutors`, count: tutors.length },
+              { id: 'curriculum', label: 'Curriculum', href: `/admin/markets/${pillar.id}?tab=curriculum` },
+              { id: 'families', label: 'Families', href: `/admin/markets/${pillar.id}?tab=families` },
+            ]}
+          />
+        </>
+      ) : null}
+
+      {tab === 'tutors' ? (
+        <TutorsTab tutors={tutors} options={subjectOptions(dict)} />
+      ) : tab === 'curriculum' && status ? (
+        <CurriculumTab status={status} coverage={coverageGrid(tutors, dict)} tutors={tutors} />
+      ) : tab === 'families' && families ? (
+        <FamiliesTab counts={families} />
+      ) : (
+      <>
       {pillar.riskFloor ? (
         <p className={`mb-6 rounded-control border px-3 py-2 text-sm ${under.length ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-slate-200 text-slate-400 dark:border-white/10'}`}>
           Fields serving this market should carry at least <strong>{pillar.riskFloor}</strong> ({RISK_MEANING[pillar.riskFloor].split(' — ')[1]}).{' '}
@@ -144,6 +197,8 @@ export default async function MarketPage({ params }: { params: Promise<{ pillar:
           </Table>
         </Card>
       </section>
+      </>
+      )}
     </div>
   );
 }
