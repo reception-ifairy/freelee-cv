@@ -108,7 +108,7 @@ export function Workbench({
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <FlaskConical className="size-4 text-lime-500" />
         <p className="text-sm font-medium">Workbench — {categoryName}</p>
-        {model ? <span className="text-xs text-slate-500" title="The platform's default provider and model (Settings → Providers & keys)">{model}</span> : null}
+        {model ? <span className="text-xs text-slate-500" title="The platform's default provider and model (Settings → AI defaults)">{model}</span> : null}
         <div className="ms-auto flex items-center gap-2">
           <Select
             value={sectorId}

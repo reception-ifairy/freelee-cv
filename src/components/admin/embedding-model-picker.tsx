@@ -57,7 +57,7 @@ export function EmbeddingModelPicker({
 
       {options.length === 0 ? (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-          No Stable embedding model yet. Fetch OpenAI&apos;s models under Providers &amp; keys, then mark{' '}
+          No Stable embedding model yet. Fetch OpenAI&apos;s models under Connections, then mark{' '}
           <code className="font-mono">text-embedding-3-small</code> Stable below.
         </p>
       ) : (

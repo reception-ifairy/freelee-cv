@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {
-  Bot, ChartNoAxesColumn, CreditCard, Cpu, Globe, HardDrive, Layers, Mail, Palette, SlidersHorizontal,
+  Bot, ChartNoAxesColumn, CreditCard, Cpu, Globe, HardDrive, Layers, Mail, Palette, Plug, ShieldCheck, SlidersHorizontal,
 } from 'lucide-react';
 import { SETTINGS_MAP, type SettingsSection } from '@/lib/admin/settings-sections';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,8 @@ const ICONS = {
   mail: Mail,
   card: CreditCard,
   palette: Palette,
+  plug: Plug,
+  shield: ShieldCheck,
 } as const;
 
 /**

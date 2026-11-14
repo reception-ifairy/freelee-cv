@@ -115,10 +115,10 @@ export function PersonaCurriculumSection({
 
       {enabled && nothingToOffer ? (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-          Connect and Fetch the Curriculum API in Settings first — the key stages and subjects to choose from come
+          Connect and Fetch the Curriculum API first — the key stages and subjects to choose from come
           from there.{' '}
-          <Link href="/admin/settings?section=ai" className="font-medium underline underline-offset-2">
-            Settings → Providers &amp; keys → Curriculum
+          <Link href="/admin/connections#conn-curriculum" className="font-medium underline underline-offset-2">
+            Connections → Curriculum
           </Link>
         </p>
       ) : null}

@@ -1,5 +1,7 @@
 # Connection checks: Save → Test → Fetch
 
+> **Since freelee #86 (2026-11-14)** every card lives on **/admin/connections**, grouped (AI providers, tools, knowledge, email, payments, storage) with a status summary; Settings keeps only values. Mentions of *Providers & keys* below are historical.
+
 Every place in Settings that holds a key or talks to an outside service now works the same way:
 **Save** the key, then **Test** appears; when the test passes, **Fetch** appears and pulls what that
 service offers (models, voices, sender domains). Introduced in update #62 (2026-11-11).

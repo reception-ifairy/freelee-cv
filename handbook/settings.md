@@ -1,6 +1,8 @@
 # Settings
 
-**System → Settings.** Options that apply to the whole site, grouped into tabs.
+**System → Settings.** The values that apply to the whole site, grouped into tabs. Keys and outside
+services — AI providers, web search, voice, the curriculum, email, payments, storage — are on their
+own page, **System → Connections** (below).
 
 ## General
 
@@ -11,42 +13,46 @@
 | **Support email** | Where customers are told to write. |
 | **Allow new registrations** | Turn off to close signups without taking the site down. |
 
-## Media storage
+## Connections
 
-Where uploaded and generated images are kept. The bucket is set in the server's env file, never
-here; the card shows which values are set (by name only) and a **Test** button that checks the
-bucket answers.
+**System → Connections** holds every key and outside service on one page, in groups: AI providers,
+tools for bots (Tavily web search, ElevenLabs voice), Knowledge (the Curriculum that tutor bots
+teach from), Email (Resend), Payments (Stripe, PayPal) and Storage (the image bucket).
 
-## Providers & keys
+At the top, a summary shows each one as **Working**, **Failing**, **Never tested** or **Not set up**;
+click one to jump to its card. Each card works the same way: **Save** the key, press **Test**, and
+once the test passes, **Fetch** what the service offers (models; voices for ElevenLabs — pick one to
+make it the default voice; the key stages and subjects the curriculum key may see). See
+[AI models](/admin/handbook/ai-models) and [Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
 
-One card per service — OpenAI, Anthropic, Google, OpenRouter, Ollama, Stability, then the tools
-(Tavily web search, ElevenLabs voice), then under *Knowledge* the Curriculum that tutor bots teach
-from. Each works the same way: **Save** the key, press **Test**, and once the test passes, **Fetch**
-what the service offers (models; voices for ElevenLabs — pick one to make it the default voice; the
-key stages and subjects the curriculum key may see). See [AI models](/admin/handbook/ai-models) and
-[Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
+Keys here override environment variables, so rotating one takes effect immediately with no deploy.
+Leaving a key field blank keeps the existing value — blank never means "delete". Stripe, PayPal and
+the storage bucket are configured in the server's env file on purpose: their cards show which values
+are set (by name only) and offer a **Test** (nothing is charged).
 
-Below the cards, **Defaults**:
+## AI defaults
 
 - **Default models** — what a persona uses when it has no model of its own.
 - **Fallback provider** — used when nothing else specifies one. Normally OpenAI.
-- **Free messages before signup** — how much a visitor gets before registering. Three to five.
-- **Credits given at signup** — granted on registration.
-- **Moderation** — word list, AI check or off, plus your own blocked words.
 
-Keys here override environment variables, so rotating one takes effect immediately with no deploy.
-Leaving a key field blank keeps the existing value — blank never means "delete".
+## Safety
+
+- **Moderation** — word list, AI check or off.
+- **Blocked words** — your own list, added to the built-in one.
 
 ## Billing
 
-Stripe and PayPal are configured in the server's env file on purpose — their cards only show which
-values are set and offer a **Test** (nothing is charged). Below them: bank transfer instructions and
-the invoice vendor name.
+Bank transfer instructions and the invoice vendor name, then **Free use**:
+
+- **Free messages before signup** — how much a visitor gets before registering. Three to five.
+- **Credits given at signup** — granted on registration.
+
+(The Stripe and PayPal checks are under Connections.)
 
 ## Email
 
-The Resend card (key, **Test**, and **Fetch domains** to see which sender domains are verified),
-then the From address mail is sent from.
+The From address mail is sent from. The Resend key, its **Test** and **Fetch domains** (which sender
+domains are verified) are under Connections.
 
 ## Analytics
 

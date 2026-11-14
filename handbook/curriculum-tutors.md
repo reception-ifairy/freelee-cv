@@ -20,7 +20,7 @@ looks at GCSE material, however the child asks.
 
 ## 1. Connect the curriculum
 
-Do this once. Open **Settings → Providers & keys** and find **Curriculum** under *Knowledge*.
+Do this once. Open **System → Connections** and find **Curriculum** under *Knowledge*.
 
 1. Paste the API key. It starts with `cur_` and is issued for freelee in T1000's curriculum panel.
    Leave **Address** and **Grant** blank — the defaults are right.

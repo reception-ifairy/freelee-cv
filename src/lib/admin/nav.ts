@@ -32,6 +32,7 @@ import {
   Users2,
   type LucideIcon,
   Compass,
+  Plug,
 } from 'lucide-react';
 import { PILLARS } from '@/lib/taxonomy/pillars';
 
@@ -195,6 +196,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'slate',
     items: [
       { href: '/admin/settings', label: 'Settings', icon: Settings },
+      { href: '/admin/connections', label: 'Connections', icon: Plug },
       { href: '/admin/handbook', label: 'Handbook', icon: LifeBuoy },
       { href: '/admin/docs', label: 'Documentation', icon: BookOpen },
     ],

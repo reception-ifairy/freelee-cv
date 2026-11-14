@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the connections page as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the screens built from them: the browsers, the markets, the homeschool hub, the sidebar, the dashboard and the connections page.
 
 ## Building blocks (freelee #78)
 
@@ -362,6 +362,43 @@ Checked by `npm run admin:verify-attention` (10 checks):
 - the Markets card matches the Markets page;
 - the other-type link opens the browser with 55 bots;
 - a test lead turned the badge to "1 to act on" on the dashboard and on another page, and put "1 new lead" first. The lead was then deleted, and 0 test leads remain.
+
+## Connections and a tidy Settings (freelee #86)
+
+**Before.** The 13 connection cards (Save → Test → Fetch, docs/51) were spread over four settings sections:
+- Providers & keys held 9 of them, plus 23 schema keys in one long form;
+- Billing, Email and Media storage each held a card and little else.
+
+"Is everything connected?" took four screens.
+
+**`/admin/connections`** (System → Connections) holds all 13 now:
+- **in groups** (`src/lib/admin/connection-groups.ts`): AI providers, Tools for bots, Knowledge, Email, Payments, Storage;
+- **with a summary at the top** that marks each connection Working, Failing, Never tested or Not set up, and jumps to its card;
+- **with an anchor on every card** (`#conn-<id>`), so links land on it. The homeschool hub, the persona form's curriculum hint and the attention list link straight to their card.
+
+**Settings keeps only values**, each in one section (`SECTION_FIELDS`, `src/lib/admin/settings-sections.ts`):
+
+| Section | Keys |
+|---|---|
+| AI defaults | the default model per provider, the fallback provider |
+| **Safety** (new) | moderation mode, blocked words |
+| Billing | bank transfer, invoice vendor, and **free use** (free messages before signup, credits at signup) |
+| Email | the From address only |
+
+- **Free use moved to Billing** because what a visitor gets for nothing is a pricing decision. Its keys stay in the `ai` schema group, and the form still posts `__group=ai`.
+- **Media storage is gone from Settings.** It was only a connection card.
+- **Old links redirect** (`MOVED_SECTIONS`): `?section=storage` lands on the S3 card.
+
+`AiDefaultsForm` takes the section's `keys` and shows only the cards whose keys it holds. The save action stores only the fields it receives, so splitting the form loses nothing.
+
+**Text and links** that said "Providers & keys" now point to Connections. That covers the persona form hint, the provider and embedding cards, the Knowledgebase error message, the workbench tooltip and the handbook.
+
+`npm run admin:verify-settings-map` (8 checks, react-server condition; no network or database use):
+- all 13 connections sit in exactly one group;
+- each of the 39 schema keys has exactly one home, either a section or a connection (`connectionSettingKeys`, which includes ElevenLabs' chosen voice);
+- every key a section or connection names exists in the schema;
+- every form section declares its fields;
+- a moved section redirects.
 
 ## First use: the Audiences screen (freelee #78)
 

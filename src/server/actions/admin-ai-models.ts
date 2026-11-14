@@ -55,7 +55,7 @@ export async function createAiModelAction(_prev: ActionState, formData: FormData
 /*
  * Fetching a provider's live model list and the "Test connection" check used
  * to live here as three actions behind a checkbox grid. They moved to the
- * connection cards in Settings → Providers & keys
+ * connection cards on /admin/connections
  * (src/server/actions/admin-connections.ts), where Fetch adds every new model
  * as `preview` without ticking — see src/lib/ai/sync-models.ts.
  */
