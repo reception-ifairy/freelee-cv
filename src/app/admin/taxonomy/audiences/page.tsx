@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Disclosure } from '@/components/ui/disclosure';
 import { RouteSheet } from '@/components/ui/route-sheet';
-import { AUDIENCE_SEGMENTS, type AudienceSegmentConfig } from '@/lib/persona/audience-segments';
+import { AUDIENCE_FAMILY_LABEL as FAMILY_LABEL, AUDIENCE_SEGMENTS, familyOf, type AudienceSegmentConfig } from '@/lib/persona/audience-segments';
 import { AUDIENCE_TYPES } from '@/lib/persona/prompt';
 import { segmentUsage } from '@/lib/taxonomy/segment-usage';
 
@@ -30,25 +30,8 @@ const SENSITIVITY_TONE: Record<string, 'slate' | 'amber' | 'rose'> = {
   critical: 'rose',
 };
 
-/** `B2C-CYP-01` → `CYP`. The catalogue groups by these but never names them. */
-const FAMILY_LABEL: Record<string, string> = {
-  'B2C-CYP': 'Children and young people',
-  'B2C-GK': 'Gatekeepers',
-  'B2C-ADU': 'Adults',
-  'B2C-INT': 'Interest groups',
-  'B2B-SIZE': 'By organisation size',
-  'B2B-SEC': 'By industry',
-  'B2B-FUN': 'By function',
-  'B2G-CEN': 'Central government',
-  'B2G-LOC': 'Local government',
-  'B2G-PUB': 'Public services',
-};
-
 const TYPES = ['B2C', 'B2B', 'B2G'] as const;
 
-function familyOf(code: string): string {
-  return code.split('-').slice(0, 2).join('-');
-}
 
 const words = (list: readonly string[] | undefined) => (list ?? []).map((w) => w.replace(/_/g, ' ')).join(' · ');
 const ages = (s: AudienceSegmentConfig) => (s.ageRangeMin && s.ageRangeMax ? `${s.ageRangeMin}–${s.ageRangeMax}` : null);

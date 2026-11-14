@@ -14,6 +14,29 @@ Three screens:
 - **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
 - **Audiences** — seventy groups of people, and what each of them needs.
 
+## Markets
+
+**Admin → Markets** shows the six markets Freelee is built for:
+- **sold now:** Business, and Homeschooling & family;
+- **planned:** Schools & educators, Adults, Interests and Public sector.
+
+You never assign a bot to a market. Its market follows from who it is for:
+- a curriculum tutor goes to Homeschooling & family;
+- otherwise the bot's own audience groups decide;
+- otherwise its field's groups decide.
+
+So when you change a bot's audience, its market follows by itself.
+
+Each market shows:
+- how many of its bots are live;
+- which fields serve it;
+- how many of its audience groups are linked to a field;
+- whether its public page exists.
+
+Some markets have a **risk floor**. For example, anything serving children should be at least **R2**. A market's page warns you when a field serving it is below that.
+
+**Browse its bots** opens the taxonomy browser filtered to that market. There the chips above the tree switch between markets: the tree shows only the fields that serve the market, and the list only its bots. Outside a market, the small coloured dots beside a field show which markets it serves.
+
 ## Browsing the taxonomy
 
 The screen has two halves.
