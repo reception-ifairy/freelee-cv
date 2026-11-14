@@ -177,6 +177,20 @@ each page is a real URL, and the browser prefetches on hover for free. A
 disabled arrow is a `<span>`, not a dead anchor that is still focusable and
 still announced as a link.
 
+**Params a list carries but does not edit (`ListConfig.keep`, 2026-11-14).** A
+list beside a tree — the taxonomy browser — has its selection in the URL (`cat`,
+`sec`). `listHref` rebuilt URLs from the toolbar's own keys, so the first search
+dropped the selection. Keys named in `keep` are read into `params.kept` and
+written back after the filters, in config order; "Clear all" leaves them, since
+a selection is where you are rather than a filter. Tree links override them
+(`listHref(…, { kept: { cat: '7', sec: '' } })`).
+
+**Sortable column headers (`sortToggle`).** A page names a column's two sort ids
+(`name` / `name-desc`); the header links to the other one when the list is
+sorted by it, otherwise to ascending, and says which way it is sorted
+(`aria-sort`). `ResourceView` renders them from `sortHrefs`, keyed by
+`meta[].key`. Checked by `npm run admin:verify-list-query`.
+
 ## Verified against 150 seeded personas
 
 Seeded across ten expertises, five providers, three audiences and mixed

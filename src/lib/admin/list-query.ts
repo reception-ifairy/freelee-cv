@@ -29,6 +29,14 @@ export type ListConfig = {
   filters: FilterDef[];
   sorts: SortDef[];
   defaultSort: string;
+  /**
+   * URL params this list carries but the toolbar does not edit — a tree
+   * selection (`cat`, `sec`) beside the list. Without it, every search or
+   * filter change rebuilt the URL from the toolbar's own keys and dropped the
+   * selection. Values are passed through as given (trimmed, at most 100
+   * characters); the page that reads them validates them.
+   */
+  keep?: string[];
 };
 
 export type ListParams = {
@@ -37,6 +45,8 @@ export type ListParams = {
   page: number;
   perPage: number;
   filters: Record<string, string>;
+  /** The `keep` params that were present. */
+  kept: Record<string, string>;
 };
 
 /** Next.js hands repeated params as arrays; only the first value is ever meaningful here. */
@@ -60,12 +70,19 @@ export function parseListParams(
     if (value && filter.options.some((option) => option.id === value)) filters[filter.key] = value;
   }
 
+  const kept: Record<string, string> = {};
+  for (const key of config.keep ?? []) {
+    const value = first(searchParams[key]).trim().slice(0, 100);
+    if (value) kept[key] = value;
+  }
+
   return {
     q: first(searchParams.q).trim().slice(0, 100),
     sort: config.sorts.some((s) => s.id === sort) ? sort : config.defaultSort,
     page: Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1,
     perPage: (PAGE_SIZES as readonly number[]).includes(rawPer) ? rawPer : DEFAULT_PAGE_SIZE,
     filters,
+    kept,
   };
 }
 
@@ -74,12 +91,13 @@ export function listHref(
   pathname: string,
   params: ListParams,
   config: ListConfig,
-  overrides: Partial<ListParams> & { filters?: Record<string, string> } = {},
+  overrides: Partial<ListParams> & { filters?: Record<string, string>; kept?: Record<string, string> } = {},
 ): string {
   const next: ListParams = {
     ...params,
     ...overrides,
     filters: { ...params.filters, ...(overrides.filters ?? {}) },
+    kept: { ...params.kept, ...(overrides.kept ?? {}) },
   };
 
   const search = new URLSearchParams();
@@ -89,6 +107,10 @@ export function listHref(
   for (const [key, value] of Object.entries(next.filters)) {
     if (value) search.set(key, value);
   }
+  // In the order the config declares them, so one view has one URL.
+  for (const key of config.keep ?? []) {
+    if (next.kept[key]) search.set(key, next.kept[key]);
+  }
   // Page last, so it reads at the end of the URL — and never `page=1`.
   if (next.page > 1) search.set('page', String(next.page));
 
@@ -96,6 +118,24 @@ export function listHref(
   return query ? `${pathname}?${query}` : pathname;
 }
 
+/**
+ * A sortable column header: the link it points to and how the list is sorted
+ * by it now. Clicking an unsorted column sorts it ascending, clicking it again
+ * flips it; the page names the two sort ids (`name` / `name-desc`), both of
+ * which must be in `config.sorts`. Paging restarts at 1.
+ */
+export function sortToggle(
+  pathname: string,
+  params: ListParams,
+  config: ListConfig,
+  column: { asc: string; desc: string },
+): { href: string; direction: 'asc' | 'desc' | null } {
+  const direction = params.sort === column.asc ? 'asc' : params.sort === column.desc ? 'desc' : null;
+  const sort = direction === 'asc' ? column.desc : column.asc;
+  return { href: listHref(pathname, params, config, { sort, page: 1 }), direction };
+}
+
+/** Search and filters only: a kept tree selection is where you are, not a filter to clear. */
 export function hasActiveFilters(params: ListParams): boolean {
   return Boolean(params.q) || Object.values(params.filters).some(Boolean);
 }

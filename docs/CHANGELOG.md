@@ -34,7 +34,20 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #78 · `pending` — Admin building blocks: a card that opens on demand, sections that fold, one focus trap; the Audiences screen first
+### #79 · `pending` — Admin lists keep a tree selection, sort by column header and mark the open row; tabs as one component
+
+Step 4 of the admin redesign: the list parts the taxonomy browser is built from. `ListConfig.keep`
+names URL params a list carries but does not edit — a tree selection (`cat`, `sec`) — so a search,
+a filter, "Clear all", sorting or paging no longer drops it. `sortToggle` gives a column header its
+link and direction. `ResourceView` gains sortable headers (`sortHrefs`, `aria-sort`), the open row
+highlighted (`selectedId`), rows that open a card in place (`openInPlace`: the whole row is the link,
+the scroll stays, focus comes back to it) and a table-only mode; existing lists are unchanged.
+`TabNav` is the one way to do tabs — server-rendered links with a count — first on the bot team page.
+New check `npm run admin:verify-list-query` (11).
+
+📄 docs/57-admin-navigation.md · docs/35-admin-lists.md
+
+### #78 · `bd71a99` — Admin building blocks: a card that opens on demand, sections that fold, one focus trap; the Audiences screen first
 
 Step 3 of the admin redesign (owner, 2026-11-14: "a list where the card opens when you want it").
 `useDialog` is the one focus trap for every overlay, and only the top overlay answers Escape (a
