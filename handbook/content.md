@@ -57,6 +57,11 @@ They are ordinary pages built from blocks. Open one while signed in as an admin 
 place, or edit the menu links under **Menus**. Everything they promise exists today. Before adding a
 new claim, check that the feature is really available to customers.
 
+**Homeschooling says tutors are in preparation** (since November 2026), because no tutor is live
+yet. The lines that depend on live tutors — the opening block, the closing call to action and the
+first FAQ answer — come from `scripts/offering-copy.ts`. When the first tutors open, change those
+lines and run `npx tsx scripts/update-homeschooling-copy.ts --apply`, or edit the blocks in place.
+
 The **How it works** block now has an optional heading and sub-heading. Left blank, it shows the
 standard "Three steps, no setup" (as on the home page).
 
