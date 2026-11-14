@@ -10,7 +10,10 @@
 import { readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ADMIN_NAV, adoptedHref, findActiveNavItem, findNavItemByHref, isNavItemCurrent } from '../src/lib/admin/nav';
+import {
+  ADMIN_NAV, DEFAULT_OPEN_GROUPS, adoptedHref, findActiveNavItem, findNavItemByHref, groupOfPath, isNavItemCurrent, parseOpenGroups,
+} from '../src/lib/admin/nav';
+import { PILLARS } from '../src/lib/taxonomy/pillars';
 import { MODULES } from '../src/lib/modules/registry';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'admin');
@@ -43,9 +46,28 @@ function check(name: string, fn: () => boolean | string) {
   }
 }
 
-const routes = pages(ROOT);
+/** Every admin page as a pattern: "[id]" matches any one segment, an optional catch-all anything below. */
+function patterns(dir: string): RegExp[] {
+  const out: RegExp[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) out.push(...patterns(full));
+    else if (name === 'page.tsx') {
+      const segments = relative(ROOT, dir).split(sep).filter(Boolean).filter((s) => !/^\(.*\)$/.test(s));
+      const body = segments
+        .map((s) => (/^\[\[\.\.\..+\]\]$/.test(s) ? '(?:/.*)?' : /^\[.+\]$/.test(s) ? '/[^/]+' : `/${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+        .join('');
+      out.push(new RegExp(`^/admin${body}$`));
+    }
+  }
+  return out;
+}
+
+// Concrete paths, plus the markets by name: [pillar] is not a number.
+const routes = [...pages(ROOT), ...PILLARS.map((p) => `/admin/markets/${p.id}`)].sort();
+const routePatterns = patterns(ROOT);
+const isPage = (href: string) => routePatterns.some((re) => re.test(href));
 const items = ADMIN_NAV.flatMap((s) => s.items);
-const pattern = (href: string) => href.replace(/\/\d+(?=\/|$)/g, '/1');
 
 console.log('Admin navigation');
 check(`${routes.length} admin pages found`, () => routes.length > 40 || `only ${routes.length}`);
@@ -66,15 +88,42 @@ check('sidebar hrefs are unique', () => {
   return dupes.length === 0 || dupes.join(', ');
 });
 check('every sidebar href is a page', () => {
-  const missing = items.map((i) => i.href).filter((h) => !routes.includes(pattern(h)));
+  const missing = items.map((i) => i.href).filter((h) => !isPage(h));
   return missing.length === 0 || missing.join(', ');
 });
 check('every admin link in the module registry is a page', () => {
   const links = MODULES.flatMap((m) => (m.navigation ?? []).filter((n) => n.group === 'admin').map((n) => n.href));
-  const missing = links.filter((h) => !routes.includes(pattern(h)));
+  const missing = links.filter((h) => !isPage(h));
   return missing.length === 0 || missing.join(', ');
 });
 check('the old Prototypes address still exists (it redirects to Drafts)', () => routes.includes('/admin/taxonomy/prototypes') && items.some((i) => i.href === '/admin/taxonomy/drafts'));
+
+console.log('Groups');
+check('group ids are unique, and every group but the first has a heading', () => {
+  const ids = ADMIN_NAV.map((s) => s.id);
+  return new Set(ids).size === ids.length && ADMIN_NAV.slice(1).every((s) => s.heading) && ADMIN_NAV.every((s) => s.items.length > 0);
+});
+check('the default open groups exist', () => DEFAULT_OPEN_GROUPS.every((id) => ADMIN_NAV.some((s) => s.id === id)));
+check('the cookie: missing means defaults, empty means all folded, unknown ids are dropped', () =>
+  JSON.stringify([parseOpenGroups(undefined), parseOpenGroups(''), parseOpenGroups('site,nonsense, system')]) ===
+  JSON.stringify([DEFAULT_OPEN_GROUPS, [], ['site', 'system']]));
+check('every page belongs to exactly the group of its current item (that group is always open)', () => {
+  const want: Record<string, string> = {
+    '/admin': 'overview',
+    '/admin/markets': 'markets',
+    '/admin/markets/homeschooling': 'markets',
+    '/admin/taxonomy/34': 'catalogue',
+    '/admin/categories/5': 'catalogue',
+    '/admin/taxonomy/audiences': 'catalogue',
+    '/admin/translations': 'site',
+    '/admin/ai-models': 'system',
+    '/admin/crews/runs/abc': 'teamwork',
+  };
+  const wrong = Object.entries(want).filter(([path, group]) => groupOfPath(path) !== group);
+  const orphans = routes.filter((path) => groupOfPath(path) === null);
+  return (wrong.length === 0 && orphans.length === 0) || `wrong: ${wrong.map(([p]) => `${p}→${groupOfPath(p)}`).join(', ')}; orphans: ${orphans.join(', ')}`;
+});
+check('each market has its own item, with its colour', () => PILLARS.every((p) => items.some((i) => i.href === `/admin/markets/${p.id}` && i.dot === p.color)));
 
 if (failed) {
   console.log(`\n${failed} check(s) failed.`);

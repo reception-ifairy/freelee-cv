@@ -11,6 +11,7 @@ import { resolveLayoutForPersona } from '@/lib/chat/resolve-layout';
 import { suggestedToolsFor } from '@/lib/tools/catalog';
 import { getSettings } from '@/lib/settings';
 import { CURRICULUM_SCOPE_CACHE_KEY, readScopeCache } from '@/lib/curriculum/stored';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -74,6 +75,8 @@ export default async function EditPersonaPage({
   );
 
   return (
+    <>
+    <BreadcrumbName name={persona.name} />
     <PersonaForm
       savedAs={saved}
       suggestedLayout={suggestedLayout}
@@ -88,5 +91,6 @@ export default async function EditPersonaPage({
       sectors={sectorRows.map((s) => ({ id: s.id, name: s.name, categoryName: s.categoryName }))}
       curriculumCache={readScopeCache(settings.get(CURRICULUM_SCOPE_CACHE_KEY))}
     />
+    </>
   );
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { ADMIN_NAV_ALIASES, adoptedHref, findActiveNavItem, findNavItemByHref } from '@/lib/admin/nav';
+import { useBreadcrumbName } from './breadcrumb-name';
 
 /**
  * Where you are, in the header.
@@ -19,6 +20,8 @@ import { ADMIN_NAV_ALIASES, adoptedHref, findActiveNavItem, findNavItemByHref } 
  */
 export function AdminBreadcrumb() {
   const pathname = usePathname();
+  // The detail page's own name, when it gave one (BreadcrumbName) — "Education and Training", not "Details".
+  const pageName = useBreadcrumbName();
   // Routes kept outside their section (category and sector editors live under /admin/categories and
   // /admin/sectors, owned by Taxonomy) resolve through their adopting item, so they are never blank.
   const adopted = adoptedHref(pathname);
@@ -61,7 +64,7 @@ export function AdminBreadcrumb() {
               honest thing to show: "New", "Convert", "Builder"; a bare id
               falls back to "Details". */}
           <span className="truncate text-slate-400" aria-current="page">
-            {label(rest)}
+            {pageName ?? label(rest)}
           </span>
         </>
       ) : null}

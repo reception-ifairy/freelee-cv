@@ -13,6 +13,7 @@ import { Input, Label } from '@/components/ui/field';
 import { adjustCreditsAction } from '@/server/actions/billing';
 import { toggleUserAdminAction } from '@/server/actions/admin';
 import { formatDate, formatMoney, relativeTime } from '@/lib/utils';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -60,6 +61,7 @@ export default async function AdminCustomerPage({ params }: { params: Promise<{ 
 
   return (
     <div>
+      <BreadcrumbName name={account.name} />
       {/* A suspended account looked completely normal on this screen —
           `isActive` was rendered nowhere, while the list beside it badges the
           state clearly. You could be reading a locked-out customer's ledger

@@ -9,7 +9,7 @@ freelee is for **adults**. A parent or guardian creates the account, and each ch
 2. **Confirm the email.** We send a link to confirm the address. A profile for a child can be created
    only after that.
 
-   Until an email service is connected (**Admin → Settings → Email**, Resend key and sender
+   Until an email service is connected (**Admin → System → Settings → Email**, Resend key and sender
    address), the confirmation email is not actually sent. It is written to the server log instead,
    so ask Claude for the link if needed.
 

@@ -16,6 +16,7 @@ import { InlineForm } from '@/components/admin/inline-form';
 import { projectTotals } from '@/lib/projects/queries';
 import { saveProjectAction } from '@/server/actions/admin-projects';
 import { formatCredits, relativeTime } from '@/lib/utils';
+import { BreadcrumbName } from '@/components/admin/breadcrumb-name';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,7 @@ export default async function AdminProjectPage({ params }: { params: Promise<{ i
 
   return (
     <div>
+      <BreadcrumbName name={project.name} />
       <PageHeader
         title={project.name}
         description={project.description ?? `/${project.slug}`}

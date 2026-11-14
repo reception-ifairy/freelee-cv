@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
  * scrollable overlay or a separate mobile IA, and an overlay keeps one nav to
  * maintain.
  */
-export function AdminDrawer() {
+export function AdminDrawer({ initialOpen }: { initialOpen: string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { mounted, closing } = useMountTransition(open);
@@ -106,7 +106,7 @@ export function AdminDrawer() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3">
-              <AdminNav onNavigate={() => setOpen(false)} />
+              <AdminNav initialOpen={initialOpen} onNavigate={() => setOpen(false)} />
             </div>
           </div>
         </div>,

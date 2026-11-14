@@ -1,6 +1,6 @@
 # 57 — Admin navigation: lists with a card on demand
 
-**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the sidebar by job, the dashboard and the connections page, each as its own section here.
+**Owner decision, 2026-11-14.** The taxonomy, sectors and audiences should be browsed as lists, with a card opening only when wanted ("zamiast widoku kart system, który ułatwia przejrzyste przeglądanie, a karta otwiera się na życzenie"). This doc covers the building blocks every admin browser uses and the browsers built from them. Later updates add the dashboard and the connections page, each as its own section here.
 
 ## Building blocks (freelee #78)
 
@@ -267,6 +267,51 @@ Checked by `npm run children:verify-tutor-coverage` (14 checks):
 - Business ignores `?tab=families`;
 - on a phone the page does not scroll sideways;
 - no page errors.
+
+## The sidebar by job (freelee #84)
+
+The sidebar was grouped by technical layer (AI, Taxonomy, Knowledge, Teamwork, Commerce, Content, System), never folded, and held 29 links. Translations and Branding sat under System, beside keys and settings. It is now grouped by job (`ADMIN_NAV`, `src/lib/admin/nav.ts`):
+
+| Group | Items |
+|---|---|
+| (top) | Dashboard |
+| Markets | All markets, then the six markets, each with its colour dot. Planned markets are dimmed |
+| Catalogue | Personas, Taxonomy (was "Categories"), Audiences, Drafts, Prompt modifiers |
+| Knowledge | Library, Shelves, External sources |
+| Teamwork | Bot teams, Rooms, Projects |
+| Commerce | Credit packs, Subscription plans, Access passes, Sales, Customers, Marketplace, Leads |
+| Site | Frontpage, Pages, Showcase, Blog, Menus, Translations, Branding |
+| System | Settings, Handbook, Documentation |
+
+**Groups fold.**
+- **Remembered:** the open groups are kept in the `admin_nav_open` cookie (path `/admin`). The layout reads it on the server (`parseOpenGroups`), so the sidebar arrives already folded the way it was left, with no flash.
+- **Defaults:** with no cookie, Markets and Catalogue are open. An empty cookie means everything is folded.
+- **Always open:** the group of the current page (`groupOfPath`). Its heading is disabled and shows no chevron.
+- **Folded Markets** still shows the six colour dots.
+
+At 1280×900 the whole sidebar fits without scrolling, with 13 links visible by default.
+
+**The breadcrumb names what it shows.**
+- **Real names:** a detail page renders `<BreadcrumbName name={…} />` (`breadcrumb-name.tsx`, a context in the layout), and the header's last crumb becomes that name instead of "Details". The page already has the name, so the header costs no query.
+- **Where:** 11 detail pages use it — the persona, field workspace, category and sector editors, credit pack, bot team, run, library document, customer, project and room.
+- **Before hydration** the crumb still reads "Details" for a moment.
+
+**Handbook paths** follow the new groups ("Admin → Catalogue → Taxonomy", "Admin → Knowledge → Library", "Admin → System → Settings → Email").
+
+`npm run admin:verify-nav` (now 12 checks) adds:
+- route patterns for segments that are not numbers (`/admin/markets/business` is a page);
+- unique group ids;
+- the cookie rules;
+- every page belonging to a group, with known paths landing in the right one;
+- each market having its own item and colour.
+
+**Verified live** (Playwright, 1280 and 390px):
+- **Defaults:** Markets and Catalogue open, with 13 links visible.
+- **Remembered:** folding Markets and opening Commerce writes `catalogue,commerce`, and a reload renders exactly that from the server. Folded Markets shows its 6 dots.
+- **Always open:** on Translations, Site stays open and its heading is disabled.
+- **Breadcrumbs:** "Taxonomy › Education and Training", "Taxonomy › Categories › Education and Training", "Personas › AmaterAI" and "Homeschooling & family".
+- **Phone:** the drawer shows the same groups.
+- No page errors.
 
 ## First use: the Audiences screen (freelee #78)
 

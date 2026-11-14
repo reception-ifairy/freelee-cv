@@ -34,7 +34,20 @@ Conventions used throughout:
 
 ## 2026-11-14
 
-### #83 · `pending` — The homeschool hub: tutors, the curriculum with a who-teaches-what grid, and families as numbers only
+### #84 · `pending` — The sidebar by job, folding where you left it, and breadcrumbs that name what they show
+
+Step 9 of the admin redesign. The sidebar was grouped by technical layer and never folded (29 links,
+Translations and Branding under System). It is grouped by job now — Markets (the six, each with its
+colour, planned ones dimmed), Catalogue, Knowledge, Teamwork, Commerce, Site, System — and every
+group folds. The open groups live in a cookie the layout reads on the server, so the sidebar
+arrives folded as it was left; Markets and Catalogue are open by default, and the current page's
+group is always open. "Categories" is "Taxonomy", as its page says. Detail pages name themselves in
+the header (`<BreadcrumbName>`): "Taxonomy › Education and Training" instead of "Details". Handbook
+paths follow. `admin:verify-nav` grows to 12 checks (non-numeric routes, groups, the cookie).
+
+📄 docs/57-admin-navigation.md · docs/43-admin-visual-system.md · handbook (4 paths)
+
+### #83 · `a2d5ce4` — The homeschool hub: tutors, the curriculum with a who-teaches-what grid, and families as numbers only
 
 Step 8 of the admin redesign ("homeschooling is starting to look like a maze"). Homeschooling's tutors,
 curriculum and families had no place in the admin. `/admin/markets/homeschooling` gains four tabs.
