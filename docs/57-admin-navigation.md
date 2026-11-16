@@ -442,6 +442,33 @@ Checked by `npm run taxonomy:verify-agent` (17 checks, react-server condition, n
 
 **Not verified live:** no Anthropic key is configured, so no reply has been generated yet. Verified live: the tab, the no-key message and link, the setting in AI defaults, the route refusing a request with no thread (404), no thread created without a key.
 
+## Every list in the taxonomy's layout: Catalogue (freelee #90)
+
+**Owner decision, 2026-11-16:** "the taxonomy view is very good — let it be the model for the whole admin dashboard; the left rail is functional." All lists move to it, section by section; #90 is Catalogue.
+
+**One list of bots.** The taxonomy browser *is* the bots list:
+- `/admin/personas` redirects to `/admin/taxonomy`, keeping what the browser can filter by: `q`, `status` (`published` → `live`, `draft` → `draft`), `audience`, `category` → `cat`, `sort` (`name`, `newest`, `popular`). Featured, premium and provider have no browser filter (today 0 featured, 0 premium); the card shows them. The old grid (`personas-list.tsx`) is gone.
+- The bot's card carries what the grid's ⋯ menu did (`persona-card-actions.tsx`): Publish/Unpublish, Mark as featured, Duplicate, Delete (confirmed; closes the card). The persona actions now revalidate the whole admin layout, so the browser and the sidebar's live/total update.
+- The browser's header has **Category**, **Sector**, **Convert a bot** and **New bot**.
+- `NAV_ADOPTIONS` puts `/admin/personas/*` (editor, New, converter) under *Bots & taxonomy*; their back links point there.
+
+**Drafts is a filter, not a page.** `/admin/taxonomy/drafts` (and the older `/prototypes`) redirect to `/admin/taxonomy?status=draft`; `listPrototypes()` is gone. The sidebar item's href carries the query, so nav matching learned queries: `isNavItemCurrentAt(item, pathname, search)` makes an item with a query current only on its path *with* that query, and then it wins over the plain item at the same path (Drafts over Bots & taxonomy). `hrefPath()` strips the query wherever an href is checked against a route.
+
+**Catalogue menu:** Bots & taxonomy, Audiences, Drafts, Prompt modifiers.
+
+**The generic browser mode** (`ResourceView browser`, `src/components/admin/resource-view.tsx`) — so the other ~15 lists need no per-list code:
+- a left rail: by default the rows grouped by their **first badge** (on nearly every list the status) with counts and *All*, as `?group=`; or `groupBy` for another grouping; or `rail` — links the page owns (another query, its own counts);
+- a dense table (`openInPlace`, the open row highlighted); a row opens its card at `?open=<id>` in a `Sheet`, with 3/24 and Previous/Next across the visible rows; Esc or close drops `open` and puts focus back on the row;
+- the card is built from the `ResourceItem` the list already makes: badges, every `meta` field as a definition list, the actions as buttons (danger ones confirmed), and **Open** for the item's own page when it has one;
+- `meta[].cardOnly` keeps a long text (a modifier's instruction) off the table and on the card;
+- `before` puts a form or a note above the table.
+
+**Prompt modifiers** are the first list on it: the five types as the rail (with counts), the *New … modifier* form in a fold above the table, the full instruction on the card. The grid/list toggle is gone from this list.
+
+Checks: `admin:verify-nav` — sidebar and registry hrefs are pages once the query is stripped; Drafts is current with `status=draft` and Bots & taxonomy then is not; `/admin/personas/*` belong to Bots & taxonomy; the old Drafts and Prototypes addresses still exist.
+
+**Verified live** (1280, 1600, 390): the redirects with their filters; Drafts current in the sidebar; the four header buttons; a draft's card with its four actions — *Mark as featured* then *Remove from featured* updated the card both times (0 featured afterwards); modifiers: rail counts 5/5/5/3/0, card at `?open=1`, Next → `open=2`, Esc → closed, no horizontal scroll, no page errors.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

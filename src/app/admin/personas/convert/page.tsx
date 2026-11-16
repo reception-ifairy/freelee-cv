@@ -20,10 +20,10 @@ export default function ConvertBotPage() {
         description="Turn a character brief, a legacy config sheet or an old bot's guidelines into a draft persona."
         actions={
           <Link
-            href="/admin/personas"
+            href="/admin/taxonomy"
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-white/10"
           >
-            <ArrowLeft className="size-4" /> Personas
+            <ArrowLeft className="size-4" /> Bots & taxonomy
           </Link>
         }
       />

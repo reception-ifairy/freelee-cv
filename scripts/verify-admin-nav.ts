@@ -12,7 +12,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ADMIN_NAV, CATEGORY_GROUP_ID, DEFAULT_OPEN_GROUPS, adoptedHref, categoryNavSection, findActiveNavItem, findNavItemByHref, groupOfPath,
-  isCategoryItemCurrent, isNavItemCurrent, parseOpenGroups,
+  hrefPath, isCategoryItemCurrent, isNavItemCurrent, isNavItemCurrentAt, parseOpenGroups,
 } from '../src/lib/admin/nav';
 import { MODULES } from '../src/lib/modules/registry';
 
@@ -88,15 +88,30 @@ check('sidebar hrefs are unique', () => {
   return dupes.length === 0 || dupes.join(', ');
 });
 check('every sidebar href is a page', () => {
-  const missing = items.map((i) => i.href).filter((h) => !isPage(h));
+  // A query is a filter on that page (Drafts = the taxonomy browser with status=draft).
+  const missing = items.map((i) => i.href).filter((h) => !isPage(hrefPath(h)));
   return missing.length === 0 || missing.join(', ');
 });
 check('every admin link in the module registry is a page', () => {
   const links = MODULES.flatMap((m) => (m.navigation ?? []).filter((n) => n.group === 'admin').map((n) => n.href));
-  const missing = links.filter((h) => !isPage(h));
+  const missing = links.filter((h) => !isPage(hrefPath(h)));
   return missing.length === 0 || missing.join(', ');
 });
-check('the old Prototypes address still exists (it redirects to Drafts)', () => routes.includes('/admin/taxonomy/prototypes') && items.some((i) => i.href === '/admin/taxonomy/drafts'));
+check('the old Prototypes and Drafts addresses still exist (they redirect to the browser’s drafts)', () =>
+  routes.includes('/admin/taxonomy/prototypes') && routes.includes('/admin/taxonomy/drafts') && items.some((i) => i.href === '/admin/taxonomy?status=draft'));
+check('Drafts is current on the browser with status=draft, and then Bots & taxonomy is not', () => {
+  const drafts = items.find((i) => i.label === 'Drafts')!;
+  const bots = items.find((i) => i.href === '/admin/taxonomy')!;
+  const at = (q: string) => new URLSearchParams(q);
+  return (
+    isNavItemCurrentAt(drafts, '/admin/taxonomy', at('status=draft')) &&
+    !isNavItemCurrentAt(bots, '/admin/taxonomy', at('status=draft')) &&
+    isNavItemCurrentAt(bots, '/admin/taxonomy', at('status=live')) &&
+    !isNavItemCurrentAt(drafts, '/admin/taxonomy', at(''))
+  );
+});
+check('the old bots list and a bot’s editor belong to Bots & taxonomy', () =>
+  ['/admin/personas', '/admin/personas/1', '/admin/personas/new', '/admin/personas/convert'].every((p) => adoptedHref(p) === '/admin/taxonomy'));
 
 console.log('Groups');
 check('group ids are unique, and every group but the first has a heading', () => {

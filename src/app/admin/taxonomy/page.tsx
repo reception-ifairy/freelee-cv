@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, ExternalLink, Layers, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Layers, Pencil, Plus, Wand2 } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ListToolbar } from '@/components/admin/list-toolbar';
 import { ListPagination } from '@/components/admin/list-pagination';
@@ -31,6 +31,7 @@ import { curriculumStatus, hubTutors } from '@/lib/curriculum/hub-queries';
 import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
 import { subjectOptions } from '@/lib/curriculum/subjects';
 import { PersonaSheetBody, SectorSheetBody } from './browser-cards';
+import { PersonaCardActions } from './persona-card-actions';
 import { AudiencesTab } from './audiences-tab';
 import { Workbench } from './workbench';
 import { CategoryBriefTab } from './category-brief';
@@ -86,11 +87,18 @@ export default async function TaxonomyBrowserPage({
         description="Every field, its specialisms and the bots filed there. Pick a category or sector on the left; click a row for its card."
         actions={
           <div className="flex gap-2">
+            {/* Since #90 this is the one list of bots, so making one starts here too. */}
+            <Link href="/admin/categories/new" className="inline-flex h-10 items-center gap-2 rounded-control border hairline px-3 text-sm font-semibold hover:bg-white/[0.03]">
+              <Plus className="size-4" /> Category
+            </Link>
             <Link href="/admin/sectors/new" className="inline-flex h-10 items-center gap-2 rounded-control border hairline px-3 text-sm font-semibold hover:bg-white/[0.03]">
               <Plus className="size-4" /> Sector
             </Link>
-            <Link href="/admin/categories/new" className="inline-flex h-10 items-center gap-2 rounded-control bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700">
-              <Plus className="size-4" /> Category
+            <Link href="/admin/personas/convert" className="inline-flex h-10 items-center gap-2 rounded-control border hairline px-3 text-sm font-semibold hover:bg-white/[0.03]">
+              <Wand2 className="size-4" /> Convert a bot
+            </Link>
+            <Link href="/admin/personas/new" className="inline-flex h-10 items-center gap-2 rounded-control bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700">
+              <Plus className="size-4" /> New bot
             </Link>
           </div>
         }
@@ -415,7 +423,10 @@ function BrowserSheet({
           </>
         }
       >
-        <PersonaSheetBody card={card} sectorHref={card.sectorId ? selectionHref(params, config, selection, { sec: card.sectorId }) : null} />
+        <div className="space-y-6">
+          <PersonaSheetBody card={card} sectorHref={card.sectorId ? selectionHref(params, config, selection, { sec: card.sectorId }) : null} />
+          <PersonaCardActions id={card.id} name={card.name} isActive={card.isActive} isFeatured={card.isFeatured} closeHref={closeHref} />
+        </div>
       </RouteSheet>
     );
   }

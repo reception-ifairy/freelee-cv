@@ -213,8 +213,7 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
   const personaId = await createDraftPersona(admin.id, parsed.data.categoryId, parsed.data.sectorId ?? null, draft);
   if (personaId === null) return { error: 'That category is no longer here.' };
 
-  revalidatePath('/admin/taxonomy/drafts');
-  revalidatePath('/admin/personas');
+  revalidatePath('/admin', 'layout');
   return { success: `“${draft.name}” saved as a prototype.`, personaId };
 }
 
@@ -357,7 +356,7 @@ export async function decideProposalAction(
   void result;
 
   revalidatePath('/admin/taxonomy');
-  if (personaId) revalidatePath('/admin/personas');
+  if (personaId) revalidatePath('/admin', 'layout');
   return {
     success: decision === 'rejected' ? 'Rejected.' : personaId ? 'Approved — the bot is saved as an inactive draft.' : 'Approved and applied.',
     personaId,

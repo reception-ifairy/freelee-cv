@@ -29,15 +29,19 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
   in it, and proposes new bots, sector descriptions and audience groups; nothing changes until you
   approve (a new bot is always an inactive draft). The cost of each conversation is on screen. It
   needs an Anthropic key in Connections.
+- **One list of bots, in the taxonomy's layout.** *Personas* and *Drafts* open the taxonomy browser
+  (Drafts is it filtered to bots that are not live), and a bot's card can publish, feature, duplicate
+  and delete it. **Prompt modifiers** use the same layout: types on the left, the list, a card.
 
 **Updates**
 
 | # | Commit | What |
 |---|---|---|
 | #88 | `56eaa85` | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
-| #89 | (this update) | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
+| #89 | `bfba892` | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
+| #90 | (this update) | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
 
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*.
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*.
 
 **Changed outside git:** nothing.
 

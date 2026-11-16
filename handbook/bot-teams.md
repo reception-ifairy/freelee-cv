@@ -35,7 +35,7 @@ If you are not sure, pick **One after another**. It is the easiest to predict.
 *legal*, *writer*, *marketing* — and press **Add** on the ones you want.
 
 A bot marked **Not published yet** cannot be added: it has no live version to answer from, so it
-could not take a turn. Publish it first (Personas → the bot → Publishing tab).
+could not take a turn. Publish it first (Bots & taxonomy → the bot's card → **Publish**).
 
 The bots you added appear under **On the team**. For each one:
 

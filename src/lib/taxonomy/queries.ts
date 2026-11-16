@@ -48,36 +48,6 @@ export async function categoryList() {
     .orderBy(asc(categories.position));
 }
 
-/** Prototypes: personas created in a workbench and not yet live. */
-export async function listPrototypes() {
-  return db
-    .select({
-      id: personas.id,
-      name: personas.name,
-      slug: personas.slug,
-      expertise: personas.expertise,
-      accentColor: personas.accentColor,
-      createdAt: personas.createdAt,
-      isActive: personas.isActive,
-      sectorName: sectors.name,
-      categoryId: sql<number | null>`(
-        select pc.category_id from ${personaCategories} pc
-        where pc.persona_id = ${sql.raw('"personas"."id"')} limit 1
-      )`,
-      categoryName: sql<string | null>`(
-        select c.name from ${personaCategories} pc
-        join ${categories} c on c.id = pc.category_id
-        where pc.persona_id = ${sql.raw('"personas"."id"')}
-        order by c.position limit 1
-      )`,
-      hasDraft: sql<boolean>`${personas.draftVersionId} is not null`,
-    })
-    .from(personas)
-    .leftJoin(sectors, eq(sectors.id, personas.sectorId))
-    .where(eq(personas.isActive, false))
-    .orderBy(sql`${personas.createdAt} desc`);
-}
-
 /** Sector options for a picker, grouped by category. */
 export async function sectorOptions() {
   return db

@@ -38,7 +38,7 @@ giving bad answers, the prompt is the first thing to look at, nearly every time.
 ## Finding your way around the admin
 
 The sidebar starts with the **Categories** — the twenty fields everything is organised around, each
-with its live/all bots — then **Catalogue** (personas, taxonomy, audiences, drafts),
+with its live/all bots — then **Catalogue** (bots and taxonomy, audiences, drafts, prompt modifiers),
 **Knowledge**, **Teamwork**, **Commerce**, **Site** and **System**. Groups fold — click a heading — and
 the admin remembers which ones you keep open. The group of the page you are on is always open.
 

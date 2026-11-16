@@ -34,7 +34,21 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #89 · `pending` — Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves
+### #90 · `pending` — Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards
+
+Owner decision, 2026-11-16: the taxonomy view is the model for every admin list. First, Catalogue.
+`/admin/personas` redirects into the taxonomy browser (keeping search, status, audience, category and
+sort), and a bot's card gains the old grid's actions — Publish, Feature, Duplicate, Delete; the header
+gains New bot and Convert a bot. Drafts is the browser at `?status=draft` (old Drafts and Prototypes
+addresses redirect); the sidebar learned items with a query (`isNavItemCurrentAt`). `ResourceView`
+gets a generic browser mode — a rail grouped by the first badge or given by the page, a dense table,
+the row's card in a sheet built from the item, Previous/Next, all in the URL — so the remaining lists
+need no per-list code. Prompt modifiers use it with their five types as the rail. Persona actions
+revalidate the admin layout so the sidebar counts follow.
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md · handbook/welcome.md
+
+### #89 · `bfba892` — Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves
 
 Owner decisions, 2026-11-16: each main category has an AI agent on Anthropic that helps build bots for
 it; it proposes and the owner approves; the model is Claude Opus 5.5 (a setting under AI defaults).

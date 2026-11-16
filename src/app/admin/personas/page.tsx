@@ -1,222 +1,37 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Plus, Wand2 } from 'lucide-react';
-import { and, asc, desc, eq, exists, ilike, or, sql } from 'drizzle-orm';
-import { db } from '@/db';
-import { categories, personaCategories, personaVersions, personas, sectors } from '@/db/schema';
-import { PageHeader } from '@/components/admin/page-header';
-import { ListToolbar } from '@/components/admin/list-toolbar';
-import { ListPagination } from '@/components/admin/list-pagination';
-import { getProviderRegistry, resolveProviderId } from '@/lib/ai/registry';
-import { getAdminView } from '@/lib/admin/view-preference-server';
-import { parseListParams, type ListConfig } from '@/lib/admin/list-query';
-import { formatCredits } from '@/lib/utils';
-import { PersonasList, type PersonaRow } from './personas-list';
+import { redirect } from 'next/navigation';
+import { BROWSER_PATH } from '@/lib/taxonomy/browser';
 
 /**
- * Per-user content: never prerendered, never cached at the edge.
+ * The bots list is the taxonomy browser since freelee #90 (owner, 2026-11-16:
+ * "the taxonomy view is the model for the whole admin"). One list of bots,
+ * with its tree, its card and the card's actions, instead of two that drift.
+ *
+ * Old links keep their filters where the browser has the same one:
+ * `q`, `status` (published → live, draft → draft), `audience`, `category` →
+ * `cat`, `sort` (name / newest / popular). Featured, premium and provider have
+ * no filter there; the card shows them.
  */
-export const dynamic = 'force-dynamic';
+const STATUS: Record<string, string> = { published: 'live', draft: 'draft' };
+const SORT: Record<string, string> = { name: 'name', newest: 'newest', popular: 'popular' };
 
-export const metadata: Metadata = { title: 'Personas' };
-
-export default async function AdminPersonasPage({
+export default async function PersonasRedirect({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [rawParams, categoryRows, registry, view] = await Promise.all([
-    searchParams,
-    db.select({ id: categories.id, name: categories.name }).from(categories).orderBy(asc(categories.position)),
-    getProviderRegistry(),
-    getAdminView('personas'),
-  ]);
-
-  // Provider options come from the registry rather than a hardcoded list, so a
-  // provider added later appears in the filter without another edit here.
-  const config: ListConfig = {
-    filters: [
-      { key: 'category', label: 'Category', options: categoryRows.map((c) => ({ id: String(c.id), label: c.name })) },
-      {
-        key: 'status',
-        label: 'Status',
-        options: [
-          { id: 'published', label: 'Published' },
-          { id: 'draft', label: 'Draft' },
-          { id: 'featured', label: 'Featured' },
-          { id: 'premium', label: 'Premium' },
-        ],
-      },
-      {
-        key: 'provider',
-        label: 'Provider',
-        options: Object.entries(registry).map(([id, provider]) => ({ id, label: provider.label })),
-      },
-      {
-        key: 'audience',
-        label: 'Audience',
-        options: [
-          { id: 'B2C', label: 'Consumer (B2C)' },
-          { id: 'B2B', label: 'Business (B2B)' },
-          { id: 'B2G', label: 'Government (B2G)' },
-        ],
-      },
-    ],
-    sorts: [
-      { id: 'position', label: 'Sort: manual order' },
-      { id: 'name', label: 'Sort: name A–Z' },
-      { id: 'newest', label: 'Sort: newest first' },
-      { id: 'popular', label: 'Sort: most used' },
-    ],
-    defaultSort: 'position',
-  };
-
-  const params = parseListParams(rawParams, config);
-
-  // Filtering happens in SQL, not in JavaScript over a full table read — this
-  // has to stay correct at 5,000 personas, not just at 150.
-  const conditions = [];
-
-  if (params.q) {
-    const term = `%${params.q}%`;
-    conditions.push(
-      or(
-        ilike(personas.name, term),
-        ilike(personas.tagline, term),
-        ilike(personas.expertise, term),
-        ilike(personas.slug, term),
-      ),
-    );
-  }
-
-  const status = params.filters.status;
-  if (status === 'published') conditions.push(eq(personas.isActive, true));
-  if (status === 'draft') conditions.push(eq(personas.isActive, false));
-  if (status === 'featured') conditions.push(eq(personas.isFeatured, true));
-  if (status === 'premium') conditions.push(eq(personas.isPremium, true));
-
-  if (params.filters.provider) conditions.push(eq(personas.aiProvider, params.filters.provider));
-  /*
-   * Filtered on the **version**, not on `personas.audience_type`.
-   *
-   * That column has not been written since Phase 4 moved audience onto
-   * `persona_versions` — so this filter matched nothing for every persona
-   * created or edited since, and silently returned an empty list rather than
-   * erroring. The public catalogue has always filtered the right column.
-   */
-  if (params.filters.audience) {
-    conditions.push(sql`exists (
-      select 1 from persona_versions pv
-      where pv.id = ${personas.currentVersionId} and pv.audience_type::text = ${params.filters.audience}
-    )`);
-  }
-
-  if (params.filters.category) {
-    // EXISTS rather than a join: a persona in three categories must appear
-    // once, and a join would return it three times, breaking both the count
-    // and the page size.
-    conditions.push(
-      exists(
-        db
-          // Only existence matters here. (Until 2026-11-14 this select carried columns pasted from the main
-          // query, including sectors.slug — the count query has no sectors join, so ?category= failed.)
-          .select({ one: sql`1` })
-          .from(personaCategories)
-          .where(
-            and(
-              eq(personaCategories.personaId, personas.id),
-              eq(personaCategories.categoryId, Number(params.filters.category)),
-            ),
-          ),
-      ),
-    );
-  }
-
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-
-  const orderBy =
-    {
-      position: [asc(personas.position), asc(personas.name)],
-      name: [asc(personas.name)],
-      newest: [desc(personas.createdAt)],
-      popular: [desc(personas.messagesCount)],
-    }[params.sort] ?? [asc(personas.position)];
-
-  const [rows, [{ total }]] = await Promise.all([
-    db
-      .select({
-        persona: personas,
-        modelTier: personaVersions.modelTier,
-        model: personaVersions.model,
-        aiProvider: personaVersions.aiProvider,
-        // Taxonomy for the generated mark. The category comes from a correlated
-        // subquery rather than a join: persona_categories is many-to-many, and
-        // joining it multiplies rows — the bug that once made /admin/packs 500
-        // and /admin/customers report zero chats for every customer. The outer
-        // reference is explicitly qualified for the same reason.
-        categoryId: sql<number | null>`(select c.id from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        categorySlug: sql<string | null>`(select c.slug from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        categoryColor: sql<string | null>`(select c.color from persona_categories pc join categories c on c.id = pc.category_id where pc.persona_id = ${sql.raw('"personas"."id"')} order by c.position limit 1)`,
-        sectorSlug: sectors.slug,
-      })
-      .from(personas)
-      .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
-      .leftJoin(sectors, eq(sectors.id, personas.sectorId))
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(params.perPage)
-      .offset((params.page - 1) * params.perPage),
-    // Counted with the same conditions, so "312 results" always matches what
-    // paging all the way through would actually give you.
-    db.select({ total: sql<number>`count(*)::int` }).from(personas).where(where),
-  ]);
-
-  const items: PersonaRow[] = rows.map(({ persona, modelTier, model, aiProvider, categoryId, categorySlug, categoryColor, sectorSlug }) => ({
-    id: persona.id,
-    slug: persona.slug,
-    name: persona.name,
-    expertise: persona.expertise,
-    accentColor: persona.accentColor,
-    categoryId,
-    categorySlug,
-    categoryColor,
-    sectorSlug,
-    model: modelTier
-      ? modelTier.charAt(0).toUpperCase() + modelTier.slice(1)
-      : (model ?? registry[resolveProviderId(aiProvider)].defaultModel),
-    messages: formatCredits(persona.messagesCount),
-    isActive: persona.isActive,
-    isFeatured: persona.isFeatured,
-  }));
-
-  return (
-    <div>
-      <PageHeader
-        title="Personas"
-        description="Every AI specialist available on the platform."
-        actions={
-          <>
-          <Link
-            href="/admin/personas/convert"
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-white/10"
-          >
-            <Wand2 className="size-4" /> Convert a bot
-          </Link>
-          <Link
-            href="/admin/personas/new"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-on-brand hover:bg-brand-700"
-          >
-            <Plus className="size-4" /> New persona
-          </Link>
-          </>
-        }
-      />
-
-      <ListToolbar params={params} config={config} total={total} />
-
-      <PersonasList rows={items} view={view} />
-
-      <ListPagination pathname="/admin/personas" params={params} config={config} total={total} />
-    </div>
-  );
+  const raw = await searchParams;
+  const one = (key: string) => (typeof raw[key] === 'string' ? (raw[key] as string) : undefined);
+  const next = new URLSearchParams();
+  const category = one('category');
+  if (category && /^\d+$/.test(category)) next.set('cat', category);
+  const q = one('q');
+  if (q) next.set('q', q);
+  const status = STATUS[one('status') ?? ''];
+  if (status) next.set('status', status);
+  const audience = one('audience');
+  if (audience && ['B2C', 'B2B', 'B2G'].includes(audience)) next.set('audience', audience);
+  const sort = SORT[one('sort') ?? ''];
+  if (sort) next.set('sort', sort);
+  const query = next.toString();
+  redirect(query ? `${BROWSER_PATH}?${query}` : BROWSER_PATH);
 }
