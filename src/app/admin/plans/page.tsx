@@ -3,7 +3,7 @@ import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { plans } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
+import { FormFold } from '@/components/admin/form-fold';
 import { PlansList, type PlanRow } from './plans-list';
 import { InlineForm } from '@/components/admin/inline-form';
 import { Input, Textarea, Select, Label, Checkbox } from '@/components/ui/field';
@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Subscription plans' };
 
 export default async function AdminPlansPage() {
-  const view = await getAdminView('plans');
   const rows = await db.select().from(plans).orderBy(asc(plans.sort), asc(plans.priceCents));
 
   const items: PlanRow[] = rows.map((plan) => ({
@@ -34,8 +33,11 @@ export default async function AdminPlansPage() {
         description="Recurring billing — any interval. Checkout builds the Stripe recurring price inline, no pre-created Price object needed. See docs/12-billing-overhaul.md."
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <InlineForm action={savePlanAction} title="New plan" submitLabel="Create plan">
+      <PlansList
+        rows={items}
+        form={
+          <FormFold title="New plan" defaultOpen={items.length === 0}>
+        <InlineForm bare action={savePlanAction} title="New plan" submitLabel="Create plan">
           <div>
             <Label htmlFor="name">Name *</Label>
             <Input id="name" name="name" required placeholder="Team monthly" />
@@ -88,11 +90,9 @@ export default async function AdminPlansPage() {
             <Checkbox name="isPublic" defaultChecked /> Public (shown on /pricing)
           </label>
         </InlineForm>
-
-        <div className="lg:col-span-2">
-          <PlansList rows={items} view={view} />
-        </div>
-      </div>
+          </FormFold>
+        }
+      />
     </div>
   );
 }

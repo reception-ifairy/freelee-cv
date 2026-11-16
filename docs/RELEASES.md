@@ -32,6 +32,9 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 - **One list of bots, in the taxonomy's layout.** *Personas* and *Drafts* open the taxonomy browser
   (Drafts is it filtered to bots that are not live), and a bot's card can publish, feature, duplicate
   and delete it. **Prompt modifiers** use the same layout: types on the left, the list, a card.
+- **Commerce in the same layout.** Packs, plans, passes, sales, customers, marketplace and leads:
+  statuses with counts on the left, the list, a card with its actions. Marketplace now shows rejected
+  and suspended listings too.
 
 **Updates**
 
@@ -39,9 +42,10 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 |---|---|---|
 | #88 | `56eaa85` | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
 | #89 | `bfba892` | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
-| #90 | (this update) | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
+| #90 | `9e987f5` | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
+| #91 | (this update) | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
 
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*.
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*.
 
 **Changed outside git:** nothing.
 

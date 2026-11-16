@@ -3,7 +3,6 @@
 import { CircleCheck, Inbox, Mail, Phone, Trash2, UserRoundCheck } from 'lucide-react';
 import { ResourceView, type ResourceItem, type BadgeTone } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deleteLeadAction, setLeadStatusAction } from '@/server/actions/leads';
 import { LEAD_KIND_LABELS } from '@/lib/leads/catalog';
 
@@ -22,7 +21,7 @@ export type LeadRowData = {
 const STATUS_TONE: Record<string, BadgeTone> = { new: 'brand', contacted: 'amber', closed: 'slate' };
 const STATUS_LABELS: Record<string, string> = { new: 'Waiting', contacted: 'Contacted', closed: 'Closed' };
 
-export function LeadsList({ rows, view }: { rows: LeadRowData[]; view: AdminView }) {
+export function LeadsList({ rows, form }: { rows: LeadRowData[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => ({
@@ -69,10 +68,9 @@ export function LeadsList({ rows, view }: { rows: LeadRowData[]; view: AdminView
   return (
     <ResourceView
       module="leads"
-      view={view}
+      view="list" browser={{ groups: ['Waiting', 'Contacted', 'Closed'], railLabel: 'Status', before: form }}
       items={items}
       empty={{ icon: Inbox, title: 'No leads yet', description: 'When somebody uses a quick action in the site assistant — a trial, a callback, a pricing question — they land here.' }}
-      columns={3}
     />
   );
 }

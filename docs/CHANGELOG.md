@@ -34,7 +34,18 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #90 · `pending` — Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards
+### #91 · `pending` — Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads
+
+The seven Commerce lists use the browser mode from #90. Each has its statuses in the rail with counts
+(customers counted in SQL within the search, because the list is paged), a dense table, and the
+row's card with its actions. Plan and pass forms fold above the list (`FormFold`, open while empty;
+`InlineForm bare`). Marketplace lists every listing now — rejected and suspended ones were unreachable
+— with Approve, Reject and Suspend on the card and payouts folded above. The browser mode gains
+`groups` (statuses shown at 0), `after` (pagination), and drops a card action that only repeats Open.
+
+📄 docs/57-admin-navigation.md · handbook/selling.md
+
+### #90 · `9e987f5` — Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards
 
 Owner decision, 2026-11-16: the taxonomy view is the model for every admin list. First, Catalogue.
 `/admin/personas` redirects into the taxonomy browser (keeping search, status, audience, category and

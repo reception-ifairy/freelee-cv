@@ -3,7 +3,6 @@
 import { BadgeCheck, Receipt, RotateCcw, User } from 'lucide-react';
 import { ResourceView, type ResourceItem, type BadgeTone } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { markOrderPaidAction, refundOrderAction } from '@/server/actions/billing';
 
 export type OrderRow = {
@@ -20,7 +19,7 @@ export type OrderRow = {
 
 const STATUS_TONE: Record<string, BadgeTone> = { paid: 'green', pending: 'amber' };
 
-export function SalesList({ rows, view }: { rows: OrderRow[]; view: AdminView }) {
+export function SalesList({ rows, form }: { rows: OrderRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => ({
@@ -55,5 +54,5 @@ export function SalesList({ rows, view }: { rows: OrderRow[]; view: AdminView })
     ],
   }));
 
-  return <ResourceView module="sales" view={view} items={items} empty={{ icon: Receipt, title: 'No orders yet', description: 'Every credit pack purchase appears here with its payment status and gateway.' }} columns={3} />;
+  return <ResourceView module="sales" view="list" browser={{ groups: ['Pending', 'Paid', 'Failed', 'Refunded', 'Cancelled'], railLabel: 'Status', before: form }} items={items} empty={{ icon: Receipt, title: 'No orders yet', description: 'Every credit pack purchase appears here with its payment status and gateway.' }} />;
 }

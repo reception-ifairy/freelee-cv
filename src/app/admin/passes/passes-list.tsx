@@ -3,7 +3,6 @@
 import { Clock, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePassProductAction } from '@/server/actions/admin-billing';
 
 export type PassRow = {
@@ -16,7 +15,7 @@ export type PassRow = {
   isPublic: boolean;
 };
 
-export function PassesList({ rows, view }: { rows: PassRow[]; view: AdminView }) {
+export function PassesList({ rows, form }: { rows: PassRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => ({
@@ -32,11 +31,11 @@ export function PassesList({ rows, view }: { rows: PassRow[]; view: AdminView })
       { label: 'Price', value: row.price },
     ],
     // No Edit action: unlike packs, plans and passes have no [id] route to
-    // edit them in — they are created from the form beside this list and then
+    // edit them in — they are created from the form above this list and then
     // deleted and re-made. A real editor is a feature, not a visual fix, so
     // this list does not offer a link that would go nowhere.
     actions: [{ label: 'Delete', icon: <Trash2 className="size-4" />, onSelect: () => run(deletePassProductAction, { id: row.id }), danger: true }],
   }));
 
-  return <ResourceView module="passes" view={view} items={items} empty={{ icon: Clock, title: 'No access passes', description: 'A pass grants time-boxed access without a recurring charge — a day pass, a workshop, a trial window. Create one with the form beside this list.' }} columns={2} />;
+  return <ResourceView module="passes" view="list" browser={{ groups: ['Active', 'Off'], railLabel: 'Status', before: form }} items={items} empty={{ icon: Clock, title: 'No access passes', description: 'A pass grants time-boxed access without a recurring charge — a day pass, a workshop, a trial window. Create one with the form above this list.' }} />;
 }

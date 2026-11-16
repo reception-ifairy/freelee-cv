@@ -28,14 +28,27 @@ export function InlineForm({
   action,
   title,
   submitLabel = 'Save',
+  bare = false,
   children,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   title: string;
   submitLabel?: string;
+  /** Without its card and heading — inside a FormFold, which already says what it is. */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, null);
+
+  if (bare) {
+    return (
+      <form action={formAction} className="space-y-4 pb-3">
+        <FormMessage state={state} />
+        {children}
+        <SubmitButton label={submitLabel} />
+      </form>
+    );
+  }
 
   return (
     <Card className="h-fit p-5">

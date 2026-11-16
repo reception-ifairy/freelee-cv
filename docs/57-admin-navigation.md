@@ -469,6 +469,29 @@ Checks: `admin:verify-nav` — sidebar and registry hrefs are pages once the que
 
 **Verified live** (1280, 1600, 390): the redirects with their filters; Drafts current in the sidebar; the four header buttons; a draft's card with its four actions — *Mark as featured* then *Remove from featured* updated the card both times (0 featured afterwards); modifiers: rail counts 5/5/5/3/0, card at `?open=1`, Next → `open=2`, Esc → closed, no horizontal scroll, no page errors.
 
+## Commerce in the taxonomy's layout (freelee #91)
+
+All seven Commerce lists use the browser mode from #90:
+
+| List | Rail | Notes |
+|---|---|---|
+| Credit packs | Active / Off (rows) | Card: fields, Delete; **Open** is the pack editor |
+| Subscription plans, Access passes | Active / Off (rows) | The create form folds above the list (`FormFold`, open while the list is empty) |
+| Sales | Pending / Paid / Failed / Refunded / Cancelled (rows, latest 100) | Stats stay above; card: Mark as paid, View customer, Refund |
+| Customers | All / Active / Suspended / Admins — **counted in SQL** within the search, links set `?status=` | Paged, so counting rows on screen would be wrong; toolbar above, pagination below |
+| Marketplace | Pending review / Live / Suspended / Rejected / Draft (rows) | Now lists **every** listing (it showed only pending and live, so a rejected or suspended one could not be found); card: Approve, Reject, Suspend; payouts fold above |
+| Leads | Waiting / Contacted / Closed (rows, latest 200) | The waiting banner stays above |
+
+What the browser mode gained for them:
+- `groups` — statuses always in the rail, in order, at 0 too (a status nobody is in yet is still a place to look);
+- `after` — under the table (pagination);
+- a card action that only opens the item's own page is dropped, because the footer's **Open** is it;
+- `InlineForm bare` (no card, no heading) for use inside `FormFold` (`src/components/admin/form-fold.tsx`), which modifiers now use too.
+
+The grid/list toggle is gone from these lists; `view` cookies for them are no longer read.
+
+**Verified live** (1280, 1600, 390): all seven pages answer 200 with their rails; packs 3/3/0 and the pack card (Delete, Open); customers 2/2/0/1, `?status=admin` marks Admins with 1 row, the customer card (Suspend account, Open); plans, passes, sales, marketplace and leads are empty on this site, so only their empty states, folds and rails were seen; no horizontal scroll, no page errors. **Not verified:** a card with real orders, leads or listings, and their actions — there are none yet.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:
