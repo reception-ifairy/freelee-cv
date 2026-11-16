@@ -425,6 +425,23 @@ Checked by `npm run admin:verify-attention` (10 checks):
 
 Checks: `admin:verify-nav` (the category items, current by id or slug, the retired markets under Taxonomy), `taxonomy:verify-browser` (slug, category tabs, hub tabs only where the hub is), `admin:verify-attention`. `taxonomy:verify-pillars` is gone with the pillars.
 
+## The category agent (freelee #89)
+
+**Owner decisions, 2026-11-16:** each main category has an AI agent on Anthropic that helps build bots for it; it **proposes, the owner approves**; model **Claude Opus 5.5**.
+
+- **Where:** the category's *AI agent* tab (`workbench.tsx`, the old workbench rebuilt). One thread per category, the `playground` conversation keyed by `settings.categoryId`, opened on first use.
+- **Model:** always Anthropic; `category_agent_model` (Settings → AI defaults, `SECTION_FIELDS.ai`), default `claude-opus-5-5`. `categoryAgentModel()` (`src/lib/taxonomy/category-agent.ts`) also says whether a key exists (Connections or `ANTHROPIC_API_KEY`). Without one, the tab says so and links Connections; no thread is created and nothing falls back to another provider (the route answers 503).
+- **What it knows** (`agentContext`): the researched brief (`briefForModel`), every bot filed in the category (live or not, kind, sector, tagline), sectors with their ids and bot counts, the sectors with none, the linked audience codes; on the hub category, the tutors and the subject × key stage gaps (`coverageGrid`).
+- **One tool, `propose`** (`agent-proposals.ts`): kinds `bot` (a full persona, validated with `convertedPersonaSchema`), `sector_description` (one of the field's sectors, 20–800 characters), `audiences` (known codes, already-linked ones dropped, with a note). The input is one flat schema checked per kind; an invalid proposal returns an error the model fixes. A checked proposal is appended to the thread's `settings.proposals` under a row lock (`updateThread`); nothing in the catalogue changes.
+- **Approve / Reject** (`decideProposalAction`): a bot goes through `createDraftPersona` — the same function as the pasted-JSON path, now shared — so it is always an inactive draft with its own-kind audiences and mandatory safeguards; a sector description updates that sector (only within the category); audience groups are appended after the existing ones with the agent's note. Every decision is recorded on the proposal (`decide`: a decided proposal cannot be decided again).
+- **Opus 5.5 specifics:** no `temperature` or forced tool choice (both rejected); thinking is always on at the default effort (medium); `maxOutputTokens` 16000; at most 4 steps. The system prompt (brief + bot list) carries `cacheControl: ephemeral`, so replies after the first read it from cache.
+- **Cost on screen:** each reply's token usage (uncached, cache read, cache write, output from `totalUsage.inputTokenDetails`) is added to `settings.usage`; `estimateUsd` (`agent-pricing.ts`) prices it at list prices — Opus 5.5 $4 / $20 per million, cache reads $0.20, writes 1.25× input. The header shows the model, its price and the conversation's total.
+- **The pasted-JSON path** stays under *Paste a persona by hand*.
+
+Checked by `npm run taxonomy:verify-agent` (17 checks, react-server condition, no model or network): prices, every proposal rule, decisions, and static checks on the route (Anthropic only, no sampling parameters or forced tool choice, the cached system prompt, one tool with a step limit, the 503 without a key). `admin:verify-settings-map` covers the new setting's single home.
+
+**Not verified live:** no Anthropic key is configured, so no reply has been generated yet. Verified live: the tab, the no-key message and link, the setting in AI defaults, the route refusing a request with no thread (404), no thread created without a key.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

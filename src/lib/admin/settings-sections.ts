@@ -49,7 +49,7 @@ export const SETTINGS_MAP: SettingsGroupBlock[] = [
     heading: 'AI',
     blurb: 'What bots fall back to, the models customers can use, safety, and the assistant on the public site.',
     sections: [
-      { id: 'ai', label: 'AI defaults', description: 'The model each provider uses when a bot has none of its own, and the fallback provider.', icon: 'cpu', schemaGroup: 'ai' },
+      { id: 'ai', label: 'AI defaults', description: 'The model each provider uses when a bot has none of its own, the fallback provider, and the model of the category agents.', icon: 'cpu', schemaGroup: 'ai' },
       { id: 'models', label: 'Models', description: 'Which models customers can use, their tier and price, and the Knowledgebase embedding model.', icon: 'layers' },
       { id: 'safety', label: 'Safety', description: 'How messages are checked before a bot answers: moderation and blocked words.', icon: 'shield', schemaGroup: 'ai' },
       { id: 'assistant', label: 'Site assistant', description: 'The chat bubble on every public page.', icon: 'bot', schemaGroup: 'assistant' },
@@ -89,7 +89,7 @@ export const SECTION_FIELDS: Record<string, readonly string[]> = {
   general: ['site_name', 'site_description', 'support_email', 'allow_registration'],
   localization: ['frontend_locale', 'admin_locale'],
   analytics: ['google_analytics_id'],
-  ai: ['openai_default_model', 'anthropic_default_model', 'google_default_model', 'openrouter_default_model', 'ai_default_provider'],
+  ai: ['openai_default_model', 'anthropic_default_model', 'google_default_model', 'openrouter_default_model', 'ai_default_provider', 'category_agent_model'],
   safety: ['moderation_mode', 'badword_list'],
   assistant: ['site_assistant_enabled', 'site_assistant_persona', 'site_assistant_guest_messages', 'site_assistant_label', 'site_assistant_tools'],
   billing: ['bank_transfer_details', 'invoice_vendor', 'guest_free_messages', 'signup_bonus_credits'],

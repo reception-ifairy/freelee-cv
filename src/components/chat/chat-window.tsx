@@ -28,6 +28,8 @@ export type ChatWindowProps = {
   apiPath?: string;
   /** Extra fields merged into every request body — the workbench sends its category. */
   apiBody?: Record<string, unknown>;
+  /** Called when a reply has finished streaming — the category agent refreshes its proposal list. */
+  onFinish?: () => void;
   chatId: string;
   initialMessages: UIMessage[];
   suggestions: string[];
@@ -69,6 +71,7 @@ export function ChatWindow({
   serverTranscription = false,
   apiPath = '/api/chat',
   apiBody,
+  onFinish,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('');
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -88,6 +91,7 @@ export function ChatWindow({
      * routes, and only the transport moves.
      */
     transport: new DefaultChatTransport({ api: apiPath, body: apiBody }),
+    onFinish: onFinish ? () => onFinish() : undefined,
   });
 
   const busy = status === 'submitted' || status === 'streaming';

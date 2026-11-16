@@ -77,24 +77,32 @@ On a phone, the tree folds into a **Browse** line above the list.
 
 (*/admin/taxonomy/34* still works: it opens the same field in the browser.)
 
-## Designing a bot
+## Designing a bot with the field's AI agent
 
-On a field's **AI agent** tab, press **Open workbench**. You get a conversation with an assistant that has already read everything
-above — the market, the regulations, the risk level, the specialisms and the audiences.
+Every category has its own **AI agent**, on its **AI agent** tab. It runs on Anthropic (Claude Opus 5.5
+unless you choose another model under *Settings → AI defaults*) and is paid from your own Anthropic key
+in *Connections* — without a key the tab says so and points you there.
 
-It is a working conversation, not a form. Ask it what kind of specialist is missing, who would pay
-for one, what the bot must refuse to do. It will push you towards a *narrow* specialist, because "a
-marketing bot" helps nobody and "a bot that audits landing pages against the advertising code" is a
-product.
+**What it knows:** everything about the field — the market, its regulation and risk level, its sectors,
+the audiences attached and why — **and every bot already filed here**, live or not, so it can point out
+gaps and duplicates. In Education and Training it also knows the tutors and which subjects and key
+stages have no live tutor.
 
-**Nothing here is charged and nothing goes live.** This is your own tooling.
+**How it works:** it is a working conversation. Ask what is missing, who would pay, what a bot must
+refuse to do. When you settle on something, ask it to propose it. A proposal appears under the chat:
 
-When you are happy, ask it to *write the persona out as JSON*, copy the block it produces, and paste
-it into **Save as prototype** underneath. Pick a specialism from the dropdown first if you know it.
+- **New bot** — a complete persona. **Approve** saves it as an **inactive draft** in this category;
+  you review and publish it in the editor.
+- **Sector description** — a better description for one of the field's sectors.
+- **Audience groups** — groups to link to the field, with a note on why.
 
-What you get is a **draft persona**, filed under this category, with its audience and its mandatory
-safeguards already set, switched off and unlisted. Open it in the normal persona editor, change
-whatever you like, and publish it when it is ready.
+**Nothing changes until you press Approve.** Reject keeps the record and changes nothing.
+
+**Cost:** the header shows the model, its price per million tokens and what this conversation has cost
+so far. The field's description is cached, so replies after the first cost much less to send.
+
+**Paste a persona by hand** (under the proposals) is the old path: paste a persona written out as JSON
+and it is saved as an inactive draft.
 
 ## Attaching audiences
 
