@@ -492,6 +492,32 @@ The grid/list toggle is gone from these lists; `view` cookies for them are no lo
 
 **Verified live** (1280, 1600, 390): all seven pages answer 200 with their rails; packs 3/3/0 and the pack card (Delete, Open); customers 2/2/0/1, `?status=admin` marks Admins with 1 row, the customer card (Suspend account, Open); plans, passes, sales, marketplace and leads are empty on this site, so only their empty states, folds and rails were seen; no horizontal scroll, no page errors. **Not verified:** a card with real orders, leads or listings, and their actions — there are none yet.
 
+## Site, Knowledge and Teamwork in the taxonomy's layout (freelee #92)
+
+The last sections move to the browser layout:
+
+| List | Rail | Notes |
+|---|---|---|
+| Pages | Published / Draft | Form folded above; card: View on the site, Delete; Open = editor |
+| Blog | Published / Scheduled / Draft | Same |
+| Showcase | Live / Hidden | Move up/down on the card; *Promote real work* stays under the list |
+| Menus | Header / Footer / Legal (links, with counts) | Replaces the segmented tabs, as modifiers' types did |
+| Shelves | On / Off | New `shelves-list.tsx`; the address (`key`) is on the card only |
+| External sources | Active / Off (+ *No key*) | New `sources-list.tsx`; the card's body is the whole `SourceCard` editor (`ResourceItem.detail`), so the stack of open editors is gone |
+| Bot teams | How they work (the first badge) | Card: Test run, switch on/off; Open = the team |
+| Rooms | Room / Playground | New `rooms-list.tsx`; the card shows the same facts the list did — team, participants, cost, messages, last message — never what was said; Open reads the room |
+| Projects | Active / Paused / Done / Archived | Form folded above |
+
+**The Library** keeps its own component, because it selects many books at once for processing: `shelf.tsx` gets the rail — *Status* (Everything / Not processed / Ready / Needs attention, counted over every document) and *Folders* (counted within the status picked; *Every folder*) — instead of the segmented control. Rows stay as they were, with checkboxes, *select all* per folder, and the title linking to the document's page.
+
+**Shared pieces:**
+- `RailItem` (`src/components/admin/rail-item.tsx`) — one rail line, a link or a button, styled as the taxonomy tree's lines; `ResourceBrowser` and the Library use it;
+- `ResourceItem.detail` — the card's own body in browser mode (an editor, a test).
+
+With #90–#92 every list in the sidebar is in the browser layout. Not converted: the Dashboard, Frontpage (the block builder), Translations, Branding (the theme composer), Audiences (already a browser by family, #78) and Settings (#93).
+
+**Verified live** (1280, 1600, 390): all nine pages answer 200 with their rails and counts — pages 5/5/0, posts 3/3/0/0, menus 7/5/0, shelves 3/3/0, bot teams 2; the cards of a page, a post, a footer link, a shelf and a bot team; the Library's rail (132 · 0 · 132 · 0; folders 4 / 14 / 114), *Ready* and a folder filtering the list; no horizontal scroll, no page errors. Showcase, external sources, rooms and projects are empty here, so only their empty states and folds were seen.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

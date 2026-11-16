@@ -35,6 +35,8 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 - **Commerce in the same layout.** Packs, plans, passes, sales, customers, marketplace and leads:
   statuses with counts on the left, the list, a card with its actions. Marketplace now shows rejected
   and suspended listings too.
+- **Site, Knowledge and Teamwork too** — pages, blog, showcase, menus, library, shelves, external
+  sources, bot teams, rooms and projects. Every list in the sidebar now looks and works the same way.
 
 **Updates**
 
@@ -43,9 +45,10 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 | #88 | `56eaa85` | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
 | #89 | `bfba892` | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
 | #90 | `9e987f5` | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
-| #91 | (this update) | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
+| #91 | `6e1397d` | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
+| #92 | (this update) | Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card |
 
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*.
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*, *Knowledgebase*.
 
 **Changed outside git:** nothing.
 

@@ -42,6 +42,12 @@ with its live/all bots — then **Catalogue** (bots and taxonomy, audiences, dra
 **Knowledge**, **Teamwork**, **Commerce**, **Site** and **System**. Groups fold — click a heading — and
 the admin remembers which ones you keep open. The group of the page you are on is always open.
 
+**Every list looks the same.** On the left, the groups — statuses, types, menus, folders — with how
+many are in each; in the middle, the list; click a row and its **card** slides in from the right with
+what you can do to it, and **Open** for its full page. The arrows on the card step through the list,
+**Esc** closes it, and the page address remembers where you are. A form for something new is folded
+above the list: click its title to open it (it is already open while the list is empty).
+
 The **Dashboard** opens with **Needs your attention**, most urgent first:
 
 - **Act** — someone is waiting: an order to confirm, a new lead, a listing to review, a connection

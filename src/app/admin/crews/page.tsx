@@ -7,7 +7,6 @@ import { projects } from '@/db/schema';
 import { crews, crewMembers, crewRuns } from '@/modules/crews/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { buttonVariants } from '@/components/ui/button';
-import { getAdminView } from '@/lib/admin/view-preference-server';
 import { CrewsList, type CrewRowData } from './crews-list';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +21,7 @@ export const metadata: Metadata = { title: 'Bot teams' };
  * `/admin/crews/new` now.
  */
 export default async function AdminCrewsPage() {
-  const [rows, view] = await Promise.all([
+  const [rows] = await Promise.all([
     db
       .select({
         id: crews.id,
@@ -43,7 +42,6 @@ export default async function AdminCrewsPage() {
       .from(crews)
       .leftJoin(projects, eq(projects.id, crews.projectId))
       .orderBy(desc(crews.createdAt)),
-    getAdminView('crews'),
   ]);
 
   return (
@@ -58,7 +56,7 @@ export default async function AdminCrewsPage() {
         }
       />
 
-      <CrewsList rows={rows as CrewRowData[]} view={view} />
+      <CrewsList rows={rows as CrewRowData[]} />
     </div>
   );
 }

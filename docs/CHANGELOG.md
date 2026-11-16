@@ -34,7 +34,17 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #91 · `pending` — Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads
+### #92 · `pending` — Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card
+
+Pages, Blog, Showcase, Menus (the three menus as the rail), Shelves, External sources (the card is the
+whole Save → Test editor, via the new `ResourceItem.detail`), Bot teams, Rooms and Projects use the
+browser mode; their create forms fold above the list. The Library keeps its multi-select and gets a
+rail of statuses and folders with counts. `RailItem` is the one rail line for all of them. With #90–#92
+every list in the sidebar has the layout.
+
+📄 docs/57-admin-navigation.md · handbook/welcome.md · handbook/knowledgebase.md
+
+### #91 · `6e1397d` — Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads
 
 The seven Commerce lists use the browser mode from #90. Each has its statuses in the rail with counts
 (customers counted in SQL within the search, because the list is paged), a dense table, and the

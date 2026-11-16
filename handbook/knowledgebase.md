@@ -73,6 +73,11 @@ Open a persona, go to the **Personality** tab, and tick the shelves under *Groun
 own shelves are listed alongside the external sources; both work the same way. If the persona has
 version pinning on, use **Save and publish** — a grant saved only as a draft is not live.
 
+The Library has the same left rail as every list: **Status** (Everything, Not processed, Ready, Needs
+attention) and **Folders**, each with how many books are in it. Tick books and **Process selected**
+as before. Shelves and External sources open each one's card on the right — an external source's
+card is its whole editor, with **Save** and **Test**.
+
 Everything to do with what the bots know lives under **Knowledge** in the sidebar: *Library* (the
 books), *Shelves* (what you grant), and *External sources* (someone else's search API).
 

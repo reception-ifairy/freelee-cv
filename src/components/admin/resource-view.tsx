@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, LayoutGrid, List } from 'lucide-react';
 import { Sheet } from '@/components/ui/sheet';
+import { RailItem } from './rail-item';
 import { Card } from '@/components/ui/card';
 import { EmptyState, type EmptyStateProps } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,8 @@ export type ResourceItem = {
    */
   meta?: { key?: string; label: string; value: React.ReactNode; /** Only on the browser's card, never a table column (a long text). */ cardOnly?: boolean }[];
   actions?: ActionItem[];
+  /** Browser mode: the card's own body under the fields — an editor, a test button — when a summary is not enough. */
+  detail?: React.ReactNode;
 };
 
 /** A sortable column: where its header links to, and how the list is sorted by it now (see `sortToggle`). */
@@ -440,25 +443,9 @@ function ResourceBrowser({
     if (current) requestAnimationFrame(() => document.getElementById(`row-${current.id}`)?.focus());
   };
 
-  const railLink = (key: string | null, label: string, count: number) => {
-    const active = group === key;
-    return (
-      <Link
-        key={key ?? 'all'}
-        href={hrefWith({ group: key, open: null })}
-        scroll={false}
-        aria-current={active ? 'page' : undefined}
-        className={cn(
-          'flex items-center gap-2 rounded-control px-2 py-1 text-sm transition-colors duration-[--duration-fast]',
-          active ? 'bg-brand-500/15 text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200',
-          key === null && 'font-semibold',
-        )}
-      >
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        <span className="font-mono text-[11px] text-slate-500">{count}</span>
-      </Link>
-    );
-  };
+  const railLink = (key: string | null, label: string, count: number) => (
+    <RailItem key={key ?? 'all'} label={label} count={count} active={group === key} strong={key === null} href={hrefWith({ group: key, open: null })} />
+  );
 
   return (
     <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
@@ -466,21 +453,7 @@ function ResourceBrowser({
         <div className="flex flex-wrap gap-1 lg:sticky lg:top-20 lg:flex-col lg:flex-nowrap">
           <p className="eyebrow mb-1 hidden px-2 lg:block">{railLabel}</p>
           {rail
-            ? rail.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  scroll={false}
-                  aria-current={link.active ? 'page' : undefined}
-                  className={cn(
-                    'flex items-center gap-2 rounded-control px-2 py-1 text-sm capitalize transition-colors duration-[--duration-fast]',
-                    link.active ? 'bg-brand-500/15 text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200',
-                  )}
-                >
-                  <span className="min-w-0 flex-1 truncate">{link.label}</span>
-                  {link.count !== undefined ? <span className="font-mono text-[11px] text-slate-500">{link.count}</span> : null}
-                </Link>
-              ))
+            ? rail.map((link) => <RailItem key={link.href} label={link.label} count={link.count} active={link.active} href={link.href} className="capitalize" />)
             : [railLink(null, 'All', items.length), ...[...counts.entries()].map(([key, count]) => railLink(key, key, count))]}
         </div>
       </nav>
@@ -571,6 +544,7 @@ function ItemCard({ item }: { item: ResourceItem }) {
           ))}
         </dl>
       ) : null}
+      {item.detail ? <div>{item.detail}</div> : null}
       {item.actions?.length ? (
         <div>
           <p className="eyebrow mb-2">Actions</p>

@@ -3,7 +3,6 @@
 import { Bot, Pencil, Play, Power, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { modeCopy, runOutcome } from '@/modules/crews/labels';
 import { toggleCrewActiveAction, deleteCrewAction } from '@/server/actions/admin-crews';
 
@@ -20,7 +19,7 @@ export type CrewRowData = {
   projectName: string | null;
 };
 
-export function CrewsList({ rows, view }: { rows: CrewRowData[]; view: AdminView }) {
+export function CrewsList({ rows }: { rows: CrewRowData[] }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => {
@@ -64,10 +63,9 @@ export function CrewsList({ rows, view }: { rows: CrewRowData[]; view: AdminView
   return (
     <ResourceView
       module="crews"
-      view={view}
+      view="list" browser={{ railLabel: 'How they work' }}
       items={items}
       badgeHeader="How they work"
-      columns={3}
       empty={{
         icon: Bot,
         title: 'No bot teams yet',

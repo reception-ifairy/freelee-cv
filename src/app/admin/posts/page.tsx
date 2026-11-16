@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { categories, posts, users } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
-import { getAdminView } from '@/lib/admin/view-preference-server';
+import { FormFold } from '@/components/admin/form-fold';
 import { PostsList, type PostRow } from './posts-list';
 import { Input, Textarea, Label, Select, Checkbox, Hint } from '@/components/ui/field';
 import { savePostAction } from '@/server/actions/admin';
@@ -20,7 +20,6 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Blog posts' };
 
 export default async function AdminPostsPage() {
-  const view = await getAdminView('posts');
   const [rows, categoryRows] = await Promise.all([
     db
       .select({
@@ -57,41 +56,42 @@ export default async function AdminPostsPage() {
     <div>
       <PageHeader title="Blog posts" description="Markdown content published on the public blog." />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <InlineForm action={savePostAction} title="New post" submitLabel="Publish post">
-          <div>
-            <Label htmlFor="title">Title *</Label>
-            <Input id="title" name="title" required />
-          </div>
-          <div>
-            <Label htmlFor="excerpt">Excerpt</Label>
-            <Textarea id="excerpt" name="excerpt" rows={2} />
-          </div>
-          <div>
-            <Label htmlFor="content">Content *</Label>
-            <Textarea id="content" name="content" rows={10} required className="font-mono text-xs" />
-            <Hint>Markdown. Raw HTML is escaped when rendered.</Hint>
-          </div>
-          <div>
-            <Label htmlFor="categoryId">Category</Label>
-            <Select id="categoryId" name="categoryId" defaultValue="">
-              <option value="">None</option>
-              {categoryRows.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox name="isPublished" defaultChecked /> Published
-          </label>
-        </InlineForm>
-
-        <div className="lg:col-span-2">
-          <PostsList rows={items} view={view} />
-        </div>
-      </div>
+      <PostsList
+        rows={items}
+        form={
+          <FormFold title="New post" defaultOpen={items.length === 0}>
+            <InlineForm bare action={savePostAction} title="New post" submitLabel="Publish post">
+              <div>
+                <Label htmlFor="title">Title *</Label>
+                <Input id="title" name="title" required />
+              </div>
+              <div>
+                <Label htmlFor="excerpt">Excerpt</Label>
+                <Textarea id="excerpt" name="excerpt" rows={2} />
+              </div>
+              <div>
+                <Label htmlFor="content">Content *</Label>
+                <Textarea id="content" name="content" rows={10} required className="font-mono text-xs" />
+                <Hint>Markdown. Raw HTML is escaped when rendered.</Hint>
+              </div>
+              <div>
+                <Label htmlFor="categoryId">Category</Label>
+                <Select id="categoryId" name="categoryId" defaultValue="">
+                  <option value="">None</option>
+                  {categoryRows.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox name="isPublished" defaultChecked /> Published
+              </label>
+            </InlineForm>
+          </FormFold>
+        }
+      />
     </div>
   );
 }

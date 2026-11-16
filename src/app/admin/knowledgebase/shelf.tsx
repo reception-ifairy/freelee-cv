@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/field';
 import { scanLibraryAction, processDocumentsAction } from '@/server/actions/admin-knowledgebase';
 import type { DocumentRow } from '@/lib/library/queries';
+import { RailItem } from '@/components/admin/rail-item';
 import { statusCopy, humanBytes } from './status';
 
 /**
@@ -36,6 +37,8 @@ const ATTENTION = new Set(['failed', 'needs_ocr', 'missing']);
 export function Shelf({ documents, root }: { documents: DocumentRow[]; root: string }) {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>('all');
+  // The folder picked in the rail (freelee #92); null is every folder.
+  const [folder, setFolder] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -55,23 +58,28 @@ export function Shelf({ documents, root }: { documents: DocumentRow[]; root: str
     return () => clearInterval(timer);
   }, [working, router]);
 
-  const visible = useMemo(
-    () =>
-      documents.filter((doc) => {
-        if (filter === 'all') return true;
-        if (filter === 'attention') return ATTENTION.has(doc.status);
-        return doc.status === filter;
-      }),
-    [documents, filter],
-  );
+  const inFilter = (doc: DocumentRow, key: FilterKey) =>
+    key === 'all' || (key === 'attention' ? ATTENTION.has(doc.status) : doc.status === key);
+  const folderOf = (doc: DocumentRow) => (doc.sourcePath.includes('/') ? doc.sourcePath.split('/')[0] : 'Loose files');
+
+  const statusMatches = useMemo(() => documents.filter((doc) => inFilter(doc, filter)), [documents, filter]);
+  const visible = useMemo(() => statusMatches.filter((doc) => folder === null || folderOf(doc) === folder), [statusMatches, folder]);
+
+  // The rail's counts: each status over every document; each folder within the status picked.
+  const statusCount = (key: FilterKey) => documents.filter((doc) => inFilter(doc, key)).length;
+  const folders = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const doc of documents) counts.set(folderOf(doc), 0);
+    for (const doc of statusMatches) counts.set(folderOf(doc), (counts.get(folderOf(doc)) ?? 0) + 1);
+    return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [documents, statusMatches]);
 
   const byFolder = useMemo(() => {
     const groups = new Map<string, DocumentRow[]>();
     for (const doc of visible) {
-      const folder = doc.sourcePath.includes('/') ? doc.sourcePath.split('/')[0] : 'Loose files';
-      const list = groups.get(folder) ?? [];
+      const list = groups.get(folderOf(doc)) ?? [];
       list.push(doc);
-      groups.set(folder, list);
+      groups.set(folderOf(doc), list);
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [visible]);
@@ -87,7 +95,27 @@ export function Shelf({ documents, root }: { documents: DocumentRow[]; root: str
   const processable = visible.filter((d) => d.status !== 'processing' && d.status !== 'missing');
 
   return (
-    <div>
+    <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
+      {/* The taxonomy's layout (freelee #92): what to show on the left, the books on the right. */}
+      <nav aria-label="Library" className="mb-4 lg:mb-0">
+        <div className="flex flex-wrap gap-1 lg:sticky lg:top-20 lg:flex-col lg:flex-nowrap">
+          <p className="eyebrow mb-1 hidden px-2 lg:block">Status</p>
+          {FILTERS.map((f) => (
+            <RailItem key={f.key} label={f.label} count={statusCount(f.key)} active={filter === f.key} strong={f.key === 'all'} onClick={() => setFilter(f.key)} />
+          ))}
+          {folders.length > 1 ? (
+            <>
+              <p className="eyebrow mt-3 mb-1 hidden px-2 lg:block">Folders</p>
+              <RailItem label="Every folder" count={statusMatches.length} active={folder === null} strong onClick={() => setFolder(null)} />
+              {folders.map(([name, count]) => (
+                <RailItem key={name} label={name} count={count} active={folder === name} onClick={() => setFolder(name)} />
+              ))}
+            </>
+          ) : null}
+        </div>
+      </nav>
+
+      <div className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button
           variant="secondary"
@@ -126,21 +154,6 @@ export function Shelf({ documents, root }: { documents: DocumentRow[]; root: str
           Shelves →
         </Link>
 
-        <div className="ms-auto flex gap-1 rounded-control bg-slate-100 p-1 dark:bg-slate-800/60">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              aria-pressed={filter === f.key}
-              className={`rounded-control px-3 py-1 text-xs font-medium transition ${
-                filter === f.key ? 'bg-white shadow-sm dark:bg-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {message ? (
@@ -210,6 +223,7 @@ export function Shelf({ documents, root }: { documents: DocumentRow[]; root: str
           </div>
         </section>
       ))}
+      </div>
     </div>
   );
 }

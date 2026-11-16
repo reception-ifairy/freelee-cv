@@ -3,7 +3,6 @@
 import { ChevronDown, Eye, EyeOff, Images, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import {
   deleteShowcaseItemAction, moveShowcaseItemAction, toggleShowcaseItemAction,
 } from '@/server/actions/admin-showcase';
@@ -19,7 +18,7 @@ export type ShowcaseRow = {
   isVisible: boolean;
 };
 
-export function ShowcaseList({ rows, view }: { rows: ShowcaseRow[]; view: AdminView }) {
+export function ShowcaseList({ rows, form }: { rows: ShowcaseRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row, index) => ({
@@ -50,5 +49,5 @@ export function ShowcaseList({ rows, view }: { rows: ShowcaseRow[]; view: AdminV
     ],
   }));
 
-  return <ResourceView module="showcase" view={view} items={items} empty={{ icon: Images, title: 'Nothing in the showcase', description: 'Curated images your personas produced, shown on the public site. Promote one from a conversation, or add it by hand.' }} columns={4} />;
+  return <ResourceView module="showcase" view="list" browser={{ groups: ['Live', 'Hidden'], railLabel: 'On the site', before: form }} items={items} empty={{ icon: Images, title: 'Nothing in the showcase', description: 'Curated images your personas produced, shown on the public site. Promote one from a conversation, or add it by hand.' }} />;
 }
