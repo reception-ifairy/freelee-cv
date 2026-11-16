@@ -386,6 +386,8 @@ export type BrowserOptions = {
   before?: React.ReactNode;
   /** Below the table: pagination. */
   after?: React.ReactNode;
+  /** No rail: the page has its own (Settings → Integrations, whose groups are Settings' sections). */
+  hideRail?: boolean;
 };
 
 /**
@@ -406,6 +408,7 @@ function ResourceBrowser({
   groups,
   before,
   after,
+  hideRail = false,
 }: {
   items: ResourceItem[];
   empty: string | EmptyStateProps;
@@ -431,7 +434,7 @@ function ResourceBrowser({
   const counts = new Map<string, number>((groups ?? []).map((label) => [label, 0]));
   for (const item of items) counts.set(groupOf(item), (counts.get(groupOf(item)) ?? 0) + 1);
   // With page-owned rail links the rows are already the selection; `group` is not used.
-  const visible = group && !rail ? items.filter((item) => groupOf(item) === group) : items;
+  const visible = group && !rail && !hideRail ? items.filter((item) => groupOf(item) === group) : items;
   const rows = visible.map((item) => ({ ...item, href: hrefWith({ open: String(item.id) }) }));
   const index = visible.findIndex((item) => String(item.id) === open);
   const current = index >= 0 ? visible[index] : null;
@@ -448,8 +451,8 @@ function ResourceBrowser({
   );
 
   return (
-    <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
-      <nav aria-label={railLabel} className="mb-4 lg:mb-0">
+    <div className={cn(!hideRail && 'lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6')}>
+      <nav aria-label={railLabel} className={cn('mb-4 lg:mb-0', hideRail && 'hidden')}>
         <div className="flex flex-wrap gap-1 lg:sticky lg:top-20 lg:flex-col lg:flex-nowrap">
           <p className="eyebrow mb-1 hidden px-2 lg:block">{railLabel}</p>
           {rail

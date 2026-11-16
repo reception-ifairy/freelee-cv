@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
   const { modelId, keyReady } = await categoryAgentModel();
   if (!keyReady) {
-    return new Response('The category agent runs on Anthropic and there is no Anthropic key yet — add it under Settings → Connections.', { status: 503 });
+    return new Response('The category agent runs on Anthropic and there is no Anthropic key yet — add it under Settings → Integrations.', { status: 503 });
   }
 
   const context = await agentContext(categoryId);

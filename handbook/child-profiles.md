@@ -112,7 +112,7 @@ its own:
 - **Curriculum** — two things:
   - **The connection.** What freelee holds from the curriculum: whether the connection works, the subject
     list, the exams and the objectives, with when each was last fetched. **Manage the connection** takes
-    you to its card in Connections.
+    you to its card in Settings → Integrations.
   - **Who teaches what.** A grid of every subject a parent can choose against Key Stages 1–4:
     - **green** — a live tutor teaches it;
     - **amber** — only a tutor that is not live yet;

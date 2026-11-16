@@ -7,11 +7,20 @@ import { aiProviders, aiModels } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { SettingsNav } from '@/components/admin/settings-nav';
 import { SettingsForm } from '@/components/admin/settings-form';
+import { ConnectionCardFor } from '@/components/admin/connections-list';
+import { Disclosure } from '@/components/ui/disclosure';
+import { IntegrationsList, type IntegrationRow } from './integrations-list';
+import {
+  CONNECTION_GROUPS, HEALTH_LABEL, INTEGRATIONS_SECTION, connectionHealth, connectionHref, integrationsHref, integrationsSectionId,
+  type ConnectionHealth,
+} from '@/lib/admin/connection-groups';
+import { connectionView, type ConnectionId } from '@/lib/connections/registry';
+import { relativeTime } from '@/lib/utils';
 import { AiDefaultsForm } from '@/components/admin/ai-settings-form';
 import { ModelsManager, type ProviderBundle } from '@/components/admin/models-manager';
 import { EmbeddingModelPicker } from '@/components/admin/embedding-model-picker';
 import { SETTINGS_SCHEMA } from '@/lib/settings-schema';
-import { DEFAULT_SECTION, MOVED_SECTIONS, SECTION_FIELDS, settingsSection, type SettingsSection } from '@/lib/admin/settings-sections';
+import { DEFAULT_SECTION, MOVED_SECTIONS, SECTION_FIELDS, isIntegrationsSection, settingsSection, type SettingsSection } from '@/lib/admin/settings-sections';
 import type { SettingsGroup } from '@/lib/settings-schema';
 import { getSettings, getSettingString, type SettingValue } from '@/lib/settings';
 import { CHAT_PROVIDER_IDS, findEmbeddingModel, getProviderRegistry } from '@/lib/ai/registry';
@@ -37,17 +46,38 @@ export default async function AdminSettingsPage({
   const active = settingsSection(sectionParam ?? group ?? DEFAULT_SECTION) ?? settingsSection(DEFAULT_SECTION)!;
 
   const settings = await getSettings();
+  const health = integrationsHealth(settings);
+  // Beside each Integrations entry: how many of its connections work, of how many.
+  const meta: Record<string, { text: string; title: string }> = {};
+  for (const [id, list] of [
+    [INTEGRATIONS_SECTION, health] as const,
+    ...CONNECTION_GROUPS.map((g) => [integrationsSectionId(g.id), health.filter((r) => r.group === g.id)] as const),
+  ]) {
+    const count = (h: ConnectionHealth) => list.filter((r) => r.health === h).length;
+    meta[id] = {
+      text: `${count('working')}/${list.length}`,
+      title: (['working', 'failing', 'untested', 'off'] as const).map((h) => `${count(h)} ${HEALTH_LABEL[h].toLowerCase()}`).join(', '),
+    };
+  }
 
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="The values that configure the platform, grouped by what they affect. Keys and outside services are under Connections. Changes take effect immediately."
+        description="The values that configure the platform, grouped by what they affect, and every key and outside service under Integrations. Changes take effect immediately."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <div className="h-fit rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <SettingsNav active={active.id} />
+      {/* The taxonomy's layout (#93): the tree on the left from lg, folded above the content below it. */}
+      <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 pb-4">
+            <SettingsNav active={active.id} meta={meta} />
+          </div>
+        </aside>
+        <div className="mb-4 rounded-card border hairline px-2 lg:hidden">
+          <Disclosure title={`Settings: ${active.label}`}>
+            <SettingsNav active={active.id} meta={meta} />
+          </Disclosure>
         </div>
 
         <div className="min-w-0">
@@ -67,11 +97,12 @@ type Settings = Map<string, SettingValue>;
 
 /**
  * What each section shows: the values in SECTION_FIELDS, nothing else. The
- * connection cards that used to sit here (providers, tools, the curriculum,
- * Resend, Stripe, PayPal, S3) live on /admin/connections now — one home per
- * key, checked by scripts/verify-settings-map.ts.
+ * connection cards (providers, tools, the curriculum, Resend, Stripe, PayPal,
+ * S3) are the Integrations sections — one home per key, checked by
+ * scripts/verify-settings-map.ts.
  */
 async function SectionBody({ section, settings }: { section: SettingsSection; settings: Settings }) {
+  if (isIntegrationsSection(section.id)) return <IntegrationsSection sectionId={section.id} settings={settings} />;
   switch (section.id) {
     case 'models':
       return <ModelsSection />;
@@ -79,7 +110,7 @@ async function SectionBody({ section, settings }: { section: SettingsSection; se
     case 'billing':
       return (
         <div className="space-y-8">
-          <ConnectionsHint text="Stripe and PayPal checks are under" anchor="group-payments" />
+          <ConnectionsHint text="Stripe and PayPal checks are under" href={integrationsHref('payments')} label="Integrations → Payments" />
           <SchemaSection group="billing" keys={['bank_transfer_details', 'invoice_vendor']} settings={settings} />
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Free use</h3>
@@ -91,7 +122,7 @@ async function SectionBody({ section, settings }: { section: SettingsSection; se
     case 'email':
       return (
         <div className="space-y-6">
-          <ConnectionsHint text="The Resend key and its Test are under" anchor="conn-resend" />
+          <ConnectionsHint text="The Resend key and its Test are under" href={connectionHref('resend')} label="Integrations → Email" />
           <SchemaSection group="email" keys={SECTION_FIELDS.email} settings={settings} />
         </div>
       );
@@ -99,7 +130,7 @@ async function SectionBody({ section, settings }: { section: SettingsSection; se
     case 'ai':
       return (
         <div className="space-y-6">
-          <ConnectionsHint text="Provider keys, Test and Fetch models are under" anchor="group-ai" />
+          <ConnectionsHint text="Provider keys, Test and Fetch models are under" href={integrationsHref('ai')} label="Integrations → AI providers" />
           <SchemaSection group="ai" keys={SECTION_FIELDS.ai} settings={settings} />
         </div>
       );
@@ -110,12 +141,12 @@ async function SectionBody({ section, settings }: { section: SettingsSection; se
   }
 }
 
-function ConnectionsHint({ text, anchor }: { text: string; anchor: string }) {
+function ConnectionsHint({ text, href, label }: { text: string; href: string; label: string }) {
   return (
     <p className="text-sm text-slate-500 dark:text-slate-400">
       {text}{' '}
-      <Link href={`/admin/connections#${anchor}`} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
-        Connections
+      <Link href={href} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+        {label}
       </Link>
       .
     </p>
@@ -215,8 +246,8 @@ async function ModelsSection() {
     <div className="space-y-4">
       <p className="text-sm text-slate-500 dark:text-slate-400">
         To check a key or bring in new models, use <strong>Test</strong> and <strong>Fetch models</strong> under{' '}
-        <Link href="/admin/connections#group-ai" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
-          Connections
+        <Link href={integrationsHref('ai')} className="font-medium text-brand-600 hover:underline dark:text-brand-400">
+          Integrations → AI providers
         </Link>
         .
       </p>
@@ -227,5 +258,46 @@ async function ModelsSection() {
       />
       <ModelsManager bundles={bundles} />
     </div>
+  );
+}
+
+/** Every connection's health, with its group — for the tree's counts and the lists. */
+function integrationsHealth(settings: Settings) {
+  return CONNECTION_GROUPS.flatMap((group) =>
+    group.ids.map((id) => {
+      const view = connectionView(id, settings);
+      return { id, group: group.id, groupHeading: group.heading, view, health: connectionHealth(view) };
+    }),
+  );
+}
+
+/**
+ * Settings → Integrations (freelee #93): one group's connections — or all —
+ * as a list with their health; a row opens the connection's card (Save → Test
+ * → Fetch) in the sheet. Was /admin/connections, 13 open cards down one page.
+ */
+function IntegrationsSection({ sectionId, settings }: { sectionId: string; settings: Settings }) {
+  const group = CONNECTION_GROUPS.find((g) => integrationsSectionId(g.id) === sectionId) ?? null;
+  const rows: IntegrationRow[] = integrationsHealth(settings)
+    .filter((r) => !group || r.group === group.id)
+    .map((r) => ({
+      id: r.id,
+      title: r.view.title,
+      description: r.view.description,
+      group: r.groupHeading,
+      health: r.health,
+      tested: r.view.lastTest?.at ? relativeTime(r.view.lastTest.at) : null,
+      card: <ConnectionCardFor id={r.id as ConnectionId} settings={settings} />,
+    }));
+  return (
+    <IntegrationsList
+      rows={rows}
+      showGroup={!group}
+      before={
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          A key saved here overrides one in the server file. Click a connection to save its key, Test it and, where there is something to bring in, Fetch.
+        </p>
+      }
+    />
   );
 }

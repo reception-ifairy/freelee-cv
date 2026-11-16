@@ -87,7 +87,7 @@ On a phone, the tree folds into a **Browse** line above the list.
 
 Every category has its own **AI agent**, on its **AI agent** tab. It runs on Anthropic (Claude Opus 5.5
 unless you choose another model under *Settings → AI defaults*) and is paid from your own Anthropic key
-in *Connections* — without a key the tab says so and points you there.
+in *Settings → Integrations* — without a key the tab says so and points you there.
 
 **What it knows:** everything about the field — the market, its regulation and risk level, its sectors,
 the audiences attached and why — **and every bot already filed here**, live or not, so it can point out

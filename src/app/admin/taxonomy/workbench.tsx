@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { connectionHref } from '@/lib/admin/connection-groups';
 import type { UIMessage } from 'ai';
 import { Bot, Check, ExternalLink, KeyRound, Sparkles, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -104,8 +105,8 @@ export function Workbench({
           <p className="mt-3 flex flex-wrap items-center gap-2 rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
             <KeyRound className="size-4" />
             The agent runs on Anthropic and there is no Anthropic key yet.
-            <Link href="/admin/connections#conn-anthropic" className="font-semibold underline">
-              Add it in Connections
+            <Link href={connectionHref('anthropic')} className="font-semibold underline">
+              Add it in Settings → Integrations
             </Link>
             , press Test, then open the agent again.
           </p>

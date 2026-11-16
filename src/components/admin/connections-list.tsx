@@ -9,28 +9,20 @@ import {
 } from '@/server/actions/admin-connections';
 
 /**
- * One card per connection. The actions are bound to the connection id here,
- * on the server, so the card itself knows nothing about which service it is
- * talking to. Each card carries an anchor (`#conn-<id>`), so a link from
- * elsewhere — the homeschool hub, a hint in the persona form — lands on it.
+ * One connection's card (Save → Test → Fetch). The actions are bound to the
+ * connection id here, on the server, so the card itself knows nothing about
+ * which service it is talking to. Since freelee #93 it is the body of the
+ * connection's sheet in Settings → Integrations.
  */
-export function ConnectionsList({ ids, settings }: { ids: readonly ConnectionId[]; settings: Map<string, SettingValue> }) {
+export function ConnectionCardFor({ id, settings }: { id: ConnectionId; settings: Map<string, SettingValue> }) {
+  const { canFetch, canChoose, ...view } = connectionView(id, settings);
   return (
-    <div className="space-y-4">
-      {ids.map((id) => {
-        const { canFetch, canChoose, ...view } = connectionView(id, settings);
-        return (
-          <div key={id} id={`conn-${id}`} className="scroll-mt-24">
-            <ConnectionCard
-              {...view}
-              save={view.envOnly ? undefined : saveConnectionAction.bind(null, id)}
-              test={testConnectionAction.bind(null, id)}
-              fetch={canFetch ? fetchConnectionAction.bind(null, id) : undefined}
-              choose={canChoose ? chooseConnectionItemAction.bind(null, id) : undefined}
-            />
-          </div>
-        );
-      })}
-    </div>
+    <ConnectionCard
+      {...view}
+      save={view.envOnly ? undefined : saveConnectionAction.bind(null, id)}
+      test={testConnectionAction.bind(null, id)}
+      fetch={canFetch ? fetchConnectionAction.bind(null, id) : undefined}
+      choose={canChoose ? chooseConnectionItemAction.bind(null, id) : undefined}
+    />
   );
 }

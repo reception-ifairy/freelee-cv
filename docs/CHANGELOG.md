@@ -34,7 +34,19 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #92 · `pending` — Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card
+### #93 · `pending` — Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card
+
+Owner, 2026-11-16: integrations belong in Settings. Connections becomes Settings → Integrations — All
+plus one section per connection group, each a list with health and last test whose row opens the
+connection's card in the sheet. The Settings menu is the taxonomy's rail (icons, tooltips, working/total
+on Integrations; a fold on phones). `connectionHref` / `integrationsHref` replace every
+`/admin/connections#…` link; `/admin/connections` redirects in `next.config.ts` (HTTP, so the fragment
+survives — a page `redirect()` lost it) and the list turns `#conn-<id>` into that card. One key, one
+home is unchanged.
+
+📄 docs/57-admin-navigation.md · handbook/settings.md · handbook/ai-models.md · handbook/curriculum-tutors.md
+
+### #92 · `2d62468` — Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card
 
 Pages, Blog, Showcase, Menus (the three menus as the rail), Shelves, External sources (the card is the
 whole Save → Test editor, via the new `ResourceItem.detail`), Bot teams, Rooms and Projects use the

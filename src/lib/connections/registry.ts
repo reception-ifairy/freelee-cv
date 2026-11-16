@@ -931,7 +931,7 @@ export async function runTest(id: ConnectionId): Promise<TestResult> {
 
 /**
  * The settings keys a connection owns: its fields, and the setting its picker
- * writes (ElevenLabs' voice). Those keys live on /admin/connections and
+ * writes (ElevenLabs' voice). Those keys live in Settings → Integrations and
  * nowhere else — scripts/verify-settings-map.ts holds Settings to that.
  */
 export function connectionSettingKeys(id: ConnectionId): string[] {
