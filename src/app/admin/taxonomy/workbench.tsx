@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { connectionHref } from '@/lib/admin/connection-groups';
 import type { UIMessage } from 'ai';
-import { Bot, Check, ExternalLink, KeyRound, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Bot, Check, ExternalLink, KeyRound, ListOrdered, RotateCcw, SkipForward, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,21 +16,37 @@ import { AUDIENCE_SEGMENTS } from '@/lib/persona/audience-segments';
 import { AGENT_MODELS, formatUsd } from '@/lib/taxonomy/agent-pricing';
 import type { AgentThreadState } from '@/lib/taxonomy/category-agent';
 import type { Proposal } from '@/lib/taxonomy/agent-proposals';
+import type { PlanItem } from '@/lib/taxonomy/agent-plan';
 import {
   agentStateAction,
   buildDraftFromWorkbenchAction,
   decideProposalAction,
   openWorkbenchAction,
+  setPlanItemStatusAction,
   workbenchHistoryAction,
 } from '@/server/actions/admin-taxonomy';
 
+/** What the chat says while each of the agent's tools runs, and after. */
+const TOOL_LABELS = {
+  scan_category: { running: 'Scanning the category…', done: 'Scanned the category' },
+  scan_audiences: { running: 'Scanning the audiences…', done: 'Scanned the audiences' },
+  read_bot: { running: 'Reading a bot…', done: 'Read a bot' },
+  save_plan: { running: 'Saving the plan…', done: 'Saved the plan' },
+  propose: { running: 'Writing a proposal…', done: 'Put a proposal on your list' },
+};
+
 /**
- * A category's AI agent (owner, 2026-11-16): an Anthropic model that knows the
- * field — its brief, its bots, its sectors and gaps — and helps design bots.
- * It proposes; the owner approves. Each proposal shows here with Approve and
- * Reject; approving runs the ordinary admin change (a new bot is always an
- * inactive draft). The model and what the conversation has cost are always on
- * screen: it is paid from the owner's own Anthropic key.
+ * A category's AI agent — the category's default screen (owner, 2026-11-16:
+ * "in every category, as the default screen, a chat with the category's
+ * agent; each can scan the audiences and its category, then help me one by
+ * one to create the first bot drafts").
+ *
+ * The chat opens by itself. Beside it (below it under 2xl, where the tree
+ * leaves no room) are the **plan** of the first bots the agent saved after its
+ * scan, worked through one at a time, and the **proposals** waiting for
+ * Approve or Reject; approving runs the ordinary admin change (a new bot is
+ * always an inactive draft). The model and what the conversation has cost
+ * are always on screen: it is paid from the owner's own Anthropic key.
  */
 export function Workbench({
   categoryId,
@@ -40,6 +57,7 @@ export function Workbench({
   categoryName: string;
   sectors: { id: number; name: string }[];
 }) {
+  const router = useRouter();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [initial, setInitial] = useState<UIMessage[]>([]);
   const [model, setModel] = useState<string | null>(null);
@@ -47,41 +65,49 @@ export function Workbench({
   const [message, setMessage] = useState<string | null>(null);
   const [state, setState] = useState<AgentThreadState | null>(null);
   const [opening, startOpening] = useTransition();
+  const send = useRef<((text: string) => void) | null>(null);
 
   const refresh = useCallback(async (id: string) => {
     const next = await agentStateAction(id);
     if (!('error' in next)) setState(next);
   }, []);
 
-  // Opened on first use: twenty categories should not mean twenty empty threads.
-  const open = () =>
-    startOpening(async () => {
-      const result = await openWorkbenchAction(categoryId);
-      if ('error' in result) {
-        setNoKey(Boolean(result.noKey));
-        setMessage(result.noKey ? null : result.error);
-        return;
-      }
-      const history = await workbenchHistoryAction(result.conversationId);
-      setInitial(
-        history.map((row, index) => ({
-          id: String(row.id),
-          role: row.authorType === 'user' ? ('user' as const) : ('assistant' as const),
-          parts: [{ type: 'text' as const, text: row.content }],
-          metadata: { index },
-        })),
-      );
-      setModel(result.model);
-      setConversationId(result.conversationId);
-      await refresh(result.conversationId);
-    });
-
+  // Opened as soon as the category is: it is the category's first screen. One
+  // thread per category, reused; opening one costs nothing — only messages do.
   useEffect(() => {
+    let cancelled = false;
     setConversationId(null);
     setInitial([]);
     setState(null);
     setMessage(null);
     setNoKey(false);
+    startOpening(async () => {
+      const result = await openWorkbenchAction(categoryId);
+      if (cancelled) return;
+      if ('error' in result) {
+        setNoKey(Boolean(result.noKey));
+        setMessage(result.noKey ? null : result.error);
+        return;
+      }
+      const [history, thread] = await Promise.all([workbenchHistoryAction(result.conversationId), agentStateAction(result.conversationId)]);
+      if (cancelled) return;
+      setInitial(
+        history
+          .filter((row) => row.content.trim())
+          .map((row, index) => ({
+            id: String(row.id),
+            role: row.authorType === 'user' ? ('user' as const) : ('assistant' as const),
+            parts: [{ type: 'text' as const, text: row.content }],
+            metadata: { index },
+          })),
+      );
+      setModel(result.model);
+      if (!('error' in thread)) setState(thread);
+      setConversationId(result.conversationId);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [categoryId]);
 
   if (!conversationId) {
@@ -92,14 +118,11 @@ export function Workbench({
           <div className="min-w-0 flex-1">
             <p className="font-medium">The AI agent for {categoryName}</p>
             <Hint>
-              It knows this field — the market, its regulation and risk, its sectors, the audiences it serves and every bot
-              already filed here — and helps you design new ones. It proposes; you approve. It runs on Anthropic from your own
-              key, so every reply costs money, shown as you go.
+              It scans this field and the audience groups, plans the first bots worth building, and drafts them with you one at a
+              time. It proposes; you approve. It runs on Anthropic from your own key, so every reply costs money, shown as you go.
             </Hint>
+            {opening ? <p className="mt-2 text-sm text-slate-500">Opening the conversation…</p> : null}
           </div>
-          <Button onClick={open} loading={opening}>
-            <Sparkles className="size-4" /> Open the agent
-          </Button>
         </div>
         {noKey ? (
           <p className="mt-3 flex flex-wrap items-center gap-2 rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
@@ -108,7 +131,7 @@ export function Workbench({
             <Link href={connectionHref('anthropic')} className="font-semibold underline">
               Add it in Settings → Integrations
             </Link>
-            , press Test, then open the agent again.
+            , press Test, then come back.
           </p>
         ) : null}
         {message ? <p className="mt-2 text-sm text-rose-400">{message}</p> : null}
@@ -116,78 +139,196 @@ export function Workbench({
     );
   }
 
+  const plan = state?.plan ?? [];
   const pending = state?.proposals.filter((p) => p.status === 'pending') ?? [];
   const decided = state?.proposals.filter((p) => p.status !== 'pending') ?? [];
+  const nextItem = plan.find((item) => item.status === 'todo');
+  const say = (text: string) => send.current?.(text);
+  const afterDecision = () => {
+    void refresh(conversationId);
+    router.refresh();
+  };
+
+  const starters = plan.length
+    ? [
+        nextItem ? `Let’s draft the next bot: ${nextItem.name}.` : 'Everything on the plan is drafted. What should come next?',
+        `Scan ${categoryName} again and update the plan.`,
+        'Which bots here need work before they go live?',
+      ]
+    : [
+        `Scan ${categoryName} and its audiences, then plan the first bots.`,
+        'Which audience groups does this field serve worst?',
+        'Which bots here need work before they go live?',
+      ];
 
   return (
-    <div className="space-y-4">
-      <Card padding="none" className="overflow-hidden">
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <Card padding="none" className="min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
           <Bot className="size-4 text-lime-500" />
           <p className="text-sm font-medium">AI agent — {categoryName}</p>
           {model ? <span className="text-xs text-slate-500">{model}</span> : null}
           <span className="ms-auto font-mono text-[11px] text-slate-500" title="Estimated from the tokens used, at Anthropic's list prices">
-            {state ? `this conversation: ${state.usd === null ? 'cost unknown for this model' : formatUsd(state.usd)}` : ''}
+            {state ? `this conversation: ${state.usd === null ? 'cost unknown for this model' : state.usd === 0 ? 'nothing yet' : formatUsd(state.usd)}` : ''}
             {state && AGENT_MODELS[state.modelId] ? ` · $${AGENT_MODELS[state.modelId].input} / $${AGENT_MODELS[state.modelId].output} per M tokens` : ''}
           </span>
         </div>
-        <div className="[&>section]:h-[34rem]">
+        <div className="[&>section]:h-[calc(100vh-17rem)] [&>section]:min-h-120 [&>section]:rounded-none [&>section]:border-0 [&>section]:shadow-none">
           <ChatWindow
             chatId={conversationId}
             apiPath="/api/admin/workbench"
             apiBody={{ categoryId }}
             initialMessages={initial}
             onFinish={() => void refresh(conversationId)}
-            suggestions={[
-              `Which bots are missing in ${categoryName}?`,
-              'Which sectors have no bot, and which would sell first?',
-              'Review the bots that are not live: keep, fix or drop?',
-              'Propose the bot we just discussed.',
-            ]}
+            suggestions={starters}
             personaName="the agent"
             layoutKey="professional"
             capabilities={{ copy: true, suggestions: true }}
+            sendOnPick
+            sendRef={send}
+            toolLabels={TOOL_LABELS}
           />
         </div>
       </Card>
 
-      <section>
-        <h3 className="eyebrow mb-2">Proposals waiting for you · {pending.length}</h3>
-        {pending.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            None. When you settle on something with the agent, ask it to propose it — it appears here, and nothing changes until
-            you approve.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {pending.map((p) => (
-              <ProposalCard key={p.id} proposal={p} sectors={sectors} conversationId={conversationId} onDone={() => refresh(conversationId)} />
-            ))}
-          </ul>
-        )}
-        {decided.length ? (
-          <div className="mt-3 rounded-card border border-slate-200 px-2 dark:border-white/10">
-            <Disclosure title="Decided" meta={<span className="font-mono">{decided.length}</span>}>
-              <ul className="space-y-1 pb-2 pl-8 text-sm">
-                {[...decided].reverse().map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center gap-2">
-                    <Badge tone={p.status === 'approved' ? 'green' : 'slate'}>{p.status}</Badge>
-                    <span className="text-slate-400">{p.summary}</span>
-                    {p.personaId ? (
-                      <Link href={`/admin/personas/${p.personaId}`} className="text-xs font-semibold text-brand-400 hover:underline">
-                        Open the draft
-                      </Link>
-                    ) : null}
-                  </li>
+      <aside className="min-w-0 space-y-5">
+        <section>
+          <h3 className="eyebrow mb-2 flex items-center gap-1.5">
+            <ListOrdered className="size-3.5" /> First bots · plan
+          </h3>
+          {plan.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No plan yet. Ask the agent to scan the field and its audiences — it saves the first bots worth building here, in order.
+            </p>
+          ) : (
+            <>
+              {nextItem && pending.length === 0 ? (
+                <Button size="sm" className="mb-2 w-full" onClick={() => say(`Let’s draft the next bot: ${nextItem.name}.`)}>
+                  Draft the next bot <ArrowRight className="size-3.5" />
+                </Button>
+              ) : null}
+              <ol className="space-y-2">
+                {plan.map((item, index) => (
+                  <PlanRow
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    sectors={sectors}
+                    conversationId={conversationId}
+                    onDraft={() => say(`Let’s draft plan item ${index + 1}: ${item.name}.`)}
+                    onDone={() => void refresh(conversationId)}
+                  />
                 ))}
-              </ul>
-            </Disclosure>
-          </div>
-        ) : null}
-      </section>
+              </ol>
+            </>
+          )}
+        </section>
 
-      <PasteDraft categoryId={categoryId} categoryName={categoryName} sectors={sectors} />
+        <section>
+          <h3 className="eyebrow mb-2">Waiting for you · {pending.length}</h3>
+          {pending.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Nothing to approve. When the agent drafts a bot it appears here, and nothing changes until you approve.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {pending.map((p) => (
+                <ProposalCard key={p.id} proposal={p} sectors={sectors} conversationId={conversationId} onDone={afterDecision} />
+              ))}
+            </ul>
+          )}
+          {decided.length ? (
+            <div className="mt-3 rounded-card border border-slate-200 px-2 dark:border-white/10">
+              <Disclosure title="Decided" meta={<span className="font-mono">{decided.length}</span>}>
+                <ul className="space-y-1 pb-2 pl-8 text-sm">
+                  {[...decided].reverse().map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center gap-2">
+                      <Badge tone={p.status === 'approved' ? 'green' : 'slate'}>{p.status}</Badge>
+                      <span className="text-slate-400">{p.summary}</span>
+                      {p.personaId ? (
+                        <Link href={`/admin/personas/${p.personaId}`} className="text-xs font-semibold text-brand-400 hover:underline">
+                          Open the draft
+                        </Link>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </Disclosure>
+            </div>
+          ) : null}
+        </section>
+
+        <PasteDraft categoryId={categoryId} categoryName={categoryName} sectors={sectors} />
+      </aside>
     </div>
+  );
+}
+
+const PLAN_STATUS: Record<PlanItem['status'], { label: string; tone: 'slate' | 'amber' | 'green' | 'brand' }> = {
+  todo: { label: 'To do', tone: 'slate' },
+  proposed: { label: 'Waiting for you', tone: 'amber' },
+  drafted: { label: 'Drafted', tone: 'green' },
+  skipped: { label: 'Skipped', tone: 'slate' },
+};
+
+function PlanRow({
+  item,
+  index,
+  sectors,
+  conversationId,
+  onDraft,
+  onDone,
+}: {
+  item: PlanItem;
+  index: number;
+  sectors: { id: number; name: string }[];
+  conversationId: string;
+  onDraft: () => void;
+  onDone: () => void;
+}) {
+  const [busy, startBusy] = useTransition();
+  const status = PLAN_STATUS[item.status];
+  const setStatus = (next: 'skipped' | 'todo') =>
+    startBusy(async () => {
+      await setPlanItemStatusAction(conversationId, item.id, next);
+      onDone();
+    });
+  const where = [
+    item.sectorId !== null ? sectors.find((s) => s.id === item.sectorId)?.name : null,
+    item.audienceType,
+    item.segments.map((c) => AUDIENCE_SEGMENTS[c]?.name ?? c).join(', ') || null,
+  ].filter(Boolean);
+
+  return (
+    <li className={`rounded-card border border-slate-200 p-2.5 text-sm dark:border-white/10 ${item.status === 'skipped' ? 'opacity-50' : ''}`}>
+      <div className="flex items-start gap-2">
+        <span className="font-mono text-xs text-slate-500">{index + 1}.</span>
+        <p className="min-w-0 flex-1 font-medium">{item.name}</p>
+        <Badge tone={status.tone}>{status.label}</Badge>
+      </div>
+      {where.length ? <p className="mt-1 pl-5 text-xs text-slate-500">{where.join(' · ')}</p> : null}
+      <p className="mt-1 pl-5 text-xs text-slate-400">{item.why}</p>
+      <div className="mt-1.5 flex flex-wrap gap-1 pl-4">
+        {item.status === 'todo' ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={onDraft}>
+              Draft this <ArrowRight className="size-3.5" />
+            </Button>
+            <Button size="sm" variant="ghost" loading={busy} onClick={() => setStatus('skipped')}>
+              <SkipForward className="size-3.5" /> Skip
+            </Button>
+          </>
+        ) : item.status === 'skipped' ? (
+          <Button size="sm" variant="ghost" loading={busy} onClick={() => setStatus('todo')}>
+            <RotateCcw className="size-3.5" /> Back on the plan
+          </Button>
+        ) : item.status === 'drafted' && item.personaId ? (
+          <Link href={`/admin/personas/${item.personaId}`} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-brand-400 hover:underline">
+            Open the draft <ExternalLink className="size-3" />
+          </Link>
+        ) : null}
+      </div>
+    </li>
   );
 }
 
@@ -243,6 +384,7 @@ function ProposalCard({
               {p.persona.tagline ? ` — ${p.persona.tagline}` : ''} · {p.persona.audienceType ?? 'audience type from the field'} ·{' '}
               {sectorName(p.sectorId)}
             </p>
+            {p.segments?.length ? <p className="mt-1 text-xs">For: {p.segments.map((c) => AUDIENCE_SEGMENTS[c]?.name ?? c).join(', ')}</p> : null}
             <Disclosure title="System prompt and details" className="mt-1">
               <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-slate-300">{p.persona.systemPrompt}</pre>
               {p.persona.description ? <p className="mt-2 text-xs">{p.persona.description}</p> : null}

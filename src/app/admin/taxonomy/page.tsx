@@ -86,7 +86,8 @@ export default async function TaxonomyBrowserPage({
         title="Taxonomy"
         description="Every field, its specialisms and the bots filed there. Pick a category or sector on the left; click a row for its card."
         actions={
-          <div className="flex gap-2">
+          // Wraps on a phone: four buttons in one row were 470px wide.
+          <div className="flex flex-wrap gap-2">
             {/* Since #90 this is the one list of bots, so making one starts here too. */}
             <Link href="/admin/categories/new" className="inline-flex h-10 items-center gap-2 rounded-control border hairline px-3 text-sm font-semibold hover:bg-white/[0.03]">
               <Plus className="size-4" /> Category
@@ -130,6 +131,8 @@ export default async function TaxonomyBrowserPage({
               active={selection.tab}
               className="mb-4"
               tabs={[
+                // A category opens on its AI agent (2026-11-16), so it is the first tab.
+                ...(category ? [{ id: 'agent', label: 'AI agent', href: selectionHref(params, config, selection, { tab: 'agent' }) }] : []),
                 // Counts only at the top level: in a category the header already says them,
                 // and with eight tabs every pixel counts at 1280px.
                 { id: 'personas', label: 'Bots', href: selectionHref(params, config, selection, { tab: 'personas' }), count: category ? undefined : tree.all.total },
@@ -137,7 +140,6 @@ export default async function TaxonomyBrowserPage({
                 ...(category
                   ? [
                       { id: 'audiences', label: 'Audiences', href: selectionHref(params, config, selection, { tab: 'audiences' }) },
-                      { id: 'agent', label: 'AI agent', href: selectionHref(params, config, selection, { tab: 'agent' }) },
                       { id: 'brief', label: 'Brief', href: selectionHref(params, config, selection, { tab: 'brief' }) },
                       ...(extrasFor(category.slug).homeschoolHub
                         ? [

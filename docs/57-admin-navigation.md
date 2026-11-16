@@ -410,7 +410,7 @@ Checked by `npm run admin:verify-attention` (10 checks):
 
 **A category is a view of the taxonomy browser, not a separate page.** The tree stays on the left. `browser.ts` gains category tabs:
 - lists: `personas` (labelled Bots) and `sectors`;
-- a picked category (no sector): `audiences`, `agent` (the workbench, the future AI agent), `brief` (the market facts, `category-brief.tsx`);
+- a picked category (no sector): `audiences`, `agent` (its AI agent, the default since #95), `brief` (the market facts, `category-brief.tsx`);
 - the category with the homeschool hub: `tutors`, `curriculum`, `families` (`homeschool.tsx`, moved unchanged; families stay numbers only).
 
 `validTab` keeps a tab only where it means something, so a hand-edited URL falls back to the bot list. `cat` also takes a slug (`?cat=education-and-training`), so links survive a database move; the kept params are rewritten to the id. Moving to another category keeps the tab.
@@ -441,6 +441,57 @@ Checks: `admin:verify-nav` (the category items, current by id or slug, the retir
 Checked by `npm run taxonomy:verify-agent` (17 checks, react-server condition, no model or network): prices, every proposal rule, decisions, and static checks on the route (Anthropic only, no sampling parameters or forced tool choice, the cached system prompt, one tool with a step limit, the 503 without a key). `admin:verify-settings-map` covers the new setting's single home.
 
 **Not verified live:** no Anthropic key is configured, so no reply has been generated yet. Verified live: the tab, the no-key message and link, the setting in AI defaults, the route refusing a request with no thread (404), no thread created without a key.
+
+## A category opens on its agent: scan, plan, one draft at a time (freelee #95)
+
+**Owner, 2026-11-16** (after adding an Anthropic key for Freelee): the chat with the category's agent is
+every category's default screen; each agent scans the audiences and its category, then helps, one by one,
+with the first bot drafts.
+
+**Default tab.** `defaultTab(cat, sec)` in `browser.ts`: a picked category → `agent`, everything else →
+`personas`. The default is left out of the URL (`keptFor`), so `?cat=34` is the agent and the bot list is
+`?cat=34&tab=personas`. `parseBrowser` treats a URL with `q`, `sort`, `page`, `open` or a persona filter
+and no `tab` as the list — old Personas links and card links keep working. `selectionHref` moving to
+another category from a list: with a search or filter the list stays, otherwise the new category's
+default; from a category tab (Audiences, Brief…) the tab stays. *AI agent* is the first tab.
+
+**The screen** (`workbench.tsx`): the thread opens as the category does (no button; an empty thread costs
+nothing). Chat, and beside it from `2xl` (below it under, where the tree leaves no room) the **plan** and
+**Waiting for you**. `ChatWindow` gained `sendOnPick` (a suggestion sends at once), `sendRef` (the plan's
+*Draft this* / *Draft the next bot* send through it) and `toolLabels` (tool parts shown as "Scanning the
+audiences…" → "Scanned the audiences"). The system prompt asks for a trailing `[SUGGESTIONS: …]`, which the
+window already turns into buttons.
+
+**Tools** (route `api/admin/workbench`), at most 8 steps:
+- `scan_category` / `scan_audiences({audienceType?})` / `read_bot({botId})` — read-only, `agent-scan.ts`.
+  The scans are prose with ids; the gaps are computed, not left to the model: sectors with no bot, a
+  sector suited (≥60) to an audience type no bot there serves, bots with no sector, bots not live; linked
+  groups no bot here serves, groups bots here serve that the field does not link. A bot's version is
+  `coalesce(current_version_id, draft_version_id)` — the agent's own drafts have only a draft (the bot
+  list in `agentContext` now uses the same join, so drafts show their audience type).
+- `save_plan({items})` — `agent-plan.ts`: up to 8 items (name, sector, one audience type, groups, why),
+  stored as `settings.plan` under the row lock. Re-saving keeps items proposed or drafted and replaces the
+  rest. The plan reaches the model each turn as a second system message after the cached one.
+- `propose` — as in #89, plus for bots `audienceCodes` (the groups it is for; known codes, one type, the
+  type follows the groups) and `planItemId` (marks the item *proposed*). Approving creates the draft with
+  those groups (else the field's groups of its type) and marks the item *drafted* with the persona id;
+  rejecting puts it back to *todo* (`afterDecision`). `setPlanItemStatusAction` skips or restores an item.
+
+**Opus 5.5 and the prefix.** Thinking blocks are bound to the exact prefix they were produced under, and
+here the prefix changes on purpose (an approved draft joins the bot list in the system prompt; the plan
+message changes). Replaying old thinking would be a 400, so `withoutReasoning` drops reasoning parts from
+earlier turns; text, tool calls and tool results stay. Cache: the system prompt, and the newest message as
+a second breakpoint, so a scan is written to the cache once and read after. The stored transcript keeps
+every step's text.
+
+Checks: `taxonomy:verify-browser` (+7: the default, the short URL, the list for links with a search/filter/
+card, moving between categories), `taxonomy:verify-agent` (+10, 27 in all: bot groups, the plan, the scans' gaps, the
+tools, no replayed thinking, the second breakpoint).
+
+**Verified live:** one short call through Freelee's code (`generateText`, the saved key, `claude-opus-5-5`)
+answered; the screen at 1600/1280/390px (opens on the agent, starter suggestions, plan and proposals
+panels, no horizontal scroll, no page errors), the Bots tab and a search link opening the list. **Not run:**
+a whole paid session (scan → plan → draft → approve).
 
 ## Every list in the taxonomy's layout: Catalogue (freelee #90)
 

@@ -15,6 +15,8 @@ import type { Proposal } from '../src/lib/taxonomy/agent-proposals';
 config({ path: '.env.local', quiet: true });
 const { AGENT_DEFAULT_MODEL, addUsage, estimateUsd, ZERO_USAGE } = await import('../src/lib/taxonomy/agent-pricing');
 const { checkProposal, decide } = await import('../src/lib/taxonomy/agent-proposals');
+const { checkPlan, afterDecision, updatePlanItem, planForModel } = await import('../src/lib/taxonomy/agent-plan');
+const { renderCategoryScan, renderAudienceScan } = await import('../src/lib/taxonomy/agent-scan');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 let failed = 0;
@@ -64,6 +66,73 @@ check('audiences: unknown codes refused; codes normalised; already-linked ones d
   return !unknown.ok && ok.ok && ok.payload.kind === 'audiences' && JSON.stringify(ok.payload.codes) === '["B2C-GK-01"]' && !nothingNew.ok;
 });
 
+check('a bot carries the groups it is for, all of its own type; the type follows the groups', () => {
+  const ok = checkProposal({ kind: 'bot', summary: 'KS2 fractions', persona, audienceCodes: ['b2c-cyp-03', 'B2C-GK-01'], planItemId: 'i1' }, ctx);
+  const mixed = checkProposal({ kind: 'bot', summary: 'Mixed', persona: { ...persona, audienceType: 'B2C' }, audienceCodes: ['B2C-CYP-03', 'B2B-SIZE-01'] }, ctx);
+  const unknown = checkProposal({ kind: 'bot', summary: 'Unknown', persona, audienceCodes: ['B2C-NOPE-01'] }, ctx);
+  return (
+    ok.ok && ok.payload.kind === 'bot' && JSON.stringify(ok.payload.segments) === '["B2C-CYP-03","B2C-GK-01"]' &&
+    ok.payload.planItemId === 'i1' && ok.payload.persona.audienceType === 'B2C' && !mixed.ok && !unknown.ok
+  );
+});
+
+console.log('The plan of first bots');
+let n = 0;
+const ids = () => `i${++n}`;
+const plan1 = checkPlan(
+  { items: [{ name: 'Fractions Coach', sectorId: 42, audienceCodes: ['B2C-CYP-03'], why: 'Most asked-for KS2 topic.' }, { name: 'GCSE Revision Planner', why: 'Exam season.' }] },
+  { sectorIds: [42, 43], previous: [], newId: ids },
+);
+check('a plan is saved in order, each item to do; the type follows its groups', () =>
+  plan1.ok && plan1.plan.map((p) => `${p.name}:${p.status}:${p.audienceType}`).join('|') === 'Fractions Coach:todo:B2C|GCSE Revision Planner:todo:null');
+check('a plan item in another field’s sector, or with groups of two types, is refused', () =>
+  !checkPlan({ items: [{ name: 'Wrong', sectorId: 7, why: 'Wrong field.' }] }, { sectorIds: [42], previous: [] }).ok &&
+  !checkPlan({ items: [{ name: 'Mixed', audienceCodes: ['B2C-CYP-03', 'B2B-SIZE-01'], why: 'Two kinds.' }] }, { sectorIds: [42], previous: [] }).ok);
+check('proposing marks the item; approving drafts it with the bot; rejecting puts it back', () => {
+  if (!plan1.ok) return false;
+  const proposed = updatePlanItem(plan1.plan, 'i1', { status: 'proposed', proposalId: 'p9' });
+  const approved = afterDecision(proposed, 'p9', 'approved', 77);
+  const rejected = afterDecision(proposed, 'p9', 'rejected');
+  return proposed[0].status === 'proposed' && approved[0].status === 'drafted' && approved[0].personaId === 77 && rejected[0].status === 'todo' && !rejected[0].proposalId;
+});
+check('saving a new plan keeps what is proposed or drafted, replaces the rest', () => {
+  if (!plan1.ok) return false;
+  const drafted = afterDecision(updatePlanItem(plan1.plan, 'i1', { status: 'proposed', proposalId: 'p9' }), 'p9', 'approved', 77);
+  const plan2 = checkPlan({ items: [{ name: 'Times Tables Trainer', why: 'Year 4 check.' }, { name: 'fractions coach', why: 'Dup.' }] }, { sectorIds: [42], previous: drafted, newId: ids });
+  return plan2.ok && plan2.plan.map((p) => p.name).join('|') === 'Fractions Coach|Times Tables Trainer';
+});
+check('the agent reads the plan with each item’s id and what is next', () => {
+  if (!plan1.ok) return false;
+  const text = planForModel(plan1.plan, () => 'Early Years');
+  return text.includes('planItemId i1') && text.includes('[todo]') && text.includes('Next to draft: Fractions Coach.');
+});
+
+console.log('Scans');
+const bots = [
+  { id: 1, name: 'Story Sprout', tagline: null, isActive: true, sectorId: 42, audienceType: 'B2C', segments: ['B2C-CYP-01'] },
+  { id: 2, name: 'Draft Tutor', tagline: null, isActive: false, sectorId: null, audienceType: null, segments: null },
+];
+const scan = renderCategoryScan(
+  {
+    name: 'Education',
+    riskLevel: 'R2',
+    audienceLean: { b2c: 70, b2b: 30, b2g: 50 },
+    sectors: [
+      { id: 42, name: 'Early Years', b2c: 90, b2b: 20, b2g: 70 },
+      { id: 43, name: 'Tutoring', b2c: 80, b2b: 10, b2g: 10 },
+    ] as never,
+  },
+  bots,
+);
+check('the category scan lists sectors with ids and bots, and finds the gaps', () =>
+  scan.includes('id 42 · Early Years') && scan.includes('Tutoring (id 43) has no bot at all.') &&
+  scan.includes('Early Years suits B2G (70) but no B2G bot is filed there.') && scan.includes('1 bot(s) here have no sector.') && scan.includes('1 bot(s) are not live'));
+const aud = renderAudienceScan({ name: 'Education', linked: [{ code: 'B2C-CYP-08', note: 'Home ed.' }] }, bots, [['B2C-CYP-01'], ['B2C-CYP-01']], 'B2C');
+check('the audience scan: one type only, linked groups with their note, bots here and on the platform', () =>
+  !aud.includes('## B2B') && aud.includes('B2C-CYP-08 · Home Educated') && aud.includes('LINKED here (“Home ed.”)') &&
+  /B2C-CYP-01 · Early Years.*bots here: 1 · on the platform: 2/.test(aud) && aud.includes('no bot here is for them: B2C-CYP-08 Home Educated') &&
+  aud.includes('which the field does not link: B2C-CYP-01 Early Years'));
+
 console.log('Decisions');
 const base: Proposal = { id: 'p1', createdAt: '2026-11-16T00:00:00Z', summary: 's', status: 'pending', payload: { kind: 'audiences', codes: ['B2C-GK-01'], note: null } };
 check('approving a pending proposal records it, with the draft it created', () => {
@@ -80,7 +149,11 @@ const route = readFileSync(join(ROOT, 'src/app/api/admin/workbench/route.ts'), '
 check('always Anthropic, the model from the setting', () => route.includes("getModel(registry, 'anthropic', modelId, keys)") && route.includes('categoryAgentModel()'));
 check('no sampling parameters and no forced tool choice (Opus 5.5 rejects both)', () => !/temperature|topP|topK|toolChoice/.test(route));
 check('the system prompt is cached', () => /cacheControl:\s*\{\s*type:\s*'ephemeral'\s*\}/.test(route));
-check('one tool, propose, and a step limit', () => route.includes('tools: { propose }') && route.includes('stepCountIs('));
+check('the tools: two scans, read a bot, save the plan, propose — and a step limit', () =>
+  route.includes('tools: { scan_category, scan_audiences, read_bot, save_plan, propose }') && route.includes('stepCountIs('));
+check('earlier thinking is not sent back (Opus 5.5 binds it to a prefix that changes here)', () =>
+  route.includes("part.type !== 'reasoning'") && route.includes('convertToModelMessages(withoutReasoning(uiMessages))'));
+check('the newest message is a cache breakpoint too, so the scans are not paid for twice', () => route.includes('last.providerOptions'));
 check('no key: a clear 503, never a silent switch to another provider', () => route.includes('if (!keyReady)') && route.includes('status: 503'));
 
 if (failed) {

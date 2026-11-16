@@ -23,7 +23,8 @@ Under **Catalogue** in the sidebar:
 
 The twenty categories are what Freelee is organised around. They sit at the top of the sidebar under
 **Categories**, each with its colour and **live/all** bots; a category with no bot yet is dimmed. Click
-one and it opens in the taxonomy browser with its own tabs (below).
+one and it opens on its **AI agent** — a chat — with the tree still on the left and its other tabs beside
+(below).
 
 Two categories carry more than the rest:
 
@@ -70,9 +71,11 @@ Everything you pick is in the page address, so you can bookmark a view or send i
 When you pick a field, its header shows its live/all bots, sectors, audiences and risk, its public
 page if it has one, and **Edit**. Under it, the field's tabs:
 
-- **Bots** and **Sectors** — the lists described above, for this field.
+- **AI agent** — where a field opens: a chat with its agent, which scans the field and its audiences and
+  drafts its first bots with you (below).
+- **Bots** and **Sectors** — the lists described above, for this field. (A link with a search or a filter
+  in it opens the Bots list, not the agent.)
 - **Audiences** — the groups this field serves, and why (below).
-- **AI agent** — where you design a new bot with the field's assistant.
 - **Brief** — the researched facts: market size and growth, regulation, industry bodies, risk level,
   how the field leans towards consumers, businesses or government, and what its web address decides
   (the chat layout bots here get and the tools they are offered — which is why the address never
@@ -83,29 +86,42 @@ On a phone, the tree folds into a **Browse** line above the list.
 
 (*/admin/taxonomy/34* still works: it opens the same field in the browser.)
 
-## Designing a bot with the field's AI agent
+## Designing bots with the field's AI agent
 
-Every category has its own **AI agent**, on its **AI agent** tab. It runs on Anthropic (Claude Opus 5.5
-unless you choose another model under *Settings → AI defaults*) and is paid from your own Anthropic key
-in *Settings → Integrations* — without a key the tab says so and points you there.
+Every category has its own **AI agent**, and a category opens on it. It runs on Anthropic (Claude Opus
+5.5 unless you choose another model under *Settings → AI defaults*) and is paid from your own Anthropic
+key in *Settings → Integrations* — without a key the screen says so and points you there.
 
 **What it knows:** everything about the field — the market, its regulation and risk level, its sectors,
-the audiences attached and why — **and every bot already filed here**, live or not, so it can point out
-gaps and duplicates. In Education and Training it also knows the tutors and which subjects and key
-stages have no live tutor.
+the audiences attached and why — and every bot already filed here, live or not. In Education and
+Training it also knows the tutors and which subjects and key stages have no live tutor.
 
-**How it works:** it is a working conversation. Ask what is missing, who would pay, what a bot must
-refuse to do. When you settle on something, ask it to propose it. A proposal appears under the chat:
+**The way to work with it — three steps:**
 
-- **New bot** — a complete persona. **Approve** saves it as an **inactive draft** in this category;
-  you review and publish it in the editor.
-- **Sector description** — a better description for one of the field's sectors.
-- **Audience groups** — groups to link to the field, with a note on why.
+1. **Scan.** Click *Scan … and its audiences, then plan the first bots*. The agent reads the field —
+   every sector with how well it suits consumers, businesses and the public sector, every bot with the
+   groups it is for, and the gaps — and the seventy audience groups: what each needs, how much a wrong
+   answer costs them, whether this field links them, and how many bots here and on the whole platform
+   already serve them. While it works, the chat says so (*Scanning the audiences…*).
+2. **Plan.** It tells you in a few lines what it found and saves a **plan of the first bots** — three to
+   six, in the order worth building them, each with its sector, audience and one line on why. The plan
+   is beside the chat (under it on a smaller screen). It is a working list, not a change to the
+   catalogue: say *change the order* or *drop the third one*, or press **Skip** on an item yourself.
+3. **One bot at a time.** Press **Draft the next bot** (or **Draft this** on any item). The agent asks
+   at most two questions that would change the bot, then writes it in full — instructions, welcome
+   message, suggestions, the audience groups it is for — and puts it under **Waiting for you**.
+   **Approve** saves it as an **inactive draft** in this category and ticks it off the plan; **Reject**
+   puts the item back to *To do*. Then *Draft the next bot* again.
 
-**Nothing changes until you press Approve.** Reject keeps the record and changes nothing.
+The buttons under each reply are the agent's suggested next steps; a click sends one.
+
+Besides bots, the agent may propose a **sector description** (a better description for one of the
+field's sectors) or **audience groups** to link to the field, with a note on why. **Nothing changes
+until you press Approve.**
 
 **Cost:** the header shows the model, its price per million tokens and what this conversation has cost
-so far. The field's description is cached, so replies after the first cost much less to send.
+so far. A scan is the longest part of a conversation; it is cached, so the replies after it cost much
+less to send. The conversation is kept: come back tomorrow and it is where you left it, plan included.
 
 **Paste a persona by hand** (under the proposals) is the old path: paste a persona written out as JSON
 and it is saved as an inactive draft.

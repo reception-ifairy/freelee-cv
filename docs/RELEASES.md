@@ -11,6 +11,35 @@ These notes start on 2026-11-11. Earlier history is in the CHANGELOG. The same t
 
 ---
 
+## Not released yet
+
+Updates #94–#95 · the next release tags them
+
+**In short**
+
+- **A category opens on its AI agent.** Click a category and you are in a chat with its agent; Bots,
+  Sectors, Audiences and Brief are the tabs beside it.
+- **The agent scans before it advises.** *Scan … and its audiences, then plan the first bots* makes it read
+  the field (sectors, bots, gaps) and the seventy audience groups (what each needs, whether the field
+  links it, how many bots already serve it), then save a **plan of the first bots**, in order, beside the
+  chat.
+- **Then one bot at a time.** *Draft the next bot*: the agent asks at most two questions, writes the bot in
+  full with the groups it is for, and puts it on your list. Approve makes it an inactive draft and ticks it
+  off the plan; Reject puts it back. You can skip any item.
+
+| # | Commit | What |
+|---|---|---|
+| #94 | `bc154ad` | Release notes for v2026.11.16: the day's title, the last hash, what was not checked |
+| #95 | `pending` | A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time |
+
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Welcome*, *Child profiles*.
+
+**Not checked yet:** one short paid call proved the Anthropic key and Claude Opus 5.5 work through
+Freelee's code; a whole session (scan → plan → draft → approve) has not been run — that is the owner's
+first use.
+
+---
+
 ## v2026.11.16 — The categories are the pillars, and one layout for the whole admin
 
 Updates #88–#93 · tag `v2026.11.16` → `6860ddb`

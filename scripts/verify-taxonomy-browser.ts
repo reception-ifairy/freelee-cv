@@ -72,10 +72,10 @@ check('open= reads persona-N and sector-N only', () =>
 console.log('Links');
 const s = at({ cat: '34', q: 'maths', status: 'live', page: '3', open: 'persona-5' });
 check('a card link keeps the whole list state and adds open= last', () =>
-  expect(withOpen(s.params, s.config, { kind: 'persona', id: 9 }), '/admin/taxonomy?q=maths&status=live&cat=34&page=3&open=persona-9'));
-check('closing the card keeps the list where it was', () => expect(withOpen(s.params, s.config, null), '/admin/taxonomy?q=maths&status=live&cat=34&page=3'));
-check('a tree link keeps search and filters, resets paging, closes the card', () =>
-  expect(selectionHref(s.params, s.config, s.selection, { cat: 7 }), '/admin/taxonomy?q=maths&status=live&cat=7'));
+  expect(withOpen(s.params, s.config, { kind: 'persona', id: 9 }), '/admin/taxonomy?q=maths&status=live&cat=34&tab=personas&page=3&open=persona-9'));
+check('closing the card keeps the list where it was', () => expect(withOpen(s.params, s.config, null), '/admin/taxonomy?q=maths&status=live&cat=34&tab=personas&page=3'));
+check('a tree link keeps search, filters and the list, resets paging, closes the card', () =>
+  expect(selectionHref(s.params, s.config, s.selection, { cat: 7 }), '/admin/taxonomy?q=maths&status=live&cat=7&tab=personas'));
 check('a sector link sets sec beside its category', () => expect(selectionHref(s.params, s.config, s.selection, { sec: 42 }), '/admin/taxonomy?q=maths&status=live&cat=34&sec=42'));
 check('"All categories" clears the selection', () => expect(selectionHref(s.params, s.config, s.selection, { cat: null }), '/admin/taxonomy?q=maths&status=live'));
 check('switching to the sectors tab keeps the search, drops persona filters', () =>
@@ -90,12 +90,39 @@ check('a category can be picked by slug, and the URL keeps its id', () =>
   edu.selection.cat === 34 && expect(withOpen(edu.params, edu.config, null), '/admin/taxonomy?cat=34&tab=tutors'));
 check('a category’s own tabs need one picked category, not a sector or the top level', () =>
   at({ cat: '34', tab: 'agent' }).selection.tab === 'agent' && at({ sec: '42', tab: 'agent' }).selection.tab === 'personas' && at({ tab: 'brief' }).selection.tab === 'personas');
-check('the hub tabs only for the category that carries the hub', () =>
-  at({ cat: '34', tab: 'families' }).selection.tab === 'families' && at({ cat: '7', tab: 'families' }).selection.tab === 'personas');
+check('the hub tabs only for the category that carries the hub (elsewhere: the category’s default)', () =>
+  at({ cat: '34', tab: 'families' }).selection.tab === 'families' && at({ cat: '7', tab: 'families' }).selection.tab === 'agent');
 check('from a category tab, "All categories" goes back to the bot list', () =>
   expect(selectionHref(edu.params, edu.config, edu.selection, { cat: null }), '/admin/taxonomy'));
 check('moving to another category keeps the tab it was on', () =>
   expect(selectionHref(at({ cat: '34', tab: 'audiences' }).params, at({ cat: '34', tab: 'audiences' }).config, at({ cat: '34', tab: 'audiences' }).selection, { cat: 7 }), '/admin/taxonomy?cat=7&tab=audiences'));
+
+console.log('A category opens on its AI agent (2026-11-16)');
+const top = at({});
+check('a picked category with no tab is its agent, and the URL stays short', () => {
+  const c = at({ cat: '34' });
+  return c.selection.tab === 'agent' && expect(withOpen(c.params, c.config, null), '/admin/taxonomy?cat=34');
+});
+check('a sector and the top level still open on the bot list', () => at({ sec: '42' }).selection.tab === 'personas' && top.selection.tab === 'personas');
+check('the category’s bot list says so in the URL', () => {
+  const c = at({ cat: '34', tab: 'personas' });
+  return c.selection.tab === 'personas' && expect(withOpen(c.params, c.config, null), '/admin/taxonomy?cat=34&tab=personas');
+});
+check('a link with a search, filter or card means the list, not the agent (old Personas links)', () =>
+  at({ cat: '34', q: 'maths' }).selection.tab === 'personas' && at({ cat: '34', status: 'draft' }).selection.tab === 'personas' && at({ cat: '34', open: 'persona-5' }).selection.tab === 'personas');
+check('from "All categories", clicking a category opens its agent', () => expect(selectionHref(top.params, top.config, top.selection, { cat: 7 }), '/admin/taxonomy?cat=7'));
+check('from a category’s agent, the Bots tab and back', () => {
+  const a = at({ cat: '34' });
+  const b = at({ cat: '34', tab: 'personas' });
+  return (
+    expect(selectionHref(a.params, a.config, a.selection, { tab: 'personas' }), '/admin/taxonomy?cat=34&tab=personas') === true &&
+    expect(selectionHref(b.params, b.config, b.selection, { tab: 'agent' }), '/admin/taxonomy?cat=34')
+  );
+});
+check('from one category’s agent to another’s', () => {
+  const a = at({ cat: '34' });
+  return expect(selectionHref(a.params, a.config, a.selection, { cat: 7 }), '/admin/taxonomy?cat=7');
+});
 
 console.log('Previous / Next');
 check('in the middle, both; at the ends, one; not on the page, none', () => {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { parseSuggestions } from '@/lib/persona/prompt';
@@ -40,7 +41,27 @@ export type ChatWindowProps = {
   locale?: string;
   /** True when ElevenLabs Scribe is configured, which makes dictation work outside Chrome. */
   serverTranscription?: boolean;
+  /** Clicking a suggestion sends it at once instead of filling the box — the category agent's next steps. */
+  sendOnPick?: boolean;
+  /** Filled with a function that sends a message — so a plan beside the chat can say "draft this one". */
+  sendRef?: MutableRefObject<((text: string) => void) | null>;
+  /** Tools the model may call, by name, with what to say while each runs; tool calls are shown only when given. */
+  toolLabels?: Record<string, { running: string; done: string }>;
 };
+
+type ToolPart = { type: string; state?: string; toolCallId?: string };
+
+/** The tool calls of a message, in order: `tool-<name>` parts. */
+function toolsOf(message: UIMessage): { name: string; done: boolean; failed: boolean; key: string }[] {
+  return (message.parts as ToolPart[])
+    .filter((part) => part.type.startsWith('tool-'))
+    .map((part, index) => ({
+      name: part.type.slice('tool-'.length),
+      done: part.state === 'output-available' || part.state === 'output-error',
+      failed: part.state === 'output-error',
+      key: part.toolCallId ?? String(index),
+    }));
+}
 
 /** Image parts of a message — uploads on the way in, generated images on the way back. */
 function imagesOf(message: UIMessage): { url: string; mediaType: string }[] {
@@ -72,6 +93,9 @@ export function ChatWindow({
   apiPath = '/api/chat',
   apiBody,
   onFinish,
+  sendOnPick = false,
+  sendRef,
+  toolLabels,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('');
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -118,9 +142,23 @@ export function ChatWindow({
   }, [messages, busy]);
 
   function pick(value: string) {
+    if (sendOnPick && !busy) {
+      void sendMessage({ text: value });
+      return;
+    }
     setDraft(value);
     inputRef.current?.focus();
   }
+
+  useEffect(() => {
+    if (!sendRef) return;
+    sendRef.current = (text: string) => {
+      if (!busy) void sendMessage({ text });
+    };
+    return () => {
+      sendRef.current = null;
+    };
+  }, [sendRef, sendMessage, busy]);
 
   // Appends the messages a generation just wrote. `useCallback` because it's
   // a dependency of the generator's effect — an unstable identity there would
@@ -173,19 +211,42 @@ export function ChatWindow({
           layout.bubbleStyle === 'document' && 'mx-auto w-full max-w-3xl',
         )}
       >
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            role={message.role === 'user' ? 'user' : 'assistant'}
-            text={message.role === 'user' ? textOf(message) : parseSuggestions(textOf(message)).text}
-            chatId={chatId}
-            images={imagesOf(message)}
-            layout={layout}
-            canCopy={capabilities.copy}
-            canSpeak={capabilities.voiceOut && message.role !== 'user'}
-            onChoice={pick}
-          />
-        ))}
+        {messages.map((message) => {
+          const text = message.role === 'user' ? textOf(message) : parseSuggestions(textOf(message)).text;
+          const tools = toolLabels && message.role === 'assistant' ? toolsOf(message) : [];
+          return (
+            <div key={message.id} className="space-y-2">
+              {tools.length ? (
+                <ul className="flex flex-wrap gap-1.5" aria-label="What the agent did">
+                  {tools.map((t) => (
+                    <li
+                      key={t.key}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]',
+                        t.failed ? 'border-rose-500/30 text-rose-400' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400',
+                      )}
+                    >
+                      {t.done ? <Check className="size-3" /> : <Loader2 className="size-3 animate-spin" />}
+                      {t.done ? (toolLabels?.[t.name]?.done ?? t.name) : (toolLabels?.[t.name]?.running ?? t.name)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {text || imagesOf(message).length || !tools.length ? (
+                <MessageBubble
+                  role={message.role === 'user' ? 'user' : 'assistant'}
+                  text={text}
+                  chatId={chatId}
+                  images={imagesOf(message)}
+                  layout={layout}
+                  canCopy={capabilities.copy}
+                  canSpeak={capabilities.voiceOut && message.role !== 'user'}
+                  onChoice={pick}
+                />
+              ) : null}
+            </div>
+          );
+        })}
 
         {showStarters ? (
           <SuggestionChips suggestions={suggestions} layout={layout} onPick={pick} />
