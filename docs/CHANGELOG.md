@@ -34,7 +34,17 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #95 · `pending` — A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time
+### #96 · `pending` — Release notes for v2026.11.16 take in the category agent's chat: #88–#95, tag moved to #95
+
+Docs only. #94 and #95 were made the same day after v2026.11.16 was tagged at #93, so they join that
+release rather than wait in "Not released yet": the title names the agent you talk to, the summary gains
+the scan → plan → one-draft-at-a-time flow, the table #94–#95, the range `#88–#95` → `692e595`, and "Not
+checked yet" now says what is true — the key works, a whole agent session has not been run. The tag
+`v2026.11.16` moves to `692e595` and the GitHub Release carries the same text.
+
+📄 docs/RELEASES.md
+
+### #95 · `692e595` — A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time
 
 Owner, 2026-11-16, after adding an Anthropic key for Freelee: in every category, the chat with its agent
 as the default screen; each agent scans the audiences and its category, then helps, one by one, with the
