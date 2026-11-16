@@ -104,7 +104,7 @@ Only the adaptations are saved, and you can untick them later.
 ## In the admin: the homeschool hub
 
 Homeschooling lives in the **Education and Training** category: **Admin → Categories → Education and
-Training**. Next to the field's usual tabs (Bots, Sectors, Audiences, AI agent, Brief) it has three of
+Training**. Next to the field's usual tabs (AI agent, Bots, Sectors, Audiences, Brief) it has three of
 its own:
 
 - **Tutors** — every curriculum tutor, with the key stages and subjects it teaches and whether it is live.

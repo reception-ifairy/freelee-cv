@@ -11,10 +11,13 @@
  * - `cat` — a category id (or its slug, for stable links), or `none` for
  *   personas filed under no category. Since 2026-11-16 the categories are the
  *   platform's pillars, and a picked category is its workspace;
- * - `tab` — what the right-hand side shows. Lists: `personas` (default) and
- *   `sectors`. For a picked category also `audiences`, `agent` (its AI
- *   agent) and `brief`; for the category with the homeschool hub
- *   (category-extras.ts) `tutors`, `curriculum` and `families`;
+ * - `tab` — what the right-hand side shows. Lists: `personas` and `sectors`.
+ *   For a picked category also `agent` (its AI agent — the category's
+ *   default screen since 2026-11-16), `audiences` and `brief`; for the
+ *   category with the homeschool hub (category-extras.ts) `tutors`,
+ *   `curriculum` and `families`. Everywhere else `personas` is the default.
+ *   The default is left out of the URL, so `?cat=34` is the agent and the
+ *   category's bot list is `?cat=34&tab=personas`;
  * - `sec` — a sector id (its category is implied, and corrected if `cat` disagrees);
  * - `q`, filters, `sort`, `page`, `per` — the list (src/lib/admin/list-query.ts);
  * - `open` — the card in the sheet: `persona-123` or `sector-42`.
@@ -155,7 +158,11 @@ export function parseBrowser(
     if (byIdOrSlug) cat = byIdOrSlug.id;
   }
 
-  const tab = validTab(first(searchParams.tab), tree, cat, sec);
+  // A link that carries a search, a filter, a page or a card means the list,
+  // even where the node's default is the agent (old Personas links, cards).
+  const listKeys = ['q', 'sort', 'page', 'open', ...PERSONA_LIST.filters.map((f) => f.key)];
+  const rawTab = first(searchParams.tab) || (listKeys.some((key) => first(searchParams[key])) ? 'personas' : '');
+  const tab = validTab(rawTab, tree, cat, sec);
   const config = tab === 'sectors' ? SECTOR_LIST : PERSONA_LIST;
   const params = parseListParams(searchParams, config);
   params.kept = keptFor({ cat, sec, tab });
@@ -171,17 +178,27 @@ export function parseBrowser(
  */
 function validTab(raw: string, tree: Tree, cat: CategorySelection, sec: number | null): BrowserTab {
   const picked = typeof cat === 'number' && sec === null ? tree.categories.find((c) => c.id === cat) : undefined;
+  if (raw === 'personas') return 'personas';
   if (raw === 'sectors' && sec === null && cat !== 'none') return 'sectors';
   if ((CATEGORY_TABS as readonly string[]).includes(raw) && picked) return raw as BrowserTab;
   if ((HUB_TABS as readonly string[]).includes(raw) && picked && extrasFor(picked.slug).homeschoolHub) return raw as BrowserTab;
-  return 'personas';
+  return defaultTab(picked ? cat : null, sec);
+}
+
+/**
+ * What a node opens on when the URL names no tab: a picked category opens on
+ * its AI agent (owner, 2026-11-16: "the chat with the category's agent as the
+ * default screen of every category"); everything else on the bot list.
+ */
+export function defaultTab(cat: CategorySelection, sec: number | null): BrowserTab {
+  return typeof cat === 'number' && sec === null ? 'agent' : 'personas';
 }
 
 function keptFor({ cat, sec, tab }: Selection): Record<string, string> {
   const kept: Record<string, string> = {};
   if (cat !== null) kept.cat = String(cat);
   if (sec !== null) kept.sec = String(sec);
-  if (tab !== 'personas') kept.tab = tab;
+  if (tab !== defaultTab(cat, sec)) kept.tab = tab;
   return kept;
 }
 
@@ -201,6 +218,13 @@ export function withOpen(params: ListParams, config: ListConfig, open: OpenRef |
 export function selectionHref(params: ListParams, config: ListConfig, current: Selection, next: Partial<Selection>): string {
   const target: Selection = { ...current, ...next };
   if (next.cat !== undefined && next.sec === undefined) target.sec = null;
+  // Another category, and no tab asked for: a search or filter keeps its list;
+  // a category's own tab (Audiences, Brief…) stays; otherwise the new node's
+  // default — for a category, its agent.
+  if (next.cat !== undefined && next.tab === undefined && isListTab(current.tab)) {
+    const searching = Boolean(params.q) || Object.keys(params.filters).length > 0;
+    if (!searching) target.tab = defaultTab(target.cat, target.sec);
+  }
   // A category's own tabs need one picked category; the list is the fallback.
   // (Which category has the hub is checked when the URL is read.)
   if (!isListTab(target.tab) && (typeof target.cat !== 'number' || target.sec !== null)) target.tab = 'personas';

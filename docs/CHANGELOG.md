@@ -34,7 +34,39 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #94 · `pending` — Release notes for v2026.11.16: the day's title, the last hash, what was not checked
+### #95 · `pending` — A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time
+
+Owner, 2026-11-16, after adding an Anthropic key for Freelee: in every category, the chat with its agent
+as the default screen; each agent scans the audiences and its category, then helps, one by one, with the
+first bot drafts.
+
+- **Default screen.** `?cat=34` is the agent now (`defaultTab` in `browser.ts`), the first tab; the
+  category's bot list is `?cat=34&tab=personas`. A link carrying a search, filter, page or card still
+  opens the list (old Personas links), and a search keeps its list while clicking through the tree.
+- **Opens by itself.** No "Open the agent" button: the thread is opened (or created — free, only
+  messages cost) as the category is.
+- **Scans** (`agent-scan.ts`, read-only tools): `scan_category` — sectors with ids, risk and B2C/B2B/B2G
+  suitability, every bot with its audience groups, the gaps (empty sectors, a well-suited audience type
+  nobody serves, bots with no sector, bots not live); `scan_audiences` — the seventy groups (or one type):
+  needs, tone, cost of a wrong answer, whether the field links it and why, bots here and platform-wide.
+  `read_bot` reads one bot of the field in full.
+- **Plan** (`agent-plan.ts`): `save_plan` stores the ordered first bots in the thread — a working list,
+  not a catalogue change. Shown beside the chat with To do / Waiting for you / Drafted / Skipped; *Draft
+  this*, *Skip*, *Draft the next bot*. Saving again keeps what is proposed or drafted. A bot proposal
+  names its plan item; approving marks it drafted, rejecting puts it back.
+- **Bots carry their audience groups.** A bot proposal may name the groups it is for (one audience type;
+  the type follows the groups); the approved draft gets those instead of all the field's groups.
+- **The chat** sends a suggestion on click, shows what the agent is doing ("Scanning the audiences…"),
+  and the agent ends each reply with its next steps as buttons.
+- **Opus 5.5 specifics:** earlier turns go back without their thinking blocks (they are bound to the
+  prefix, which changes here on purpose — an approved draft joins the system prompt), and the newest
+  message is a second cache breakpoint so the scans are not paid for twice. The stored transcript keeps
+  every step's text, not only the last.
+- Taxonomy header buttons wrap on a phone (they overflowed at 390px).
+
+🧪 `taxonomy:verify-browser` (+7), `taxonomy:verify-agent` (+10) · 📄 docs/57-admin-navigation.md, handbook *Taxonomy*, *Welcome*, *Child profiles*, docs/RELEASES.md
+
+### #94 · `bc154ad` — Release notes for v2026.11.16: the day's title, the last hash, what was not checked
 
 Docs only. The v2026.11.16 section gets its full title (the pillars *and* one layout for the whole
 admin), its range and tag (`#88–#93` → `6860ddb`), the Integrations wording where it still said

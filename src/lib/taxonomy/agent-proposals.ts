@@ -1,7 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { convertedPersonaSchema, type ConvertedPersona } from '@/lib/persona/convert';
-import { isAudienceSegmentCode } from '@/lib/persona/audience-segments';
+import { AUDIENCE_SEGMENTS, isAudienceSegmentCode } from '@/lib/persona/audience-segments';
 
 /**
  * What the category agent may propose, and how a proposal is checked before
@@ -30,7 +30,11 @@ export const proposeInputSchema = z.object({
   summary: z.string().min(5).max(300).describe('One sentence for the owner: what this changes and why.'),
   sectorId: z.number().int().optional().describe('bot: the sector to file it under (optional). sector_description: the sector to rewrite (required).'),
   description: z.string().optional().describe('sector_description only: the new description, 1-3 sentences.'),
-  audienceCodes: z.array(z.string()).optional().describe('audiences only: segment codes such as B2C-CYP-08.'),
+  audienceCodes: z
+    .array(z.string())
+    .optional()
+    .describe('audiences: segment codes to link to this field, such as B2C-CYP-08. bot: the groups this bot is for (all of its own audience type).'),
+  planItemId: z.string().optional().describe('bot: the planItemId of the plan item this bot drafts, when it is one.'),
   note: z.string().optional().describe('audiences only: why these people matter to this field, in one or two sentences.'),
   persona: z
     .record(z.string(), z.unknown())
@@ -42,7 +46,7 @@ export const proposeInputSchema = z.object({
 export type ProposeInput = z.infer<typeof proposeInputSchema>;
 
 export type ProposalPayload =
-  | { kind: 'bot'; sectorId: number | null; persona: ConvertedPersona }
+  | { kind: 'bot'; sectorId: number | null; persona: ConvertedPersona; segments?: string[]; planItemId?: string }
   | { kind: 'sector_description'; sectorId: number; description: string }
   | { kind: 'audiences'; codes: string[]; note: string | null };
 
@@ -70,7 +74,27 @@ export function checkProposal(input: ProposeInput, ctx: ProposalContext): { ok: 
     if (input.sectorId !== undefined && !ctx.sectorIds.includes(input.sectorId)) {
       return { ok: false, error: `Sector ${input.sectorId} is not in this field. Use one of: ${ctx.sectorIds.join(', ') || 'none'}, or leave it out.` };
     }
-    return { ok: true, payload: { kind: 'bot', sectorId: input.sectorId ?? null, persona: parsed.data } };
+    // The groups the bot is for: known codes, all of the bot's own audience type
+    // (a group of another type is stored but never reaches the prompt, #77).
+    const segments = [...new Set((input.audienceCodes ?? []).map((c) => c.trim().toUpperCase()))];
+    const unknownSegments = segments.filter((c) => !isAudienceSegmentCode(c));
+    if (unknownSegments.length) return { ok: false, error: `Unknown audience codes: ${unknownSegments.join(', ')}.` };
+    const type = parsed.data.audienceType ?? (segments[0] ? AUDIENCE_SEGMENTS[segments[0]].audienceType : undefined);
+    const otherType = segments.filter((c) => type && AUDIENCE_SEGMENTS[c].audienceType !== type);
+    if (otherType.length) {
+      return { ok: false, error: `${otherType.join(', ')} are not ${type} groups; a bot serves one audience type. Drop them or change persona.audienceType.` };
+    }
+    const persona = type && !parsed.data.audienceType ? { ...parsed.data, audienceType: type } : parsed.data;
+    return {
+      ok: true,
+      payload: {
+        kind: 'bot',
+        sectorId: input.sectorId ?? null,
+        persona,
+        ...(segments.length ? { segments } : {}),
+        ...(input.planItemId ? { planItemId: input.planItemId } : {}),
+      },
+    };
   }
 
   if (input.kind === 'sector_description') {

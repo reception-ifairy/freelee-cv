@@ -1,7 +1,7 @@
 import 'server-only';
-import { asc, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { conversations, personaCategories, personas, personaVersions, sectors } from '@/db/schema';
+import { conversations } from '@/db/schema';
 import { getSettingString } from '@/lib/settings';
 import { resolveProviderKeys } from '@/lib/ai/registry';
 import { hubTutors } from '@/lib/curriculum/hub-queries';
@@ -11,6 +11,8 @@ import { categoryBrief, briefForModel } from './brief';
 import { extrasFor } from './category-extras';
 import { AGENT_DEFAULT_MODEL, AGENT_MODELS, ZERO_USAGE, addUsage, estimateUsd, type AgentUsage } from './agent-pricing';
 import type { Proposal } from './agent-proposals';
+import type { PlanItem } from './agent-plan';
+import { categoryBots } from './agent-scan';
 
 /**
  * The category agent (owner, 2026-11-16): every category has an AI agent on
@@ -34,9 +36,10 @@ export async function categoryAgentModel(): Promise<{ modelId: string; label: st
   };
 }
 
-export type AgentThreadState = { proposals: Proposal[]; usage: AgentUsage; usd: number | null; modelId: string };
+export type AgentThreadState = { proposals: Proposal[]; plan: PlanItem[]; usage: AgentUsage; usd: number | null; modelId: string };
 
-type ThreadSettings = { categoryId?: number; proposals?: Proposal[]; usage?: AgentUsage; usageModel?: string };
+/** The thread's own state: the plan of first bots (agent-plan.ts) and the proposals sit beside the usage. */
+export type ThreadSettings = { categoryId?: number; proposals?: Proposal[]; plan?: PlanItem[]; usage?: AgentUsage; usageModel?: string };
 
 export async function readThread(conversationId: string): Promise<ThreadSettings | null> {
   const [row] = await db
@@ -68,6 +71,7 @@ export function threadState(settings: ThreadSettings, modelId: string): AgentThr
   const usage = settings.usage ?? ZERO_USAGE;
   return {
     proposals: settings.proposals ?? [],
+    plan: settings.plan ?? [],
     usage,
     // Priced at the model that ran, when it is known; usage from mixed models is priced at the current one.
     usd: estimateUsd(settings.usageModel ?? modelId, usage),
@@ -85,31 +89,20 @@ export async function recordUsage(conversationId: string, modelId: string, usage
  * sector, its kind), the sectors with no bot, and — on the category with the
  * homeschool hub — the tutors and the subject × key stage gaps.
  */
-export async function agentContext(categoryId: number): Promise<{ text: string; sectorIds: number[]; linkedCodes: string[] } | null> {
+export async function agentContext(
+  categoryId: number,
+): Promise<{ text: string; sectorIds: number[]; sectors: { id: number; name: string }[]; linkedCodes: string[] } | null> {
   const brief = await categoryBrief(categoryId);
   if (!brief) return null;
 
-  const bots = await db
-    .select({
-      id: personas.id,
-      name: personas.name,
-      tagline: personas.tagline,
-      isActive: personas.isActive,
-      sectorId: personas.sectorId,
-      sectorName: sectors.name,
-      audienceType: sql<string | null>`${personaVersions.audienceType}::text`,
-    })
-    .from(personaCategories)
-    .innerJoin(personas, eq(personas.id, personaCategories.personaId))
-    .leftJoin(personaVersions, eq(personaVersions.id, personas.currentVersionId))
-    .leftJoin(sectors, eq(sectors.id, personas.sectorId))
-    .where(eq(personaCategories.categoryId, categoryId))
-    .orderBy(sql`${personas.isActive} desc`, asc(personas.name));
+  // The live version, or the draft while there is none: the agent's own drafts have only a draft.
+  const bots = await categoryBots(categoryId);
+  const sectorName = (id: number | null) => brief.sectors.find((s) => s.id === id)?.name ?? null;
 
   const lines: string[] = [briefForModel(brief), '', '## The bots already in this field'];
   if (bots.length === 0) lines.push('None yet.');
   for (const b of bots) {
-    lines.push(`- ${b.name} (${b.isActive ? 'live' : 'not live'}; ${b.audienceType ?? 'no audience type'}; sector: ${b.sectorName ?? 'none'})${b.tagline ? ` — ${b.tagline}` : ''}`);
+    lines.push(`- ${b.name} (${b.isActive ? 'live' : 'not live'}; ${b.audienceType ?? 'no audience type'}; sector: ${sectorName(b.sectorId) ?? 'none'})${b.tagline ? ` — ${b.tagline}` : ''}`);
   }
 
   // Counted from the bots above: the brief itself carries no per-sector counts.
@@ -137,5 +130,10 @@ export async function agentContext(categoryId: number): Promise<{ text: string; 
     );
   }
 
-  return { text: lines.join('\n'), sectorIds: brief.sectors.map((s) => s.id), linkedCodes: brief.audiences.map((a) => a.code) };
+  return {
+    text: lines.join('\n'),
+    sectorIds: brief.sectors.map((s) => s.id),
+    sectors: brief.sectors.map((s) => ({ id: s.id, name: s.name })),
+    linkedCodes: brief.audiences.map((a) => a.code),
+  };
 }

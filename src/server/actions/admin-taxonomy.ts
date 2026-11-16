@@ -19,6 +19,7 @@ import { convertedPersonaSchema } from '@/lib/persona/convert';
 import { categoryBrief } from '@/lib/taxonomy/brief';
 import { categoryAgentModel, readThread, threadState, updateThread, type AgentThreadState } from '@/lib/taxonomy/category-agent';
 import { decide, type Proposal } from '@/lib/taxonomy/agent-proposals';
+import { afterDecision, updatePlanItem } from '@/lib/taxonomy/agent-plan';
 import type { ActionState } from './auth';
 
 /** Codes are validated against the TypeScript catalogue — there is no FK to check them. */
@@ -224,7 +225,14 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
  * version; audience segments only of its own kind; the field's mandatory
  * safeguards. Returns null when the category is gone.
  */
-async function createDraftPersona(adminId: string, categoryId: number, sectorId: number | null, draft: z.infer<typeof convertedPersonaSchema>): Promise<number | null> {
+async function createDraftPersona(
+  adminId: string,
+  categoryId: number,
+  sectorId: number | null,
+  draft: z.infer<typeof convertedPersonaSchema>,
+  /** The groups the agent wrote the bot for; without them, the field's groups of the bot's type. */
+  segments?: string[],
+): Promise<number | null> {
   const brief = await categoryBrief(categoryId);
   if (!brief) return null;
 
@@ -269,7 +277,7 @@ async function createDraftPersona(adminId: string, categoryId: number, sectorId:
         audienceType,
         // Only the field's audiences of this persona's own kind (2026-11-14): a B2C tutor drafted in
         // Education used to inherit the schools and universities the field is also sold to.
-        audienceSegments: brief.audiences.map((a) => a.code).filter((code) => AUDIENCE_SEGMENTS[code]?.audienceType === audienceType),
+        audienceSegments: (segments?.length ? segments : brief.audiences.map((a) => a.code)).filter((code) => AUDIENCE_SEGMENTS[code]?.audienceType === audienceType),
         guardrails: brief.guardrails.filter((g) => g.isMandatory).map((g) => g.code),
         interactionStyle: draft.interactionStyle ?? null,
         approachToUnknown: draft.approachToUnknown ?? null,
@@ -322,7 +330,7 @@ export async function decideProposalAction(
   if (decision === 'approved') {
     const payload = proposal.payload;
     if (payload.kind === 'bot') {
-      const created = await createDraftPersona(admin.id, categoryId, payload.sectorId, payload.persona);
+      const created = await createDraftPersona(admin.id, categoryId, payload.sectorId, payload.persona, payload.segments);
       if (created === null) return { error: 'That category is no longer here.' };
       personaId = created;
     } else if (payload.kind === 'sector_description') {
@@ -351,7 +359,8 @@ export async function decideProposalAction(
 
   const result = await updateThread(conversationId, (s) => {
     const next = decide(s.proposals ?? [], proposalId, decision, personaId ? { personaId } : {});
-    return next.ok ? { ...s, proposals: next.proposals } : s;
+    // The plan item this bot drafts: drafted on approval, back to "todo" on rejection.
+    return next.ok ? { ...s, proposals: next.proposals, plan: afterDecision(s.plan ?? [], proposalId, decision, personaId) } : s;
   });
   void result;
 
@@ -361,4 +370,19 @@ export async function decideProposalAction(
     success: decision === 'rejected' ? 'Rejected.' : personaId ? 'Approved — the bot is saved as an inactive draft.' : 'Approved and applied.',
     personaId,
   };
+}
+
+/**
+ * Skip a plan item, or bring a skipped one back (owner's own edit of the
+ * plan; the agent reads the plan at the start of every turn).
+ */
+export async function setPlanItemStatusAction(conversationId: string, itemId: string, status: 'skipped' | 'todo'): Promise<ActionState> {
+  await requireAdmin();
+  const settings = await readThread(conversationId);
+  if (!settings) return { error: 'That agent thread is no longer here.' };
+  const item = (settings.plan ?? []).find((p) => p.id === itemId);
+  if (!item) return { error: 'That plan item is no longer here.' };
+  if (item.status === 'proposed' || item.status === 'drafted') return { error: `That item is already ${item.status}.` };
+  await updateThread(conversationId, (s) => ({ ...s, plan: updatePlanItem(s.plan ?? [], itemId, { status }) }));
+  return { success: status === 'skipped' ? 'Skipped.' : 'Back on the plan.' };
 }
