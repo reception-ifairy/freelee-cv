@@ -11,38 +11,9 @@ These notes start on 2026-11-11. Earlier history is in the CHANGELOG. The same t
 
 ---
 
-## Not released yet
+## v2026.11.16 — The categories are the pillars, each with an AI agent you talk to, and one layout for the whole admin
 
-Updates #94–#95 · the next release tags them
-
-**In short**
-
-- **A category opens on its AI agent.** Click a category and you are in a chat with its agent; Bots,
-  Sectors, Audiences and Brief are the tabs beside it.
-- **The agent scans before it advises.** *Scan … and its audiences, then plan the first bots* makes it read
-  the field (sectors, bots, gaps) and the seventy audience groups (what each needs, whether the field
-  links it, how many bots already serve it), then save a **plan of the first bots**, in order, beside the
-  chat.
-- **Then one bot at a time.** *Draft the next bot*: the agent asks at most two questions, writes the bot in
-  full with the groups it is for, and puts it on your list. Approve makes it an inactive draft and ticks it
-  off the plan; Reject puts it back. You can skip any item.
-
-| # | Commit | What |
-|---|---|---|
-| #94 | `bc154ad` | Release notes for v2026.11.16: the day's title, the last hash, what was not checked |
-| #95 | `pending` | A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time |
-
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Welcome*, *Child profiles*.
-
-**Not checked yet:** one short paid call proved the Anthropic key and Claude Opus 5.5 work through
-Freelee's code; a whole session (scan → plan → draft → approve) has not been run — that is the owner's
-first use.
-
----
-
-## v2026.11.16 — The categories are the pillars, and one layout for the whole admin
-
-Updates #88–#93 · tag `v2026.11.16` → `6860ddb`
+Updates #88–#95 · tag `v2026.11.16` → `692e595`
 
 **In short**
 
@@ -58,6 +29,13 @@ Updates #88–#93 · tag `v2026.11.16` → `6860ddb`
   in it, and proposes new bots, sector descriptions and audience groups; nothing changes until you
   approve (a new bot is always an inactive draft). The cost of each conversation is on screen. It
   needs an Anthropic key in Settings → Integrations.
+- **A category opens on its AI agent** — a chat, with Bots, Sectors, Audiences and Brief as the tabs
+  beside it. *Scan … and its audiences, then plan the first bots* makes it read the field (sectors, bots,
+  gaps) and the seventy audience groups (what each needs, whether the field links it, how many bots
+  already serve it), then save a **plan of the first bots**, in order, beside the chat. *Draft the next
+  bot*: it asks at most two questions, writes the bot in full with the groups it is for, and puts it on
+  your list. Approve makes it an inactive draft and ticks it off the plan; Reject puts it back. Any item
+  can be skipped, and the buttons under each reply are its suggested next steps.
 - **One list of bots, in the taxonomy's layout.** *Personas* and *Drafts* open the taxonomy browser
   (Drafts is it filtered to bots that are not live), and a bot's card can publish, feature, duplicate
   and delete it. **Prompt modifiers** use the same layout: types on the left, the list, a card.
@@ -81,12 +59,15 @@ Updates #88–#93 · tag `v2026.11.16` → `6860ddb`
 | #91 | `6e1397d` | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
 | #92 | `2d62468` | Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card |
 | #93 | `6860ddb` | Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card |
+| #94 | `bc154ad` | Release notes for v2026.11.16: the day's title, the last hash, what was not checked |
+| #95 | `692e595` | A category opens on its AI agent: it scans the field and the audiences, saves a plan of the first bots, and drafts them one at a time |
 
 **Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*, *Knowledgebase*, *AI models*, *Tutors that teach from the curriculum*.
 
-**Not checked yet:** the category agent has not answered a single question — there is no Anthropic
-key, so no paid call was made. Lists with no rows on this site (orders, leads, marketplace listings,
-plans, passes, showcase, external sources, rooms, projects) were seen only empty.
+**Not checked yet:** a whole session with the category agent (scan → plan → draft → approve) has not
+been run — that is the owner's first use; one short paid call proved the Anthropic key and Claude Opus 5.5
+work through Freelee's code. Lists with no rows on this site (orders, leads, marketplace listings, plans,
+passes, showcase, external sources, rooms, projects) were seen only empty.
 
 **Changed outside git:** nothing.
 
