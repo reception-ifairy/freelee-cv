@@ -377,8 +377,12 @@ export type BrowserOptions = {
   rail?: BrowserRailLink[];
   /** The rail's label for screen readers and its heading. */
   railLabel?: string;
+  /** Group labels always in the rail, in this order, even at 0 (a status nobody is in yet is still a place to look). */
+  groups?: string[];
   /** Above the table: a create form, a note. */
   before?: React.ReactNode;
+  /** Below the table: pagination. */
+  after?: React.ReactNode;
 };
 
 /**
@@ -396,7 +400,9 @@ function ResourceBrowser({
   groupBy = firstBadge,
   rail,
   railLabel = 'Groups',
+  groups,
   before,
+  after,
 }: {
   items: ResourceItem[];
   empty: string | EmptyStateProps;
@@ -419,7 +425,7 @@ function ResourceBrowser({
     return query ? `${pathname}?${query}` : pathname;
   };
 
-  const counts = new Map<string, number>();
+  const counts = new Map<string, number>((groups ?? []).map((label) => [label, 0]));
   for (const item of items) counts.set(groupOf(item), (counts.get(groupOf(item)) ?? 0) + 1);
   // With page-owned rail links the rows are already the selection; `group` is not used.
   const visible = group && !rail ? items.filter((item) => groupOf(item) === group) : items;
@@ -427,6 +433,7 @@ function ResourceBrowser({
   const index = visible.findIndex((item) => String(item.id) === open);
   const current = index >= 0 ? visible[index] : null;
   const step = (to: ResourceItem | undefined) => (to ? () => router.replace(hrefWith({ open: String(to.id) }), { scroll: false }) : undefined);
+  const itemHref = (id: ResourceItem['id']) => items.find((i) => i.id === id)?.href;
   const close = () => {
     router.replace(hrefWith({ open: null }), { scroll: false });
     // Back on the row that was open, as in the taxonomy browser.
@@ -485,6 +492,7 @@ function ResourceBrowser({
         ) : (
           <ResourceTable items={rows} badgeHeader={badgeHeader} dense selectedId={current?.id ?? null} openInPlace />
         )}
+        {after}
       </div>
 
       {current ? (
@@ -514,7 +522,8 @@ function ResourceBrowser({
             ) : undefined
           }
         >
-          <ItemCard item={current} />
+          {/* An action that only opens the item's own page is the footer's Open already. */}
+          <ItemCard item={{ ...current, actions: current.actions?.filter((action) => !action.href || action.href !== itemHref(current.id)) }} />
         </Sheet>
       ) : null}
     </div>

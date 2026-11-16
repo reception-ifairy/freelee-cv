@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { promptModifiers } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
-import { Disclosure } from '@/components/ui/disclosure';
+import { FormFold } from '@/components/admin/form-fold';
 import { ModifiersList } from './modifiers-list';
 import { Input, Textarea, Label, Checkbox, Hint } from '@/components/ui/field';
 import { saveModifierAction } from '@/server/actions/admin';
@@ -47,9 +47,8 @@ export default async function AdminModifiersPage({
         kind={active}
         rail={rail}
         form={
-          <div className="rounded-card border hairline px-2">
-            <Disclosure title={`New ${active} modifier`}>
-              <InlineForm action={saveModifierAction} title={`New ${active} modifier`}>
+          <FormFold title={`New ${active} modifier`} defaultOpen={rows.length === 0}>
+              <InlineForm bare action={saveModifierAction} title={`New ${active} modifier`}>
                 <input type="hidden" name="type" value={active} />
                 <div>
                   <Label htmlFor="name">Name *</Label>
@@ -77,8 +76,7 @@ export default async function AdminModifiersPage({
                   <Checkbox name="isDefault" /> Default for this type
                 </label>
               </InlineForm>
-            </Disclosure>
-          </div>
+          </FormFold>
         }
       />
     </div>

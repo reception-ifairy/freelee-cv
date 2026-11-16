@@ -5,7 +5,6 @@ import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { creditPacks, orders } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
 import { PacksList, type PackRow } from './packs-list';
 import { formatMoney } from '@/lib/utils';
 
@@ -22,7 +21,6 @@ export default async function AdminPacksPage() {
   // Drizzle rendered both sides unqualified, so `where "pack_id" = "id"` bound
   // `id` to orders.id (text) instead of credit_packs.id (integer) and Postgres
   // refused with "operator does not exist: integer = text".
-  const view = await getAdminView('packs');
   const rows = await db
     .select({
       id: creditPacks.id,
@@ -64,7 +62,7 @@ export default async function AdminPacksPage() {
         }
       />
 
-      <PacksList rows={items} view={view} />
+      <PacksList rows={items} />
 
     </div>
   );

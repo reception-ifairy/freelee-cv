@@ -3,7 +3,6 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { orders, users } from '@/db/schema';
 import { PageHeader, Stat } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
 import { SalesList, type OrderRow } from './sales-list';
 import { formatMoney } from '@/lib/utils';
 
@@ -45,8 +44,6 @@ export default async function AdminSalesPage() {
   // Sales default to the table: these rows exist to be compared with each
   // other, and a card per order is far more scrolling for the same numbers.
   // The grid is still one click away.
-  const view = await getAdminView('sales', 'list');
-
   const items: OrderRow[] = rows.map((order) => ({
     id: order.id,
     reference: order.reference,
@@ -69,7 +66,7 @@ export default async function AdminSalesPage() {
         <Stat label="Awaiting payment" value={(totals?.pending ?? 0).toLocaleString('en-US')} />
       </div>
 
-      <SalesList rows={items} view={view} />
+      <SalesList rows={items} />
 
     </div>
   );

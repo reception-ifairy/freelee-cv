@@ -1,10 +1,9 @@
 'use client';
 
 import { Ban, CircleCheck, User, Users } from 'lucide-react';
-import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { ResourceView, type BrowserRailLink, type ResourceItem } from '@/components/admin/resource-view';
 import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { toggleUserActiveAction } from '@/server/actions/admin';
 
 export type CustomerRow = {
@@ -21,7 +20,17 @@ export type CustomerRow = {
   joined: string;
 };
 
-export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: AdminView }) {
+export function CustomersList({
+  rows,
+  rail,
+  toolbar,
+  pagination,
+}: {
+  rows: CustomerRow[];
+  rail: BrowserRailLink[];
+  toolbar: React.ReactNode;
+  pagination: React.ReactNode;
+}) {
   const { run } = useAdminAction();
 
   // Shared scales, so the bars rank customers against each other rather than
@@ -63,5 +72,5 @@ export function CustomersList({ rows, view }: { rows: CustomerRow[]; view: Admin
     ],
   }));
 
-  return <ResourceView module="customers" view={view} items={items} empty={{ icon: Users, title: 'No customers yet', description: 'Anyone who signs up appears here with their credit balance and conversation count.' }} columns={3} showCount={false} />;
+  return <ResourceView module="customers" view="list" browser={{ rail, railLabel: 'Status', before: toolbar, after: pagination }} items={items} empty={{ icon: Users, title: 'No customers yet', description: 'Anyone who signs up appears here with their credit balance and conversation count.' }} />;
 }

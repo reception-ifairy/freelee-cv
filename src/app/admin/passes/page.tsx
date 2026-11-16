@@ -3,7 +3,7 @@ import { asc } from 'drizzle-orm';
 import { db } from '@/db';
 import { passProducts } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
+import { FormFold } from '@/components/admin/form-fold';
 import { PassesList, type PassRow } from './passes-list';
 import { InlineForm } from '@/components/admin/inline-form';
 import { Input, Textarea, Select, Label, Checkbox } from '@/components/ui/field';
@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Access passes' };
 
 export default async function AdminPassesPage() {
-  const view = await getAdminView('passes');
   const rows = await db.select().from(passProducts).orderBy(asc(passProducts.sort), asc(passProducts.priceCents));
 
   const items: PassRow[] = rows.map((pass) => ({
@@ -34,8 +33,11 @@ export default async function AdminPassesPage() {
         description="Time-boxed unmetered access — 1 hour, 1 day, 1 week. Buying one grants an entitlement, not credits; the chat route skips the credit charge while it's active. See docs/12-billing-overhaul.md."
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <InlineForm action={savePassProductAction} title="New pass" submitLabel="Create pass">
+      <PassesList
+        rows={items}
+        form={
+          <FormFold title="New pass" defaultOpen={items.length === 0}>
+        <InlineForm bare action={savePassProductAction} title="New pass" submitLabel="Create pass">
           <div>
             <Label htmlFor="name">Name *</Label>
             <Input id="name" name="name" required placeholder="24-hour pass" />
@@ -80,11 +82,9 @@ export default async function AdminPassesPage() {
             <Checkbox name="isPublic" defaultChecked /> Public (shown on /pricing)
           </label>
         </InlineForm>
-
-        <div className="lg:col-span-2">
-          <PassesList rows={items} view={view} />
-        </div>
-      </div>
+          </FormFold>
+        }
+      />
     </div>
   );
 }

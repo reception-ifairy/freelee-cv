@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
-import { ArrowRight } from 'lucide-react';
 import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { chats, creditWallets, users } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
-import { parseListParams, type ListConfig } from '@/lib/admin/list-query';
+import { listHref, parseListParams, type ListConfig } from '@/lib/admin/list-query';
 import { ListToolbar } from '@/components/admin/list-toolbar';
 import { ListPagination } from '@/components/admin/list-pagination';
 import { CustomersList, type CustomerRow } from './customers-list';
@@ -25,7 +23,7 @@ export default async function AdminCustomersPage({
 }) {
   // Customers default to the table for the same reason as sales: this list is
   // scanned and compared, not browsed.
-  const [rawParams, view] = await Promise.all([searchParams, getAdminView('customers', 'list')]);
+  const rawParams = await searchParams;
 
   const config: ListConfig = {
     filters: [
@@ -54,6 +52,8 @@ export default async function AdminCustomersPage({
     const term = `%${params.q}%`;
     conditions.push(or(ilike(users.name, term), ilike(users.email, term)));
   }
+  // The rail counts each status within the search, so its numbers match what a click shows.
+  const searched = conditions.length > 0 ? and(...conditions) : undefined;
   if (params.filters.status === 'active') conditions.push(eq(users.isActive, true));
   if (params.filters.status === 'suspended') conditions.push(eq(users.isActive, false));
   if (params.filters.status === 'admin') conditions.push(eq(users.isAdmin, true));
@@ -67,7 +67,7 @@ export default async function AdminCustomersPage({
       credits: [desc(sql`coalesce(${creditWallets.balance}, 0)`)],
     }[params.sort] ?? [desc(users.createdAt)];
 
-  const [rows, [{ total }]] = await Promise.all([
+  const [rows, [{ total }], [counts]] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -98,7 +98,25 @@ export default async function AdminCustomersPage({
       .limit(params.perPage)
       .offset((params.page - 1) * params.perPage),
     db.select({ total: sql<number>`count(*)::int` }).from(users).where(where),
+    db
+      .select({
+        all: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${users.isActive})::int`,
+        suspended: sql<number>`count(*) filter (where not ${users.isActive})::int`,
+        admin: sql<number>`count(*) filter (where ${users.isAdmin})::int`,
+      })
+      .from(users)
+      .where(searched),
   ]);
+  // The taxonomy's layout (#91): statuses on the left, counted in SQL — the list is paged, so
+  // counting the rows on screen would be wrong past the first page.
+  const status = params.filters.status ?? '';
+  const rail = [
+    { id: '', label: 'All', count: counts.all },
+    { id: 'active', label: 'Active', count: counts.active },
+    { id: 'suspended', label: 'Suspended', count: counts.suspended },
+    { id: 'admin', label: 'Admins', count: counts.admin },
+  ].map((r) => ({ label: r.label, count: r.count, active: status === r.id, href: listHref('/admin/customers', params, config, { filters: { status: r.id }, page: 1 }) }));
 
   const items: CustomerRow[] = rows.map((user) => ({
     id: user.id,
@@ -117,11 +135,12 @@ export default async function AdminCustomersPage({
     <div>
       <PageHeader title="Customers" description="Accounts, balances and activity." />
 
-      <ListToolbar params={params} config={config} total={total} />
-
-      <CustomersList rows={items} view={view} />
-
-      <ListPagination pathname="/admin/customers" params={params} config={config} total={total} />
+      <CustomersList
+        rows={items}
+        rail={rail}
+        toolbar={<ListToolbar params={params} config={config} total={total} placeholder="Search by name or email…" />}
+        pagination={<ListPagination pathname="/admin/customers" params={params} config={config} total={total} />}
+      />
 
     </div>
   );

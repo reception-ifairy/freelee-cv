@@ -4,7 +4,6 @@ import { Package, Pencil, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePackAction } from '@/server/actions/admin';
 
 export type PackRow = {
@@ -17,7 +16,7 @@ export type PackRow = {
   isActive: boolean;
 };
 
-export function PacksList({ rows, view }: { rows: PackRow[]; view: AdminView }) {
+export function PacksList({ rows, form }: { rows: PackRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const topOrders = Math.max(1, ...rows.map((r) => r.orderCount));
@@ -41,5 +40,5 @@ export function PacksList({ rows, view }: { rows: PackRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="packs" view={view} items={items} empty={{ icon: Package, title: 'No credit packs', description: 'Packs are the one-off credit bundles customers buy. Create one with the form beside this list.' }} columns={3} />;
+  return <ResourceView module="packs" view="list" browser={{ groups: ['Active', 'Off'], railLabel: 'Status', before: form }} items={items} empty={{ icon: Package, title: 'No credit packs', description: 'Packs are the one-off credit bundles customers buy. Create one with New pack.' }} />;
 }

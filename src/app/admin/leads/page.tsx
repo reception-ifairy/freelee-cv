@@ -5,7 +5,6 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { leads, personas } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { getAdminView } from '@/lib/admin/view-preference-server';
 import { formatDate } from '@/lib/utils';
 import { LeadsList, type LeadRowData } from './leads-list';
 
@@ -13,14 +12,13 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Leads' };
 
 export default async function AdminLeadsPage() {
-  const [rows, view] = await Promise.all([
+  const [rows] = await Promise.all([
     db
       .select({ lead: leads, personaName: personas.name })
       .from(leads)
       .leftJoin(personas, eq(personas.id, leads.personaId))
       .orderBy(desc(leads.createdAt))
       .limit(200),
-    getAdminView('leads', 'list'),
   ]);
 
   const items: LeadRowData[] = rows.map(({ lead, personaName }) => ({
@@ -50,7 +48,7 @@ export default async function AdminLeadsPage() {
         </p>
       ) : null}
 
-      <LeadsList rows={items} view={view} />
+      <LeadsList rows={items} />
 
       <p className="mt-4 text-xs text-slate-400">
         Quick actions are switched on in{' '}

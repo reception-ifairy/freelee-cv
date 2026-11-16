@@ -10,6 +10,15 @@ Three ways to sell access. They can all run at once, and most sites should offer
 | Best for | Occasional users | Regulars | Trials, events, deadlines |
 | Predictable revenue | No | **Yes** | No |
 
+## How the Commerce screens look
+
+Every screen under **Commerce** — Credit packs, Subscription plans, Access passes, Sales, Customers,
+Marketplace, Leads — has the layout of the taxonomy: **statuses on the left** with how many are in
+each (Active / Off, Paid / Pending, Waiting / Contacted…), **the list** in the middle, and **a card**
+that slides in when you click a row, with what you can do to it. The arrows on the card step through
+the list; **Esc** closes it. The form for a new plan or pass is folded above the list — click
+*New plan* to open it (it is open already while the list is empty).
+
 ## Credit packs — Commerce → Credit packs
 
 The simplest. Pay once, get credits, use them whenever. Nothing expires.
