@@ -34,7 +34,23 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #88 · `pending` — The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone
+### #89 · `pending` — Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves
+
+Owner decisions, 2026-11-16: each main category has an AI agent on Anthropic that helps build bots for
+it; it proposes and the owner approves; the model is Claude Opus 5.5 (a setting under AI defaults).
+The category's AI agent tab rebuilds the workbench. The agent knows the brief, every bot filed in the
+category, the sectors and their gaps, and on Education the tutors and the subject gaps. Its one tool,
+`propose`, puts a checked proposal — a new bot, a sector description, audience groups — on the
+category's list; Approve runs the ordinary change (a bot is always an inactive draft, through the
+draft function now shared with the pasted-JSON path), Reject records it. No temperature or forced tool
+choice (Opus 5.5 rejects both); the long system prompt is cached; the header shows the model, its price
+and what the conversation has cost. Without an Anthropic key the tab says so and links Connections —
+no thread, no silent switch to another provider. Not run against the model yet: there is no key.
+New check `npm run taxonomy:verify-agent` (17).
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md · handbook/settings.md
+
+### #88 · `56eaa85` — The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone
 
 Owner decision, 2026-11-16: the taxonomy's categories are the pillars, not six markets computed from
 audiences. Homeschooling goes under Education and Training, business under Business and Finance. The

@@ -8,7 +8,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import {
-  categories, categoryAudienceSegments, conversations, conversationMessages,
+  categories, categoryAudienceSegments, conversations, conversationMessages, sectors,
   personas, personaVersions, personaCategories,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
@@ -17,7 +17,8 @@ import { AUDIENCE_SEGMENTS, isAudienceSegmentCode } from '@/lib/persona/audience
 import { uniquePersonaSlug } from '@/lib/persona/slug';
 import { convertedPersonaSchema } from '@/lib/persona/convert';
 import { categoryBrief } from '@/lib/taxonomy/brief';
-import { workbenchModel } from '@/lib/taxonomy/workbench-model';
+import { categoryAgentModel, readThread, threadState, updateThread, type AgentThreadState } from '@/lib/taxonomy/category-agent';
+import { decide, type Proposal } from '@/lib/taxonomy/agent-proposals';
 import type { ActionState } from './auth';
 
 /** Codes are validated against the TypeScript catalogue — there is no FK to check them. */
@@ -108,8 +109,16 @@ export async function setCategoryAudienceNoteAction(categoryId: number, code: st
  * One conversation per category, reopened rather than recreated, so the thinking
  * accumulates instead of scattering across a dozen abandoned threads.
  */
-export async function openWorkbenchAction(categoryId: number): Promise<{ conversationId: string; model: string } | { error: string }> {
+export async function openWorkbenchAction(
+  categoryId: number,
+): Promise<{ conversationId: string; model: string; modelId: string } | { error: string; noKey?: boolean }> {
   const admin = await requireAdmin();
+
+  // The agent runs on Anthropic from the owner's key; without one there is nothing to open.
+  const { modelId, label, keyReady } = await categoryAgentModel();
+  if (!keyReady) {
+    return { error: 'The category agent runs on Anthropic and there is no Anthropic key yet.', noKey: true };
+  }
 
   const [category] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
   if (!category) return { error: 'That category is no longer here.' };
@@ -120,10 +129,9 @@ export async function openWorkbenchAction(categoryId: number): Promise<{ convers
     .from(conversations)
     .where(and(eq(conversations.kind, 'playground'), sql`${conversations.settings}->>'categoryId' = ${String(category.id)}`))
     .limit(1);
-  // Which model answers, said on screen (it was hidden until 2026-11-14).
-  const { providerLabel, modelId } = await workbenchModel();
-  const model = modelId ? `${providerLabel} · ${modelId}` : `${providerLabel} · no model set`;
-  if (existing) return { conversationId: existing.id, model };
+  // Which model answers, said on screen.
+  const model = `Anthropic · ${label}`;
+  if (existing) return { conversationId: existing.id, model, modelId };
 
   const teamId = await getPlatformTeamId();
   const [created] = await db
@@ -138,11 +146,11 @@ export async function openWorkbenchAction(categoryId: number): Promise<{ convers
     })
     .returning({ id: conversations.id });
 
-  return { conversationId: created.id, model };
+  return { conversationId: created.id, model, modelId };
 }
 
 function workbenchTitle(categoryName: string): string {
-  return `Workbench — ${categoryName}`;
+  return `AI agent — ${categoryName}`;
 }
 
 export async function workbenchHistoryAction(conversationId: string) {
@@ -202,8 +210,24 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
     };
   }
 
-  const brief = await categoryBrief(parsed.data.categoryId);
-  if (!brief) return { error: 'That category is no longer here.' };
+  const personaId = await createDraftPersona(admin.id, parsed.data.categoryId, parsed.data.sectorId ?? null, draft);
+  if (personaId === null) return { error: 'That category is no longer here.' };
+
+  revalidatePath('/admin/taxonomy/drafts');
+  revalidatePath('/admin/personas');
+  return { success: `“${draft.name}” saved as a prototype.`, personaId };
+}
+
+/**
+ * Creates a draft persona from a design, filed under its category (and sector)
+ * — shared by the pasted-JSON path and the category agent's approved `bot`
+ * proposals. Inactive, with `pinVersioning`, so it lands as a genuine draft
+ * version; audience segments only of its own kind; the field's mandatory
+ * safeguards. Returns null when the category is gone.
+ */
+async function createDraftPersona(adminId: string, categoryId: number, sectorId: number | null, draft: z.infer<typeof convertedPersonaSchema>): Promise<number | null> {
+  const brief = await categoryBrief(categoryId);
+  if (!brief) return null;
 
   // The audience type the field actually leans towards, unless the design said
   // otherwise. Not a guess — it is the average of hand-scored sector suitability.
@@ -226,7 +250,7 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
         creditsPerMessage: 0,
         // A prototype is not for sale and not on the shelf until you say so.
         isActive: false,
-        sectorId: parsed.data.sectorId ?? null,
+        sectorId,
         pinVersioning: true,
       })
       .returning({ id: personas.id });
@@ -238,7 +262,7 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
         version: 'draft',
         status: 'draft',
         isImmutable: false,
-        createdBy: admin.id,
+        createdBy: adminId,
         systemPrompt: draft.systemPrompt,
         welcomeMessage: draft.welcomeMessage ?? null,
         suggestions: draft.suggestions,
@@ -257,12 +281,85 @@ export async function buildDraftFromWorkbenchAction(formData: FormData): Promise
       .returning({ id: personaVersions.id });
 
     await tx.update(personas).set({ draftVersionId: version.id }).where(eq(personas.id, persona.id));
-    await tx.insert(personaCategories).values({ personaId: persona.id, categoryId: parsed.data.categoryId });
+    await tx.insert(personaCategories).values({ personaId: persona.id, categoryId });
 
     return persona.id;
   });
 
-  revalidatePath('/admin/taxonomy/drafts');
-  revalidatePath('/admin/personas');
-  return { success: `“${draft.name}” saved as a prototype.`, personaId };
+  return personaId;
+}
+
+/* --------------------------- Category agent --------------------------- */
+
+/** The agent thread's proposals and what it has cost so far. */
+export async function agentStateAction(conversationId: string): Promise<AgentThreadState | { error: string }> {
+  await requireAdmin();
+  const settings = await readThread(conversationId);
+  if (!settings) return { error: 'That agent thread is no longer here.' };
+  const { modelId } = await categoryAgentModel();
+  return threadState(settings, modelId);
+}
+
+/**
+ * The owner's decision on one of the agent's proposals (owner, 2026-11-16:
+ * "the agent proposes, I approve"). Approving runs the ordinary admin change —
+ * a new bot is always an inactive draft — and records the outcome on the
+ * proposal; rejecting only records it.
+ */
+export async function decideProposalAction(
+  conversationId: string,
+  proposalId: string,
+  decision: 'approved' | 'rejected',
+): Promise<ActionState & { personaId?: number }> {
+  const admin = await requireAdmin();
+  const settings = await readThread(conversationId);
+  const categoryId = settings?.categoryId;
+  if (!settings || !categoryId) return { error: 'That agent thread is no longer here.' };
+  const proposal = (settings.proposals ?? []).find((p: Proposal) => p.id === proposalId);
+  if (!proposal) return { error: 'That proposal is no longer here.' };
+  if (proposal.status !== 'pending') return { error: `That proposal was already ${proposal.status}.` };
+
+  let personaId: number | undefined;
+  if (decision === 'approved') {
+    const payload = proposal.payload;
+    if (payload.kind === 'bot') {
+      const created = await createDraftPersona(admin.id, categoryId, payload.sectorId, payload.persona);
+      if (created === null) return { error: 'That category is no longer here.' };
+      personaId = created;
+    } else if (payload.kind === 'sector_description') {
+      const updated = await db
+        .update(sectors)
+        .set({ description: payload.description })
+        .where(and(eq(sectors.id, payload.sectorId), eq(sectors.categoryId, categoryId)))
+        .returning({ id: sectors.id });
+      if (updated.length === 0) return { error: 'That sector is no longer in this category.' };
+    } else {
+      // New groups go after the existing ones, each with the agent's note.
+      await db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ code: categoryAudienceSegments.segmentCode, position: categoryAudienceSegments.position })
+          .from(categoryAudienceSegments)
+          .where(eq(categoryAudienceSegments.categoryId, categoryId));
+        const have = new Set(existing.map((e) => e.code));
+        let position = existing.reduce((max, e) => Math.max(max, e.position), -1);
+        const fresh = payload.codes.filter((code) => !have.has(code) && isAudienceSegmentCode(code));
+        if (fresh.length) {
+          await tx.insert(categoryAudienceSegments).values(fresh.map((code) => ({ categoryId, segmentCode: code, note: payload.note, position: ++position })));
+        }
+      });
+    }
+  }
+
+  const result = await updateThread(conversationId, (s) => {
+    const next = decide(s.proposals ?? [], proposalId, decision, personaId ? { personaId } : {});
+    return next.ok ? { ...s, proposals: next.proposals } : s;
+  });
+  void result;
+
+  revalidatePath('/admin/taxonomy');
+  if (personaId) revalidatePath('/admin/personas');
+  return {
+    success: decision === 'rejected' ? 'Rejected.' : personaId ? 'Approved — the bot is saved as an inactive draft.' : 'Approved and applied.',
+    personaId,
+  };
 }

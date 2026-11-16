@@ -25,14 +25,19 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
   Finance links */business*.
 - **A category opens in the taxonomy browser**, with the tree still on the left and its own tabs:
   Bots, Sectors, Audiences, AI agent and Brief.
+- **Every category has an AI agent** on Anthropic (Claude Opus 5.5). It knows the field and every bot
+  in it, and proposes new bots, sector descriptions and audience groups; nothing changes until you
+  approve (a new bot is always an inactive draft). The cost of each conversation is on screen. It
+  needs an Anthropic key in Connections.
 
 **Updates**
 
 | # | Commit | What |
 |---|---|---|
-| #88 | (this update) | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
+| #88 | `56eaa85` | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
+| #89 | (this update) | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
 
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*.
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*.
 
 **Changed outside git:** nothing.
 

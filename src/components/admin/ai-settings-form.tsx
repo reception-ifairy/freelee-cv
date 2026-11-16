@@ -11,6 +11,7 @@ import { GridSelect } from '@/components/ui/grid-select';
 import { SETTINGS_SCHEMA } from '@/lib/settings-schema';
 import { CHAT_PROVIDER_IDS, type ModelTier } from '@/lib/ai/provider-ids';
 import type { ProviderRegistry } from '@/lib/ai/registry';
+import { AGENT_DEFAULT_MODEL, AGENT_MODELS } from '@/lib/taxonomy/agent-pricing';
 
 const MODEL_TIERS: { id: ModelTier; label: string }[] = [
   { id: 'fast', label: 'Fast' },
@@ -143,6 +144,38 @@ export function AiDefaultsForm({ values, providers, keys }: Props) {
               onChange={setFallbackProvider}
               columns={2}
             />
+          </div>
+        </Card>
+      ) : null}
+
+      {shows('category_agent_model') ? (
+        <Card className="space-y-3 p-6">
+          <div>
+            <h4 className="font-semibold">Category agents</h4>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Each category&apos;s AI agent runs on Anthropic, paid from the Anthropic key in Connections. Every
+              reply shows what it cost.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="category_agent_model">Model</Label>
+            <Input
+              id="category_agent_model"
+              name={fieldName('category_agent_model')}
+              list="category-agent-models"
+              defaultValue={String(values.category_agent_model ?? '')}
+              placeholder={AGENT_DEFAULT_MODEL}
+              spellCheck={false}
+              className="font-mono"
+            />
+            <datalist id="category-agent-models">
+              {Object.entries(AGENT_MODELS).map(([id, price]) => (
+                <option key={id} value={id}>
+                  {price.label} — ${price.input} / ${price.output} per million tokens in / out
+                </option>
+              ))}
+            </datalist>
+            <Hint>Blank uses {AGENT_MODELS[AGENT_DEFAULT_MODEL].label}.</Hint>
           </div>
         </Card>
       ) : null}

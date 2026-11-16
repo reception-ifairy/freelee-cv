@@ -22,6 +22,7 @@ export const SETTINGS_SCHEMA = {
   ],
   ai: [
     { key: 'ai_default_provider', label: 'Default provider', type: 'string', help: 'openai, anthropic, openrouter, ollama' },
+    { key: 'category_agent_model', label: 'Category agent model', type: 'string', help: 'The Anthropic model each category\'s AI agent runs on. Default claude-opus-5-5.' },
     { key: 'openai_api_key', label: 'OpenAI API key', type: 'secret' },
     { key: 'openai_default_model', label: 'OpenAI default model', type: 'string' },
     {

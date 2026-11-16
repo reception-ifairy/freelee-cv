@@ -34,6 +34,8 @@ are set (by name only) and offer a **Test** (nothing is charged).
 
 - **Default models** — what a persona uses when it has no model of its own.
 - **Fallback provider** — used when nothing else specifies one. Normally OpenAI.
+- **Category agents** — the Anthropic model each category's AI agent runs on. Blank means Claude
+  Opus 5.5.
 
 ## Safety
 
