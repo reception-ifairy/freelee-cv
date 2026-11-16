@@ -3,7 +3,6 @@
 import { ExternalLink, FileText, LayoutGrid, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePageAction } from '@/server/actions/admin';
 
 export type PageRow = {
@@ -17,7 +16,7 @@ export type PageRow = {
   updatedLabel: string;
 };
 
-export function PagesList({ rows, view }: { rows: PageRow[]; view: AdminView }) {
+export function PagesList({ rows, form }: { rows: PageRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => ({
@@ -50,5 +49,5 @@ export function PagesList({ rows, view }: { rows: PageRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="pages" view={view} items={items} empty={{ icon: FileText, title: 'No pages yet', description: 'Static pages — about, terms, contact — built with the same block builder as the frontpage.' }} columns={3} />;
+  return <ResourceView module="pages" view="list" browser={{ groups: ['Published', 'Draft'], railLabel: 'Status', before: form }} items={items} empty={{ icon: FileText, title: 'No pages yet', description: 'Static pages — about, terms, contact — built with the same block builder as the frontpage.' }} />;
 }

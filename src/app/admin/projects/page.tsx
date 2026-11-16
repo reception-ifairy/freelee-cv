@@ -6,7 +6,7 @@ import { crews } from '@/modules/crews/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
 import { Input, Textarea, Select, Label, Hint } from '@/components/ui/field';
-import { getAdminView } from '@/lib/admin/view-preference-server';
+import { FormFold } from '@/components/admin/form-fold';
 import { saveProjectAction } from '@/server/actions/admin-projects';
 import { ProjectsList, type ProjectRowData } from './projects-list';
 
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Projects' };
 
 export default async function AdminProjectsPage() {
-  const [rows, view] = await Promise.all([
+  const [rows] = await Promise.all([
     // Counts and spend as correlated subqueries rather than four LEFT JOINs:
     // joining three one-to-many tables at once multiplies the rows and every
     // count comes back wrong. That exact bug has bitten this admin twice
@@ -49,7 +49,6 @@ export default async function AdminProjectsPage() {
       })
       .from(projects)
       .orderBy(desc(projects.updatedAt)),
-    getAdminView('projects'),
   ]);
 
   return (
@@ -59,43 +58,44 @@ export default async function AdminProjectsPage() {
         description="A project groups the chats, rooms and bot teams that belong to one piece of work — and tracks what it has cost."
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ProjectsList rows={rows as ProjectRowData[]} view={view} />
-        </div>
-
-        <InlineForm action={saveProjectAction} title="New project" submitLabel="Create project">
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input id="name" name="name" required placeholder="e.g. Website refresh" />
-          </div>
-          <div>
-            <Label htmlFor="description">What is it for?</Label>
-            <Textarea id="description" name="description" rows={3} />
-          </div>
-          <div>
-            <Label htmlFor="colour">Colour</Label>
-            <Input id="colour" name="colour" type="color" defaultValue="#6366f1" className="h-10 p-1" />
-          </div>
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select id="status" name="status" defaultValue="active">
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="done">Done</option>
-              <option value="archived">Archived</option>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="budgetCredits">Budget (credits)</Label>
-            <Input id="budgetCredits" name="budgetCredits" type="number" min={0} placeholder="Leave blank for no cap" />
-            <Hint>
-              Checked before a bot team run starts, and reported here — <strong>not</strong> a hard limit
-              at spend time. The wallet credits are drawn from is shared by the whole team.
-            </Hint>
-          </div>
-        </InlineForm>
-      </div>
+      <ProjectsList
+        rows={rows as ProjectRowData[]}
+        form={
+          <FormFold title="New project" defaultOpen={rows.length === 0}>
+            <InlineForm bare action={saveProjectAction} title="New project" submitLabel="Create project">
+              <div>
+                <Label htmlFor="name">Name *</Label>
+                <Input id="name" name="name" required placeholder="e.g. Website refresh" />
+              </div>
+              <div>
+                <Label htmlFor="description">What is it for?</Label>
+                <Textarea id="description" name="description" rows={3} />
+              </div>
+              <div>
+                <Label htmlFor="colour">Colour</Label>
+                <Input id="colour" name="colour" type="color" defaultValue="#6366f1" className="h-10 p-1" />
+              </div>
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select id="status" name="status" defaultValue="active">
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="done">Done</option>
+                  <option value="archived">Archived</option>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="budgetCredits">Budget (credits)</Label>
+                <Input id="budgetCredits" name="budgetCredits" type="number" min={0} placeholder="Leave blank for no cap" />
+                <Hint>
+                  Checked before a bot team run starts, and reported here — <strong>not</strong> a hard limit
+                  at spend time. The wallet credits are drawn from is shared by the whole team.
+                </Hint>
+              </div>
+            </InlineForm>
+          </FormFold>
+        }
+      />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { LayoutGrid, Pencil, PenLine, Trash2 } from 'lucide-react';
 import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
 import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deletePostAction } from '@/server/actions/admin';
 
 export type PostRow = {
@@ -19,7 +18,7 @@ export type PostRow = {
   categoryName: string | null;
 };
 
-export function PostsList({ rows, view }: { rows: PostRow[]; view: AdminView }) {
+export function PostsList({ rows, form }: { rows: PostRow[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
   // One shared scale for every bar in this list — comparing rows against each
   // other is the whole point, and a per-row max would make them all full.
@@ -56,5 +55,5 @@ export function PostsList({ rows, view }: { rows: PostRow[]; view: AdminView }) 
     ],
   }));
 
-  return <ResourceView module="posts" view={view} items={items} empty={{ icon: PenLine, title: 'No posts yet', description: 'Blog posts are written in the block builder and appear on the public /blog page once published.', action: { label: 'Write the first post', href: '/admin/posts' } }} columns={3} />;
+  return <ResourceView module="posts" view="list" browser={{ groups: ['Published', 'Scheduled', 'Draft'], railLabel: 'Status', before: form }} items={items} empty={{ icon: PenLine, title: 'No posts yet', description: 'Blog posts are written in the block builder and appear on the public /blog page once published.', action: { label: 'Write the first post', href: '/admin/posts' } }} />;
 }

@@ -4,7 +4,6 @@ import { FolderKanban, Pause, Pencil, Play, Trash2, CheckCheck, Archive } from '
 import { ResourceView, type ResourceItem, type BadgeTone } from '@/components/admin/resource-view';
 import { Meter } from '@/components/ui/meter';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { setProjectStatusAction, deleteProjectAction } from '@/server/actions/admin-projects';
 
 export type ProjectRowData = {
@@ -35,7 +34,10 @@ const STATUS_LABEL: Record<string, string> = {
   archived: 'Archived',
 };
 
-export function ProjectsList({ rows, view }: { rows: ProjectRowData[]; view: AdminView }) {
+/** The rail: every status, in the order a project moves through them. */
+const PROJECT_GROUPS = Object.values(STATUS_LABEL);
+
+export function ProjectsList({ rows, form }: { rows: ProjectRowData[]; form?: React.ReactNode }) {
   const { run } = useAdminAction();
   // One shared scale so the bars rank projects against each other.
   const topSpend = Math.max(1, ...rows.map((r) => r.spent));
@@ -112,10 +114,9 @@ export function ProjectsList({ rows, view }: { rows: ProjectRowData[]; view: Adm
   return (
     <ResourceView
       module="projects"
-      view={view}
+      view="list" browser={{ groups: PROJECT_GROUPS, railLabel: 'Status', before: form }}
       items={items}
       badgeHeader="Status"
-      columns={3}
       empty={{
         icon: FolderKanban,
         title: 'No projects yet',

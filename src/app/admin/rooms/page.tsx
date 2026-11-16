@@ -1,15 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { MessagesSquare } from 'lucide-react';
 import { desc, eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { conversations, conversationParticipants, projects, teams } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Meter } from '@/components/ui/meter';
 import { relativeTime } from '@/lib/utils';
+import { RoomsList } from './rooms-list';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Rooms' };
@@ -46,8 +41,6 @@ export default async function AdminRoomsPage() {
     .orderBy(desc(conversations.lastMessageAt))
     .limit(100);
 
-  const topCost = Math.max(1, ...rows.map((r) => r.costTotal));
-
   return (
     <div>
       <PageHeader
@@ -55,43 +48,19 @@ export default async function AdminRoomsPage() {
         description="Every group conversation on the platform. Bot-team runs are on each team's Runs tab."
       />
 
-      {rows.length === 0 ? (
-        <EmptyState
-          icon={MessagesSquare}
-          title="No rooms yet"
-          description="A room is a conversation several people and bots share, where an @mention asks a bot to reply."
-        />
-      ) : (
-        <Card className="overflow-hidden">
-          <ul className="divide-y hairline">
-            {rows.map((room) => (
-              <li key={room.id}>
-                <Link href={`/admin/rooms/${room.id}`} className="flex items-center gap-3 px-5 py-3 text-sm transition hover:bg-white/[0.03]">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{room.title ?? 'Untitled'}</span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {room.teamName ?? 'Unknown team'}
-                      {room.projectName ? ` · ${room.projectName}` : ''}
-                      {' · '}{room.participants} participant{room.participants === 1 ? '' : 's'}
-                    </span>
-                  </span>
-
-                  <Badge tone={room.kind === 'playground' ? 'amber' : 'slate'}>
-                    {room.kind === 'playground' ? 'Playground' : 'Room'}
-                  </Badge>
-
-                  <span className="hidden w-32 shrink-0 sm:block">
-                    <Meter value={room.costTotal} max={topCost} display={`${room.costTotal}c`} label="Credits" />
-                  </span>
-
-                  <span className="w-16 shrink-0 text-right font-mono text-xs text-slate-500">{room.messageCount} msg</span>
-                  <span className="w-24 shrink-0 text-right text-xs text-slate-500">{relativeTime(room.lastMessageAt)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      <RoomsList
+        rows={rows.map((room) => ({
+          id: room.id,
+          title: room.title ?? 'Untitled',
+          kind: room.kind,
+          team: room.teamName ?? 'Unknown team',
+          project: room.projectName,
+          participants: room.participants,
+          messages: room.messageCount,
+          cost: room.costTotal,
+          last: relativeTime(room.lastMessageAt),
+        }))}
+      />
     </div>
   );
 }

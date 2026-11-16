@@ -1,9 +1,8 @@
 'use client';
 
 import { CornerDownRight, Menu, Trash2 } from 'lucide-react';
-import { ResourceView, type ResourceItem } from '@/components/admin/resource-view';
+import { ResourceView, type BrowserRailLink, type ResourceItem } from '@/components/admin/resource-view';
 import { useAdminAction } from '@/components/admin/use-admin-action';
-import type { AdminView } from '@/lib/admin/view-preference';
 import { deleteMenuItemAction } from '@/server/actions/admin';
 import { BlockIcon } from '@/components/ui/block-icon';
 
@@ -19,7 +18,7 @@ export type MenuItemRow = {
   parentLabel: string | null;
 };
 
-export function MenusList({ rows, view }: { rows: MenuItemRow[]; view: AdminView }) {
+export function MenusList({ rows, rail, form }: { rows: MenuItemRow[]; rail: BrowserRailLink[]; form: React.ReactNode }) {
   const { run } = useAdminAction();
 
   const items: ResourceItem[] = rows.map((row) => ({
@@ -53,5 +52,5 @@ export function MenusList({ rows, view }: { rows: MenuItemRow[]; view: AdminView
     ],
   }));
 
-  return <ResourceView module="menus" view={view} items={items} empty={{ icon: Menu, title: 'No menu items', description: 'Menu items build the public site\'s navigation, including nested dropdowns.' }} columns={3} />;
+  return <ResourceView module="menus" view="list" browser={{ rail, railLabel: 'Menu', before: form }} items={items} empty={{ icon: Menu, title: 'No menu items', description: 'Menu items build the public site\'s navigation, including nested dropdowns.' }} />;
 }
