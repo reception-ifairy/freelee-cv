@@ -11,9 +11,9 @@ import { readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  ADMIN_NAV, DEFAULT_OPEN_GROUPS, adoptedHref, findActiveNavItem, findNavItemByHref, groupOfPath, isNavItemCurrent, parseOpenGroups,
+  ADMIN_NAV, CATEGORY_GROUP_ID, DEFAULT_OPEN_GROUPS, adoptedHref, categoryNavSection, findActiveNavItem, findNavItemByHref, groupOfPath,
+  isCategoryItemCurrent, isNavItemCurrent, parseOpenGroups,
 } from '../src/lib/admin/nav';
-import { PILLARS } from '../src/lib/taxonomy/pillars';
 import { MODULES } from '../src/lib/modules/registry';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'admin');
@@ -63,8 +63,8 @@ function patterns(dir: string): RegExp[] {
   return out;
 }
 
-// Concrete paths, plus the markets by name: [pillar] is not a number.
-const routes = [...pages(ROOT), ...PILLARS.map((p) => `/admin/markets/${p.id}`)].sort();
+// Concrete paths, plus the retired markets by name: [pillar] is not a number.
+const routes = [...pages(ROOT), '/admin/markets/homeschooling'].sort();
 const routePatterns = patterns(ROOT);
 const isPage = (href: string) => routePatterns.some((re) => re.test(href));
 const items = ADMIN_NAV.flatMap((s) => s.items);
@@ -103,15 +103,16 @@ check('group ids are unique, and every group but the first has a heading', () =>
   const ids = ADMIN_NAV.map((s) => s.id);
   return new Set(ids).size === ids.length && ADMIN_NAV.slice(1).every((s) => s.heading) && ADMIN_NAV.every((s) => s.items.length > 0);
 });
-check('the default open groups exist', () => DEFAULT_OPEN_GROUPS.every((id) => ADMIN_NAV.some((s) => s.id === id)));
+check('the default open groups exist (the categories group is built at request time)', () =>
+  DEFAULT_OPEN_GROUPS.every((id) => id === CATEGORY_GROUP_ID || ADMIN_NAV.some((s) => s.id === id)));
 check('the cookie: missing means defaults, empty means all folded, unknown ids are dropped', () =>
-  JSON.stringify([parseOpenGroups(undefined), parseOpenGroups(''), parseOpenGroups('site,nonsense, system')]) ===
-  JSON.stringify([DEFAULT_OPEN_GROUPS, [], ['site', 'system']]));
+  JSON.stringify([parseOpenGroups(undefined), parseOpenGroups(''), parseOpenGroups('site,nonsense, categories')]) ===
+  JSON.stringify([DEFAULT_OPEN_GROUPS, [], ['site', 'categories']]));
 check('every page belongs to exactly the group of its current item (that group is always open)', () => {
   const want: Record<string, string> = {
     '/admin': 'overview',
-    '/admin/markets': 'markets',
-    '/admin/markets/homeschooling': 'markets',
+    '/admin/markets': 'catalogue',
+    '/admin/markets/homeschooling': 'catalogue',
     '/admin/taxonomy/34': 'catalogue',
     '/admin/categories/5': 'catalogue',
     '/admin/taxonomy/audiences': 'catalogue',
@@ -123,7 +124,16 @@ check('every page belongs to exactly the group of its current item (that group i
   const orphans = routes.filter((path) => groupOfPath(path) === null);
   return (wrong.length === 0 && orphans.length === 0) || `wrong: ${wrong.map(([p]) => `${p}→${groupOfPath(p)}`).join(', ')}; orphans: ${orphans.join(', ')}`;
 });
-check('each market has its own item, with its colour', () => PILLARS.every((p) => items.some((i) => i.href === `/admin/markets/${p.id}` && i.dot === p.color)));
+const catSection = categoryNavSection([
+  { id: 34, slug: 'education-and-training', name: 'Education and Training', color: '#0ea5e9', live: 16, total: 32 },
+  { id: 41, slug: 'health-and-medicine', name: 'Health and Medicine', color: null, live: 0, total: 0 },
+]);
+check('each category is an item: its colour, live/total, dimmed when empty, opening the browser', () =>
+  catSection.items[0].href === '/admin/taxonomy?cat=34' && catSection.items[0].meta === '16/32' && !catSection.items[0].muted &&
+  catSection.items[1].muted === true && catSection.items[1].dot === '#6366f1');
+check('a category item is current on the browser with its cat, by id or by slug — and only there', () =>
+  isCategoryItemCurrent(catSection.items[0], '/admin/taxonomy', '34') && isCategoryItemCurrent(catSection.items[0], '/admin/taxonomy', 'education-and-training') &&
+  !isCategoryItemCurrent(catSection.items[0], '/admin/taxonomy', '41') && !isCategoryItemCurrent(catSection.items[0], '/admin/personas', '34'));
 
 if (failed) {
   console.log(`\n${failed} check(s) failed.`);

@@ -37,7 +37,8 @@ giving bad answers, the prompt is the first thing to look at, nearly every time.
 
 ## Finding your way around the admin
 
-The sidebar is grouped by job: **Markets**, **Catalogue** (personas, taxonomy, audiences, drafts),
+The sidebar starts with the **Categories** — the twenty fields everything is organised around, each
+with its live/all bots — then **Catalogue** (personas, taxonomy, audiences, drafts),
 **Knowledge**, **Teamwork**, **Commerce**, **Site** and **System**. Groups fold — click a heading — and
 the admin remembers which ones you keep open. The group of the page you are on is always open.
 
@@ -45,11 +46,11 @@ The **Dashboard** opens with **Needs your attention**, most urgent first:
 
 - **Act** — someone is waiting: an order to confirm, a new lead, a listing to review, a connection
   that fails. When there is one, the header shows **N to act on** on every page.
-- **Check** — worth a look: the site promising something the platform cannot do yet, a field below
-  its market's risk level, a key nobody has tested.
+- **Check** — worth a look: the site promising something the platform cannot do yet, a key nobody
+  has tested.
 - **Tidy** — incomplete data that harms nobody today.
 
-Each line takes you to where it is fixed. Beside it, **Markets** shows how many bots each market has.
+Each line takes you to where it is fixed. Beside it, **Categories** shows how many bots each field has, the busiest first.
 
 ## Where to go next
 

@@ -11,6 +11,33 @@ These notes start on 2026-11-11. Earlier history is in the CHANGELOG. The same t
 
 ---
 
+## v2026.11.16 — The categories are the pillars
+
+Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
+
+**In short**
+
+- **The categories are the pillars.** The sidebar opens with all twenty categories, each with its
+  colour and how many of its bots are live; empty ones are dimmed. The six "markets" worked out from
+  audiences are gone — old links land on the matching category.
+- **Homeschooling lives under Education and Training**, with the homeschool hub (Tutors, Curriculum,
+  Families) as that category's tabs and a link to the public */homeschooling* page. Business and
+  Finance links */business*.
+- **A category opens in the taxonomy browser**, with the tree still on the left and its own tabs:
+  Bots, Sectors, Audiences, AI agent and Brief.
+
+**Updates**
+
+| # | Commit | What |
+|---|---|---|
+| #88 | (this update) | The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone |
+
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*.
+
+**Changed outside git:** nothing.
+
+---
+
 ## v2026.11.14 — Homeschooling foundations, and an admin you can find your way around
 
 Updates #74–#86 · tag `v2026.11.14` → `ff905e5`

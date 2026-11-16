@@ -44,7 +44,7 @@ export async function treeInputs(): Promise<{ categories: TreeCategoryInput[]; s
  * filed in two categories would still count once overall (none is today).
  */
 export async function treeCounts(personaIds: number[] | null = null): Promise<CountRow[]> {
-  // Within a market, only its bots are counted (`personaIds`, worked out in code — see pillar-queries.ts).
+  // Optionally only these bots (`personaIds`); null counts every bot.
   const within = personaIds === null ? sql`true` : inArray(sql`p.id`, personaIds);
   const rows = await db.execute<{ category_id: number | null; sector_id: number | null; g: number; total: number; live: number }>(sql`
     select pc.category_id, p.sector_id,

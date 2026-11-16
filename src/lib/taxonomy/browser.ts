@@ -6,24 +6,33 @@
  *
  * All state is in the URL, read by the server:
  *
- *   /admin/taxonomy?pillar=business&cat=34&sec=42&tab=sectors&q=…&status=live&sort=…&page=2&open=persona-123
+ *   /admin/taxonomy?cat=34&sec=42&tab=sectors&q=…&status=live&sort=…&page=2&open=persona-123
  *
- * - `pillar` — one of the six markets (src/lib/taxonomy/pillars.ts): only its
- *   bots, and only the categories that serve it;
- * - `cat` — a category id, or `none` for personas filed under no category;
+ * - `cat` — a category id (or its slug, for stable links), or `none` for
+ *   personas filed under no category. Since 2026-11-16 the categories are the
+ *   platform's pillars, and a picked category is its workspace;
+ * - `tab` — what the right-hand side shows. Lists: `personas` (default) and
+ *   `sectors`. For a picked category also `audiences`, `agent` (its AI
+ *   agent) and `brief`; for the category with the homeschool hub
+ *   (category-extras.ts) `tutors`, `curriculum` and `families`;
  * - `sec` — a sector id (its category is implied, and corrected if `cat` disagrees);
- * - `tab` — `personas` (default) or `sectors`, the latter only above sector level;
  * - `q`, filters, `sort`, `page`, `per` — the list (src/lib/admin/list-query.ts);
  * - `open` — the card in the sheet: `persona-123` or `sector-42`.
  */
 import { listHref, parseListParams, type ListConfig, type ListParams } from '@/lib/admin/list-query';
-import { isPillarId, type PillarId } from './pillars';
+import { extrasFor } from './category-extras';
 
 export const BROWSER_PATH = '/admin/taxonomy';
 
-export type BrowserTab = 'personas' | 'sectors';
+export const LIST_TABS = ['personas', 'sectors'] as const;
+/** Tabs that belong to one picked category (no sector), not to a list. */
+export const CATEGORY_TABS = ['audiences', 'agent', 'brief'] as const;
+/** Tabs of the category that carries the homeschool hub. */
+export const HUB_TABS = ['tutors', 'curriculum', 'families'] as const;
+export type BrowserTab = (typeof LIST_TABS)[number] | (typeof CATEGORY_TABS)[number] | (typeof HUB_TABS)[number];
+export const isListTab = (tab: BrowserTab) => tab === 'personas' || tab === 'sectors';
 export type CategorySelection = number | 'none' | null;
-export type Selection = { pillar: PillarId | null; cat: CategorySelection; sec: number | null; tab: BrowserTab };
+export type Selection = { cat: CategorySelection; sec: number | null; tab: BrowserTab };
 export type OpenRef = { kind: 'persona' | 'sector'; id: number };
 
 export type TreeCategoryInput = {
@@ -66,7 +75,7 @@ export function buildTree(categories: TreeCategoryInput[], sectors: TreeSectorIn
   };
 }
 
-const KEEP = ['pillar', 'cat', 'sec', 'tab'];
+const KEEP = ['cat', 'sec', 'tab'];
 
 export const PERSONA_LIST: ListConfig = {
   filters: [
@@ -129,8 +138,6 @@ export function parseBrowser(
   searchParams: Record<string, string | string[] | undefined>,
   tree: Tree,
 ): { selection: Selection; config: ListConfig; params: ListParams; open: OpenRef | null } {
-  const rawPillar = first(searchParams.pillar);
-  const pillar = isPillarId(rawPillar) ? rawPillar : null;
   const rawCat = first(searchParams.cat);
   const rawSec = Number(first(searchParams.sec));
 
@@ -142,25 +149,39 @@ export function parseBrowser(
     sec = sector.id;
   } else if (rawCat === 'none') {
     cat = 'none';
-  } else if (tree.categories.some((c) => String(c.id) === rawCat)) {
-    cat = Number(rawCat);
+  } else {
+    // An id, or a slug for links that must survive a database move (category-extras.ts).
+    const byIdOrSlug = tree.categories.find((c) => String(c.id) === rawCat || c.slug === rawCat);
+    if (byIdOrSlug) cat = byIdOrSlug.id;
   }
 
-  // Sectors of a sector make no sense; neither do the sectors of "no category".
-  const tab: BrowserTab = first(searchParams.tab) === 'sectors' && sec === null && cat !== 'none' ? 'sectors' : 'personas';
+  const tab = validTab(first(searchParams.tab), tree, cat, sec);
   const config = tab === 'sectors' ? SECTOR_LIST : PERSONA_LIST;
   const params = parseListParams(searchParams, config);
-  params.kept = keptFor({ pillar, cat, sec, tab });
+  params.kept = keptFor({ cat, sec, tab });
 
-  return { selection: { pillar, cat, sec, tab }, config, params, open: parseOpen(searchParams.open) };
+  return { selection: { cat, sec, tab }, config, params, open: parseOpen(searchParams.open) };
 }
 
-function keptFor({ pillar, cat, sec, tab }: Selection): Record<string, string> {
+/**
+ * A tab is kept only where it means something: sectors above sector level and
+ * not for "no category"; a category's own tabs only for one picked category
+ * (no sector); the hub tabs only for the category that has the hub.
+ * Anything else falls back to the bot list.
+ */
+function validTab(raw: string, tree: Tree, cat: CategorySelection, sec: number | null): BrowserTab {
+  const picked = typeof cat === 'number' && sec === null ? tree.categories.find((c) => c.id === cat) : undefined;
+  if (raw === 'sectors' && sec === null && cat !== 'none') return 'sectors';
+  if ((CATEGORY_TABS as readonly string[]).includes(raw) && picked) return raw as BrowserTab;
+  if ((HUB_TABS as readonly string[]).includes(raw) && picked && extrasFor(picked.slug).homeschoolHub) return raw as BrowserTab;
+  return 'personas';
+}
+
+function keptFor({ cat, sec, tab }: Selection): Record<string, string> {
   const kept: Record<string, string> = {};
-  if (pillar !== null) kept.pillar = pillar;
   if (cat !== null) kept.cat = String(cat);
   if (sec !== null) kept.sec = String(sec);
-  if (tab === 'sectors') kept.tab = 'sectors';
+  if (tab !== 'personas') kept.tab = tab;
   return kept;
 }
 
@@ -172,17 +193,18 @@ export function withOpen(params: ListParams, config: ListConfig, open: OpenRef |
 }
 
 /**
- * A link to another node of the tree, another market, or another tab. Search and filters
+ * A link to another node of the tree, or another tab. Search and filters
  * stay (searching "maths" and then clicking through categories keeps the
  * search), but only when the list kind stays the same — a sectors filter
  * means nothing on personas. Paging restarts; a card closes.
  */
 export function selectionHref(params: ListParams, config: ListConfig, current: Selection, next: Partial<Selection>): string {
   const target: Selection = { ...current, ...next };
-  // Another market starts from its top: the picked category may not serve it.
-  if (next.pillar !== undefined && next.cat === undefined) target.cat = null;
-  if ((next.cat !== undefined || next.pillar !== undefined) && next.sec === undefined) target.sec = null;
-  if (target.sec !== null || target.cat === 'none') target.tab = 'personas';
+  if (next.cat !== undefined && next.sec === undefined) target.sec = null;
+  // A category's own tabs need one picked category; the list is the fallback.
+  // (Which category has the hub is checked when the URL is read.)
+  if (!isListTab(target.tab) && (typeof target.cat !== 'number' || target.sec !== null)) target.tab = 'personas';
+  if (target.sec !== null || target.cat === 'none') target.tab = target.tab === 'sectors' ? 'personas' : target.tab;
   const nextConfig = target.tab === 'sectors' ? SECTOR_LIST : PERSONA_LIST;
   const sameKind = nextConfig === config;
   const base: ListParams = sameKind

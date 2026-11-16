@@ -13,7 +13,7 @@
  * - **act** — someone is waiting or something is broken: an order to
  *   confirm, a lead, a listing to review, a connection that fails;
  * - **check** — the site may be promising what the platform cannot do yet,
- *   or a field is below its market's risk floor, or a key was never tested;
+ *   or a key was never tested;
  * - **tidy** — data that is incomplete but harms nobody today.
  * Only "act" items count towards the header badge.
  */
@@ -43,8 +43,6 @@ export type AttentionFacts = {
   fieldsWithoutAudiences: number;
   /** Bots holding audience groups of another type (stored, never in the prompt — #77). */
   botsWithOtherTypeGroups: number;
-  /** Fields below the risk floor of a market they serve; null when not worked out (the header badge skips it). */
-  belowRiskFloor: { pillar: string; label: string; fields: number }[] | null;
 };
 
 const LEVEL_ORDER: Record<AttentionLevel, number> = { act: 0, check: 1, tidy: 2 };
@@ -94,18 +92,8 @@ export function attentionItems(f: AttentionFacts): AttentionItem[] {
     count: f.liveTutors === 0 && f.homeschoolPagePublished ? 1 : 0,
     title: 'No tutor is live',
     detail: '/homeschooling is published; it says tutors are in preparation. Change its copy when the first one goes live.',
-    href: '/admin/markets/homeschooling?tab=tutors',
+    href: '/admin/taxonomy?cat=education-and-training&tab=tutors',
   });
-  for (const floor of f.belowRiskFloor ?? []) {
-    add({
-      id: `floor-${floor.pillar}`,
-      level: 'check',
-      count: floor.fields,
-      title: `${plural(floor.fields, 'field', 'fields')} below the risk floor of ${floor.label}`,
-      detail: 'A field serving this market carries a lower risk level than the market asks for.',
-      href: `/admin/markets/${floor.pillar}`,
-    });
-  }
   add({
     id: 'connections-untested',
     level: 'check',

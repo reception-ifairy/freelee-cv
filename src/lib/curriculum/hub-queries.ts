@@ -8,7 +8,7 @@ import type { StoredTest } from '@/lib/connections/types';
 import { readCurriculumScope, readExamsCache, readScopeCache, readSubjectsCache, CURRICULUM_EXAMS_CACHE_KEY, CURRICULUM_SCOPE_CACHE_KEY, CURRICULUM_SUBJECTS_CACHE_KEY } from './stored';
 import type { CoverageTutor } from './coverage';
 
-/** Read side of the homeschool hub (/admin/markets/homeschooling). */
+/** Read side of the homeschool hub (the Education and Training category's Tutors, Curriculum and Families tabs). */
 
 export type HubTutor = CoverageTutor & {
   slug: string;

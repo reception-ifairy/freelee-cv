@@ -12,7 +12,9 @@ import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb';
 import { ADMIN_OVERLAY_ROOT_ID } from '@/components/ui/overlay-root';
 import { BreadcrumbProvider } from '@/components/admin/breadcrumb-name';
 import { AttentionBadge } from '@/components/admin/attention-badge';
-import { NAV_GROUPS_COOKIE, parseOpenGroups } from '@/lib/admin/nav';
+import { NAV_GROUPS_COOKIE, parseOpenGroups, type NavCategory } from '@/lib/admin/nav';
+import { treeCounts, treeInputs } from '@/lib/taxonomy/browser-queries';
+import { buildTree } from '@/lib/taxonomy/browser';
 
 /**
  * The admin's mono face, self-hosted via next/font.
@@ -38,6 +40,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user.isAdmin) redirect('/');
   // Which sidebar groups are open, so the server renders them that way (admin-nav.tsx).
   const openGroups = parseOpenGroups((await cookies()).get(NAV_GROUPS_COOKIE)?.value);
+  // The categories are the pillars (2026-11-16): the sidebar lists them with
+  // their live/total bots — the same two light queries the taxonomy tree uses.
+  const [inputs, counts] = await Promise.all([treeInputs(), treeCounts()]);
+  const navCategories: NavCategory[] = buildTree(inputs.categories, inputs.sectors, counts).categories.map((c) => ({
+    id: c.id, slug: c.slug, name: c.name, color: c.color, live: c.live, total: c.total,
+  }));
 
   return (
     // The admin console always renders dark — this aesthetic has no light
@@ -55,7 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         <div className="flex h-[calc(100%-4rem)] flex-col overflow-y-auto p-3">
-          <AdminNav initialOpen={openGroups} />
+          <AdminNav initialOpen={openGroups} categories={navCategories} />
 
           <div className="mt-auto space-y-1 border-t border-slate-200 pt-3 dark:border-white/10">
             <Link
@@ -81,7 +89,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <BreadcrumbProvider>
       <div className="flex w-full flex-col lg:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 dark:border-white/10 dark:bg-black/60 dark:backdrop-blur-md">
-          <AdminDrawer initialOpen={openGroups} />
+          <AdminDrawer initialOpen={openGroups} categories={navCategories} />
           <AdminBreadcrumb />
           <div className="ml-auto flex items-center gap-2">
             <AttentionBadge />

@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Pencil, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/field';
 import { Disclosure } from '@/components/ui/disclosure';
 import { AUDIENCE_FAMILY_LABEL, AUDIENCE_SEGMENTS, familyOf } from '@/lib/persona/audience-segments';
-import { PILLAR_BY_ID, pillarOfSegment } from '@/lib/taxonomy/pillars';
 import { setCategoryAudienceNoteAction, setCategoryAudiencesAction } from '@/server/actions/admin-taxonomy';
 
 const TYPES = ['B2C', 'B2B', 'B2G'] as const;
@@ -21,13 +19,8 @@ const TYPE_LABEL: Record<(typeof TYPES)[number], string> = { B2C: 'Consumers', B
  *
  * Which of the 70 groups a field serves is editorial judgement — sector
  * suitability says "sells to business", not *which* businesses — and what is
- * picked here goes into the brief a bot is designed against. Two things the
- * old picker could not show are shown now:
+ * picked here goes into the brief a bot is designed against.
  *
- * - **Order decides.** A bot that names no group of its own type takes its
- *   market from the field's *first* group of that type (src/lib/taxonomy/
- *   pillars.ts), so that group is marked "decides". New picks go to the end;
- *   existing ones keep their place.
  * - **The note is editable.** Why a group matters to this field, in the
  *   operator's words, compiled into the brief — until now only a migration
  *   could write one.
@@ -38,14 +31,13 @@ export function AudiencesTab({ categoryId, linked }: { categoryId: number; linke
   const [message, setMessage] = useState<string | null>(null);
 
   const rows = linked.filter((l) => AUDIENCE_SEGMENTS[l.code]);
-  const firstOfType = new Set(TYPES.flatMap((type) => rows.find((r) => AUDIENCE_SEGMENTS[r.code].audienceType === type)?.code ?? []));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400">
           The groups of people this field serves, and why. They go into the brief a bot is designed against. The first group of each
-          kind also <strong>decides the market</strong> of a bot here that names no group of its own.
+         
         </p>
         <Button variant={choosing ? 'secondary' : 'primary'} onClick={() => setChoosing((v) => !v)}>
           {choosing ? 'Close the list' : 'Choose audiences'}
@@ -83,7 +75,7 @@ export function AudiencesTab({ categoryId, linked }: { categoryId: number; linke
               </h3>
               <ul className="divide-y divide-slate-200 rounded-card border border-slate-200 dark:divide-white/5 dark:border-white/10">
                 {ofType.map((row) => (
-                  <LinkedRow key={row.code} categoryId={categoryId} code={row.code} note={row.note} decides={firstOfType.has(row.code)} />
+                  <LinkedRow key={row.code} categoryId={categoryId} code={row.code} note={row.note} />
                 ))}
               </ul>
             </section>
@@ -94,10 +86,9 @@ export function AudiencesTab({ categoryId, linked }: { categoryId: number; linke
   );
 }
 
-function LinkedRow({ categoryId, code, note, decides }: { categoryId: number; code: string; note: string | null; decides: boolean }) {
+function LinkedRow({ categoryId, code, note }: { categoryId: number; code: string; note: string | null }) {
   const router = useRouter();
   const segment = AUDIENCE_SEGMENTS[code];
-  const pillar = pillarOfSegment(code);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -119,24 +110,10 @@ function LinkedRow({ categoryId, code, note, decides }: { categoryId: number; co
   return (
     <li className="px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        {pillar ? (
-          <span
-            aria-hidden
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: PILLAR_BY_ID[pillar].color }}
-            title={PILLAR_BY_ID[pillar].label}
-          />
-        ) : null}
         <Link href={`/admin/taxonomy/audiences?open=${code}`} className="font-medium hover:text-brand-400">
           {segment.name}
         </Link>
         <span className="font-mono text-[11px] text-slate-500">{code}</span>
-        {pillar ? <span className="text-[11px] text-slate-500">· {PILLAR_BY_ID[pillar].label}</span> : null}
-        {decides ? (
-          <Badge tone="brand" title="The first group of its kind here: a bot in this field that names none of its own takes its market from it">
-            decides
-          </Badge>
-        ) : null}
         {!editing ? (
           <button
             type="button"
@@ -216,7 +193,7 @@ function Chooser({ categoryId, linked, onSaved }: { categoryId: number; linked: 
     setCodes(next);
   }
 
-  // Existing picks keep their place (the first of each kind decides a market); new ones follow in catalogue order.
+  // Existing picks keep their place; new ones follow in catalogue order.
   const ordered = [...linked.filter((c) => codes.has(c)), ...Object.keys(AUDIENCE_SEGMENTS).filter((c) => codes.has(c) && !linked.includes(c))];
   const added = ordered.filter((c) => !linked.includes(c)).length;
   const removed = linked.filter((c) => !codes.has(c)).length;
@@ -252,13 +229,11 @@ function Chooser({ categoryId, linked, onSaved }: { categoryId: number; linked: 
               <div className="grid gap-1 pb-2 pl-8 sm:grid-cols-2">
                 {members.map((code) => {
                   const segment = AUDIENCE_SEGMENTS[code];
-                  const pillar = pillarOfSegment(code);
                   return (
                     <label key={code} className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-white/[0.03]">
                       <Checkbox checked={codes.has(code)} onChange={() => toggle(code)} className="mt-0.5" />
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5">
-                          {pillar ? <span aria-hidden className="size-1.5 rounded-full" style={{ backgroundColor: PILLAR_BY_ID[pillar].color }} /> : null}
                           {segment.name}
                         </span>
                         <span className="block text-xs text-slate-500">{segment.keyNeeds.slice(0, 3).map((n) => n.replace(/_/g, ' ')).join(', ')}</span>

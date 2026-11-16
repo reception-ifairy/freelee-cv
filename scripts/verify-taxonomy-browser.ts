@@ -24,7 +24,7 @@ function check(name: string, fn: () => boolean | string) {
 const expect = (got: unknown, want: unknown) => JSON.stringify(got) === JSON.stringify(want) || `got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`;
 
 const categories = [
-  { id: 34, name: 'Education and Training', slug: 'education', color: '#0ea5e9', isActive: true, riskLevel: 'R2' },
+  { id: 34, name: 'Education and Training', slug: 'education-and-training', color: '#0ea5e9', isActive: true, riskLevel: 'R2' },
   { id: 7, name: 'Health', slug: 'health', color: null, isActive: true, riskLevel: 'R3' },
 ];
 const sectors = [
@@ -58,9 +58,9 @@ check('overall and "no category" counts', () => expect([tree.all, tree.uncategor
 
 console.log('Reading the URL');
 const at = (q: Record<string, string>) => parseBrowser(q, tree);
-check('nothing selected: all categories, personas tab', () => expect(at({}).selection, { pillar: null, cat: null, sec: null, tab: 'personas' }));
-check('a sector brings its own category, even when cat disagrees', () => expect(at({ cat: '7', sec: '42' }).selection, { pillar: null, cat: 34, sec: 42, tab: 'personas' }));
-check('unknown category, sector and market ids are dropped, not passed to SQL', () => expect(at({ cat: '999', sec: 'x', pillar: 'nonsense' }).selection, { pillar: null, cat: null, sec: null, tab: 'personas' }));
+check('nothing selected: all categories, personas tab', () => expect(at({}).selection, { cat: null, sec: null, tab: 'personas' }));
+check('a sector brings its own category, even when cat disagrees', () => expect(at({ cat: '7', sec: '42' }).selection, { cat: 34, sec: 42, tab: 'personas' }));
+check('unknown category and sector ids are dropped, not passed to SQL', () => expect(at({ cat: '999', sec: 'x' }).selection, { cat: null, sec: null, tab: 'personas' }));
 check('cat=none is understood', () => at({ cat: 'none' }).selection.cat === 'none');
 check('the sectors tab only above sector level, never for "no category"', () =>
   at({ cat: '34', tab: 'sectors' }).selection.tab === 'sectors' && at({ sec: '42', tab: 'sectors' }).selection.tab === 'personas' && at({ cat: 'none', tab: 'sectors' }).selection.tab === 'personas');
@@ -84,14 +84,18 @@ const sec = at({ cat: '34', tab: 'sectors', sort: 'personas' });
 check('from the sectors tab, a sector link goes back to personas, with persona defaults', () =>
   expect(selectionHref(sec.params, sec.config, sec.selection, { sec: 43 }), '/admin/taxonomy?cat=34&sec=43'));
 
-console.log('Markets');
-const m = at({ pillar: 'homeschooling', cat: '34', q: 'maths' });
-check('a market is read and kept first in the URL', () =>
-  m.selection.pillar === 'homeschooling' && expect(withOpen(m.params, m.config, null), '/admin/taxonomy?q=maths&pillar=homeschooling&cat=34'));
-check('a tree link inside a market stays in it', () => expect(selectionHref(m.params, m.config, m.selection, { sec: 42 }), '/admin/taxonomy?q=maths&pillar=homeschooling&cat=34&sec=42'));
-check('another market starts from its top (category and sector dropped), search kept', () =>
-  expect(selectionHref(m.params, m.config, m.selection, { pillar: 'business' }), '/admin/taxonomy?q=maths&pillar=business'));
-check('"All markets" drops the market', () => expect(selectionHref(m.params, m.config, m.selection, { pillar: null }), '/admin/taxonomy?q=maths'));
+console.log('A category is a pillar: its own tabs');
+const edu = at({ cat: 'education-and-training', tab: 'tutors' });
+check('a category can be picked by slug, and the URL keeps its id', () =>
+  edu.selection.cat === 34 && expect(withOpen(edu.params, edu.config, null), '/admin/taxonomy?cat=34&tab=tutors'));
+check('a category’s own tabs need one picked category, not a sector or the top level', () =>
+  at({ cat: '34', tab: 'agent' }).selection.tab === 'agent' && at({ sec: '42', tab: 'agent' }).selection.tab === 'personas' && at({ tab: 'brief' }).selection.tab === 'personas');
+check('the hub tabs only for the category that carries the hub', () =>
+  at({ cat: '34', tab: 'families' }).selection.tab === 'families' && at({ cat: '7', tab: 'families' }).selection.tab === 'personas');
+check('from a category tab, "All categories" goes back to the bot list', () =>
+  expect(selectionHref(edu.params, edu.config, edu.selection, { cat: null }), '/admin/taxonomy'));
+check('moving to another category keeps the tab it was on', () =>
+  expect(selectionHref(at({ cat: '34', tab: 'audiences' }).params, at({ cat: '34', tab: 'audiences' }).config, at({ cat: '34', tab: 'audiences' }).selection, { cat: 7 }), '/admin/taxonomy?cat=7&tab=audiences'));
 
 console.log('Previous / Next');
 check('in the middle, both; at the ends, one; not on the page, none', () => {

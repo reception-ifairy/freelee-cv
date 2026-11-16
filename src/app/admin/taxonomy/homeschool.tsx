@@ -62,7 +62,7 @@ export function TutorsTab({ tutors, options }: { tutors: HubTutor[]; options: Su
               {tutors.map((t) => (
                 <TR key={t.id}>
                   <TD className="px-3 py-2">
-                    <Link href={`/admin/taxonomy?pillar=homeschooling&open=persona-${t.id}`} className="font-medium hover:text-brand-400">
+                    <Link href={`/admin/taxonomy?cat=education-and-training&tab=tutors&open=persona-${t.id}`} className="font-medium hover:text-brand-400">
                       {t.name}
                     </Link>
                     <span className="block text-xs text-slate-500">{[t.categoryName, t.sectorName].filter(Boolean).join(' › ') || 'not filed'}</span>

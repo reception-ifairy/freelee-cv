@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { AdminNav } from './admin-nav';
+import type { NavCategory } from '@/lib/admin/nav';
 import { useMountTransition } from '@/components/ui/use-mount-transition';
 import { useDialog } from '@/components/ui/use-dialog';
 import { overlayRoot } from '@/components/ui/overlay-root';
@@ -24,7 +25,7 @@ import { cn } from '@/lib/utils';
  * scrollable overlay or a separate mobile IA, and an overlay keeps one nav to
  * maintain.
  */
-export function AdminDrawer({ initialOpen }: { initialOpen: string[] }) {
+export function AdminDrawer({ initialOpen, categories }: { initialOpen: string[]; categories: readonly NavCategory[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { mounted, closing } = useMountTransition(open);
@@ -106,7 +107,7 @@ export function AdminDrawer({ initialOpen }: { initialOpen: string[] }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3">
-              <AdminNav initialOpen={initialOpen} onNavigate={() => setOpen(false)} />
+              <AdminNav initialOpen={initialOpen} categories={categories} onNavigate={() => setOpen(false)} />
             </div>
           </div>
         </div>,

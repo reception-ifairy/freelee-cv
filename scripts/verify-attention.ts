@@ -25,7 +25,7 @@ const expect = (got: unknown, want: unknown) => JSON.stringify(got) === JSON.str
 const quiet: AttentionFacts = {
   pendingOrders: 0, newLeads: 0, listingsToReview: 0, failingConnections: [], untestedConnections: [],
   liveTutors: 1, homeschoolPagePublished: true, fieldsWithoutBots: 0, fieldsWithoutAudiences: 0,
-  botsWithOtherTypeGroups: 0, belowRiskFloor: [],
+  botsWithOtherTypeGroups: 0,
 };
 
 console.log('Attention');
@@ -34,10 +34,9 @@ const busy = attentionItems({
   ...quiet,
   pendingOrders: 2, newLeads: 1, failingConnections: ['Resend — email'], untestedConnections: ['Ollama'],
   liveTutors: 0, fieldsWithoutBots: 6, botsWithOtherTypeGroups: 55,
-  belowRiskFloor: [{ pillar: 'adults', label: 'Adults: life & career', fields: 5 }],
 });
 check('ordered act → check → tidy', () =>
-  expect(busy.map((i) => i.level), ['act', 'act', 'act', 'check', 'check', 'check', 'tidy', 'tidy']));
+  expect(busy.map((i) => i.level), ['act', 'act', 'act', 'check', 'check', 'tidy', 'tidy']));
 check('the badge counts things someone is waiting on (orders, leads, a failing connection), not tidying', () => actCount(busy) === 3);
 check('counts read as sentences, singular and plural', () =>
   expect(busy.filter((i) => ['orders', 'leads', 'fields-no-bots'].includes(i.id)).map((i) => i.title), [
@@ -47,13 +46,9 @@ check('a failing connection is named', () => busy.find((i) => i.id === 'connecti
 check('no live tutor matters only while the homeschooling page is published', () =>
   attentionItems({ ...quiet, liveTutors: 0, homeschoolPagePublished: false }).length === 0 &&
   attentionItems({ ...quiet, liveTutors: 0 }).some((i) => i.id === 'tutors'));
-check('a risk floor item per market, linking to that market', () => {
-  const floor = busy.find((i) => i.id === 'floor-adults');
-  return Boolean(floor) && floor!.href === '/admin/markets/adults' && floor!.title === '5 fields below the risk floor of Adults: life & career';
-});
-check('without the market check (the header badge) there is no floor item', () =>
-  !attentionItems({ ...quiet, belowRiskFloor: null }).some((i) => i.id.startsWith('floor-')));
 check('every item links into the admin', () => busy.every((i) => i.href.startsWith('/admin')));
+check('no live tutor links to the Education category’s Tutors tab (by slug)', () =>
+  attentionItems({ ...quiet, liveTutors: 0 }).find((i) => i.id === 'tutors')!.href === '/admin/taxonomy?cat=education-and-training&tab=tutors');
 check('bots holding another type link to the browser filtered to them', () => busy.find((i) => i.id === 'bots-other-type')!.href === '/admin/taxonomy?groups=other-type');
 
 if (failed) {

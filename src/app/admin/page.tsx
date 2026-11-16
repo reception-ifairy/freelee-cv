@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { formatCredits, formatMoney, relativeTime } from '@/lib/utils';
 import { attentionFacts } from '@/lib/admin/attention-queries';
 import { attentionItems } from '@/lib/admin/attention';
-import { marketSummaries } from '@/lib/taxonomy/pillar-queries';
-import { AttentionPanel, MarketsCard } from '@/components/admin/attention-panel';
+import { treeCounts, treeInputs } from '@/lib/taxonomy/browser-queries';
+import { buildTree } from '@/lib/taxonomy/browser';
+import { AttentionPanel, CategoriesCard } from '@/components/admin/attention-panel';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -43,7 +44,7 @@ export default async function AdminDashboardPage() {
 
   const [
     [userStats], [personaStats], [messageStats], [revenueStats],
-    perDay, topPersonas, recentOrders, activity, [previousStats], markets,
+    perDay, topPersonas, recentOrders, activity, [previousStats], treeIn, treeCount,
   ] = await Promise.all([
     db
       .select({
@@ -111,9 +112,11 @@ export default async function AdminDashboardPage() {
         credits: sql<number>`coalesce(sum(${messages.creditsCost}) filter (where ${messages.createdAt} >= ${previousSince.toISOString()} and ${messages.createdAt} < ${since.toISOString()}), 0)::int`,
       })
       .from(messages),
-    marketSummaries(),
+    treeInputs(),
+    treeCounts(),
   ]);
-  const attention = attentionItems(await attentionFacts({ markets }));
+  const tree = buildTree(treeIn.categories, treeIn.sectors, treeCount);
+  const attention = attentionItems(await attentionFacts());
 
   const peak = Math.max(1, ...perDay.map((point) => point.total));
   const topPersonaPeak = Math.max(1, ...topPersonas.map((p) => p.messagesCount ?? 0));
@@ -123,7 +126,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="What needs your attention, where the markets stand, and platform activity over the last 30 days." />
+      <PageHeader title="Dashboard" description="What needs your attention, how each category stands, and platform activity over the last 30 days." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
@@ -152,11 +155,11 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {/* What needs doing first, then where the markets stand. The old
+      {/* What needs doing first, then the categories — the pillars. The old
           pending-orders banner is the first item of the list now. */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <AttentionPanel items={attention} className="lg:col-span-2" />
-        <MarketsCard markets={markets} />
+        <CategoriesCard tree={tree} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

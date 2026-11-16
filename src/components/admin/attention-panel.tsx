@@ -3,7 +3,7 @@ import { ChevronRight, CircleCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { AttentionItem, AttentionLevel } from '@/lib/admin/attention';
-import type { MarketSummary } from '@/lib/taxonomy/pillar-queries';
+import type { Tree } from '@/lib/taxonomy/browser';
 import { cn } from '@/lib/utils';
 
 const LEVEL: Record<AttentionLevel, { label: string; dot: string; tone: 'rose' | 'amber' | 'slate' }> = {
@@ -50,33 +50,36 @@ export function AttentionPanel({ items, className }: { items: AttentionItem[]; c
   );
 }
 
-/** Where the markets stand: a share bar and one row per market, each a link to its page. */
-export function MarketsCard({ markets }: { markets: MarketSummary[] }) {
-  const all = markets.reduce((n, m) => n + m.bots.total, 0);
+/**
+ * The pillars at a glance: every category with its live/total bots, the
+ * busiest first, each a link to the category in the taxonomy browser.
+ * Categories with no bot are dimmed (2026-11-16: the categories are the
+ * pillars; the computed markets this replaced are gone).
+ */
+export function CategoriesCard({ tree }: { tree: Tree }) {
+  const rows = [...tree.categories].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   return (
     <Card padding="md">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold">Markets</h2>
-        <Link href="/admin/markets" className="text-xs font-semibold text-brand-400 hover:underline">
-          All →
+        <h2 className="font-semibold">Categories</h2>
+        <Link href="/admin/taxonomy" className="text-xs font-semibold text-brand-400 hover:underline">
+          Taxonomy →
         </Link>
       </div>
-      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-white/5" role="img" aria-label="Share of bots per market">
-        {markets.map((m) =>
-          m.bots.total ? <span key={m.pillar.id} style={{ width: `${(m.bots.total / Math.max(1, all)) * 100}%`, backgroundColor: m.pillar.color }} /> : null,
-        )}
-      </div>
-      <ul className="mt-3 space-y-0.5">
-        {markets.map((m) => (
-          <li key={m.pillar.id}>
+      <p className="mt-1 font-mono text-[11px] text-slate-500">
+        {tree.all.live}/{tree.all.total} bots live · {tree.categories.filter((c) => c.total === 0).length} categories without a bot
+      </p>
+      <ul className="mt-3 max-h-[26rem] space-y-0.5 overflow-y-auto pr-1">
+        {rows.map((c) => (
+          <li key={c.id}>
             <Link
-              href={`/admin/markets/${m.pillar.id}`}
-              className={cn('-mx-2 flex items-center gap-2 rounded-control px-2 py-1.5 text-sm transition-colors hover:bg-white/[0.03]', m.pillar.status === 'planned' && 'text-slate-500')}
+              href={`/admin/taxonomy?cat=${c.id}`}
+              className={cn('-mx-2 flex items-center gap-2 rounded-control px-2 py-1.5 text-sm transition-colors hover:bg-white/[0.03]', c.total === 0 && 'text-slate-500')}
             >
-              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', m.pillar.status === 'planned' && 'opacity-50')} style={{ backgroundColor: m.pillar.color }} />
-              <span className="min-w-0 flex-1 truncate">{m.pillar.label}</span>
-              <span className="font-mono text-[11px] text-slate-400" title={`${m.bots.live} live of ${m.bots.total} bots`}>
-                {m.bots.live}/{m.bots.total}
+              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', c.total === 0 && 'opacity-50')} style={{ backgroundColor: c.color ?? '#6366f1' }} />
+              <span className="min-w-0 flex-1 truncate">{c.name}</span>
+              <span className="font-mono text-[11px] text-slate-400" title={`${c.live} live of ${c.total} bots`}>
+                {c.live}/{c.total}
               </span>
             </Link>
           </li>

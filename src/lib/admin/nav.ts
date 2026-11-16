@@ -31,10 +31,8 @@ import {
   FlaskConical,
   Users2,
   type LucideIcon,
-  Compass,
   Plug,
 } from 'lucide-react';
-import { PILLARS } from '@/lib/taxonomy/pillars';
 
 /**
  * The admin sidebar, as data.
@@ -90,10 +88,14 @@ export type AdminNavItem = {
    * every single page.
    */
   exact?: boolean;
-  /** A colour dot in place of the icon (the markets). */
+  /** A colour dot in place of the icon (the categories). */
   dot?: string;
-  /** Dimmed: there, but not in use yet (a planned market). */
+  /** Dimmed: there, but empty (a category with no bot). */
   muted?: boolean;
+  /** Shown beside the label, e.g. "16/32" live/total bots. */
+  meta?: string;
+  /** Current when on `/admin/taxonomy` with this `cat` (an id or slug) — the category items. */
+  category?: { id: number; slug: string };
 };
 
 export type AdminNavSection = {
@@ -110,22 +112,6 @@ export const ADMIN_NAV: AdminNavSection[] = [
     heading: null,
     tone: 'sky',
     items: [{ href: '/admin', label: 'Dashboard', icon: LayoutGrid, exact: true }],
-  },
-  {
-    // The six markets (src/lib/taxonomy/pillars.ts), each with its colour. Planned ones are dimmed.
-    id: 'markets',
-    heading: 'Markets',
-    tone: 'lime',
-    items: [
-      { href: '/admin/markets', label: 'All markets', icon: Compass },
-      ...PILLARS.map((pillar) => ({
-        href: `/admin/markets/${pillar.id}`,
-        label: pillar.label,
-        icon: Compass,
-        dot: pillar.color,
-        muted: pillar.status === 'planned',
-      })),
-    ],
   },
   {
     id: 'catalogue',
@@ -208,15 +194,47 @@ export const ADMIN_NAV: AdminNavSection[] = [
  * other group folds to one line until opened, and the group of the page you
  * are on is always open.
  */
-export const DEFAULT_OPEN_GROUPS = ['markets', 'catalogue'];
+export const DEFAULT_OPEN_GROUPS = ['categories', 'catalogue'];
 
 /** Cookie holding the groups the reader has open (comma-separated ids), so the server renders them that way. */
 export const NAV_GROUPS_COOKIE = 'admin_nav_open';
 
+/**
+ * The categories group — the platform's pillars (owner, 2026-11-16). Built
+ * from the database at request time, so it is not part of ADMIN_NAV; the
+ * layout reads the categories and their live/total bots and passes them in.
+ * Each item opens the category in the taxonomy browser.
+ */
+export const CATEGORY_GROUP_ID = 'categories';
+
+export type NavCategory = { id: number; slug: string; name: string; color: string | null; live: number; total: number };
+
+export function categoryNavSection(categories: readonly NavCategory[]): AdminNavSection {
+  return {
+    id: CATEGORY_GROUP_ID,
+    heading: 'Categories',
+    tone: 'lime',
+    items: categories.map((c) => ({
+      href: `/admin/taxonomy?cat=${c.id}`,
+      label: c.name,
+      icon: Tags,
+      dot: c.color ?? '#6366f1',
+      muted: c.total === 0,
+      meta: `${c.live}/${c.total}`,
+      category: { id: c.id, slug: c.slug },
+    })),
+  };
+}
+
+/** Whether a category item is the open one: the taxonomy browser with its `cat` (id or slug). */
+export function isCategoryItemCurrent(item: AdminNavItem, pathname: string, cat: string | null): boolean {
+  return Boolean(item.category) && pathname === '/admin/taxonomy' && cat !== null && (cat === String(item.category!.id) || cat === item.category!.slug);
+}
+
 /** Reads the cookie value; missing or empty means the defaults. Unknown ids are dropped. */
 export function parseOpenGroups(value: string | undefined | null): string[] {
   if (value === undefined || value === null) return DEFAULT_OPEN_GROUPS;
-  const known = new Set(ADMIN_NAV.map((s) => s.id));
+  const known = new Set([...ADMIN_NAV.map((s) => s.id), CATEGORY_GROUP_ID]);
   return value.split(',').map((v) => v.trim()).filter((v) => known.has(v));
 }
 
@@ -291,6 +309,7 @@ export const ADMIN_NAV_ALIASES: Record<string, string> = {
   // Redirected into Taxonomy, but their [id] edit routes are still real pages.
   '/admin/categories': 'Categories',
   '/admin/sectors': 'Sectors',
+  '/admin/markets': 'Markets (retired)',
 };
 
 /**
@@ -306,6 +325,8 @@ const NAV_ADOPTIONS: { prefix: string; href: string }[] = [
   { prefix: '/admin/categories', href: '/admin/taxonomy' },
   { prefix: '/admin/sectors', href: '/admin/taxonomy' },
   { prefix: '/admin/ai-models', href: '/admin/settings' },
+  // Retired 2026-11-16 (the categories are the pillars); the pages only redirect into the taxonomy.
+  { prefix: '/admin/markets', href: '/admin/taxonomy' },
 ];
 
 export function adoptedHref(pathname: string): string | null {
