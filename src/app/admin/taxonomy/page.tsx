@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, ExternalLink, FlaskConical, Layers, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Layers, Pencil, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ListToolbar } from '@/components/admin/list-toolbar';
 import { ListPagination } from '@/components/admin/list-pagination';
@@ -19,9 +19,22 @@ import {
   browserPersonas, browserSectors, categoryHeader, personaCard, sectorCard, treeCounts, treeInputs,
   type BrowserPersonaRow, type BrowserSectorRow,
 } from '@/lib/taxonomy/browser-queries';
-import { botPillars, categoryPillars, categorySegments } from '@/lib/taxonomy/pillar-queries';
-import { PILLARS, PILLAR_BY_ID, isPillarId, type PillarId } from '@/lib/taxonomy/pillars';
+import { categoryBrief } from '@/lib/taxonomy/brief';
+import { extrasFor } from '@/lib/taxonomy/category-extras';
+import { isListTab } from '@/lib/taxonomy/browser';
+import { db } from '@/db';
+import { pages } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { familyCounts } from '@/lib/children/admin-counts';
+import { coverageGrid } from '@/lib/curriculum/coverage';
+import { curriculumStatus, hubTutors } from '@/lib/curriculum/hub-queries';
+import { getSubjectsDictionary } from '@/lib/curriculum/subjects-cache';
+import { subjectOptions } from '@/lib/curriculum/subjects';
 import { PersonaSheetBody, SectorSheetBody } from './browser-cards';
+import { AudiencesTab } from './audiences-tab';
+import { Workbench } from './workbench';
+import { CategoryBriefTab } from './category-brief';
+import { CurriculumTab, FamiliesTab, PromiseBanner, TutorsTab } from './homeschool';
 import { TaxonomyTree } from './taxonomy-tree';
 
 export const dynamic = 'force-dynamic';
@@ -42,26 +55,18 @@ export default async function TaxonomyBrowserPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [raw, inputs, bySegments] = await Promise.all([searchParams, treeInputs(), categorySegments()]);
-  // Markets are computed in code from each bot's audience (pillars.ts), so the
-  // market's bots are found first and the counts and list narrowed to them.
-  const bots = await botPillars(bySegments);
-  const rawPillar = Array.isArray(raw.pillar) ? raw.pillar[0] : raw.pillar;
-  const pillar: PillarId | null = rawPillar && isPillarId(rawPillar) ? rawPillar : null;
-  const pillarBots = pillar ? bots.filter((b) => b.pillar === pillar).map((b) => b.id) : null;
-  const pillarsByCategory = categoryPillars(bots, bySegments, inputs.categories.map((c) => c.id));
-  const marketCategories = pillar ? inputs.categories.filter((c) => pillarsByCategory.get(c.id)?.includes(pillar)) : inputs.categories;
-
-  const counts = await treeCounts(pillarBots);
-  const tree = buildTree(marketCategories, inputs.sectors, counts);
+  const [raw, inputs, counts] = await Promise.all([searchParams, treeInputs(), treeCounts()]);
+  const tree = buildTree(inputs.categories, inputs.sectors, counts);
   const { selection, config, params, open } = parseBrowser(raw, tree);
+  const listing = isListTab(selection.tab);
+  const pickedId = typeof selection.cat === 'number' && selection.sec === null ? selection.cat : null;
 
-  const [list, header, card] = await Promise.all([
-    selection.tab === 'sectors'
-      ? browserSectors(selection, params, pillar ? marketCategories.map((c) => c.id) : null)
-      : browserPersonas(selection, params, pillarBots),
-    typeof selection.cat === 'number' && selection.sec === null ? categoryHeader(selection.cat) : null,
+  const [list, header, card, brief] = await Promise.all([
+    !listing ? { rows: [], total: 0 } : selection.tab === 'sectors' ? browserSectors(selection, params) : browserPersonas(selection, params),
+    pickedId !== null ? categoryHeader(pickedId) : null,
     open?.kind === 'persona' ? personaCard(open.id) : open?.kind === 'sector' ? sectorCard(open.id) : null,
+    // The researched brief, for the category's own tabs (Audiences, AI agent, Brief).
+    pickedId !== null && !listing ? categoryBrief(pickedId) : null,
   ]);
 
   const category = typeof selection.cat === 'number' ? tree.categories.find((c) => c.id === selection.cat) ?? null : null;
@@ -97,16 +102,14 @@ export default async function TaxonomyBrowserPage({
             neither a tree nor a table. */}
         <aside className="hidden lg:block">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 pb-4">
-            <MarketPicker bots={bots} selection={selection} params={params} config={config} />
-            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} pillarsByCategory={Object.fromEntries(pillarsByCategory)} />
+            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} />
           </div>
         </aside>
         <div className="mb-4 rounded-card border hairline px-2 lg:hidden">
           <Disclosure
-            title={`Browse: ${[pillar ? PILLAR_BY_ID[pillar].label : null, sector ? `${category?.name} › ${sector.name}` : category?.name ?? (selection.cat === 'none' ? 'No category' : pillar ? null : 'All categories')].filter(Boolean).join(' · ')}`}
+            title={`Browse: ${sector ? `${category?.name} › ${sector.name}` : category?.name ?? (selection.cat === 'none' ? 'No category' : 'All categories')}`}
           >
-            <MarketPicker bots={bots} selection={selection} params={params} config={config} />
-            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} pillarsByCategory={Object.fromEntries(pillarsByCategory)} />
+            <TaxonomyTree tree={tree} selection={selection} params={params} config={config} />
           </Disclosure>
         </div>
 
@@ -115,16 +118,36 @@ export default async function TaxonomyBrowserPage({
 
           {selection.sec === null && selection.cat !== 'none' ? (
             <TabNav
-              label="What to list"
+              label={category ? `${category.name} — sections` : 'What to list'}
               active={selection.tab}
               className="mb-4"
               tabs={[
-                { id: 'personas', label: 'Personas', href: selectionHref(params, config, selection, { tab: 'personas' }), count: (category ?? tree.all).total },
-                { id: 'sectors', label: 'Sectors', href: selectionHref(params, config, selection, { tab: 'sectors' }), count: category ? category.sectors.length : tree.sectorCount },
+                // Counts only at the top level: in a category the header already says them,
+                // and with eight tabs every pixel counts at 1280px.
+                { id: 'personas', label: 'Bots', href: selectionHref(params, config, selection, { tab: 'personas' }), count: category ? undefined : tree.all.total },
+                { id: 'sectors', label: 'Sectors', href: selectionHref(params, config, selection, { tab: 'sectors' }), count: category ? undefined : tree.sectorCount },
+                ...(category
+                  ? [
+                      { id: 'audiences', label: 'Audiences', href: selectionHref(params, config, selection, { tab: 'audiences' }) },
+                      { id: 'agent', label: 'AI agent', href: selectionHref(params, config, selection, { tab: 'agent' }) },
+                      { id: 'brief', label: 'Brief', href: selectionHref(params, config, selection, { tab: 'brief' }) },
+                      ...(extrasFor(category.slug).homeschoolHub
+                        ? [
+                            { id: 'tutors', label: 'Tutors', href: selectionHref(params, config, selection, { tab: 'tutors' }) },
+                            { id: 'curriculum', label: 'Curriculum', href: selectionHref(params, config, selection, { tab: 'curriculum' }) },
+                            { id: 'families', label: 'Families', href: selectionHref(params, config, selection, { tab: 'families' }) },
+                          ]
+                        : []),
+                    ]
+                  : []),
               ]}
             />
           ) : null}
 
+          {!listing && pickedId !== null ? (
+            <CategoryTab tab={selection.tab} categoryId={pickedId} brief={brief} />
+          ) : (
+          <>
           <ListToolbar
             params={params}
             config={config}
@@ -160,6 +183,8 @@ export default async function TaxonomyBrowserPage({
             }}
           />
           <ListPagination pathname={BROWSER_PATH} params={params} config={config} total={list.total} />
+          </>
+          )}
         </section>
       </div>
 
@@ -305,10 +330,12 @@ function NodeHeader({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          {/* The workspace holds the brief, its audiences and the design workbench. */}
-          <Link href={`/admin/taxonomy/${header.id}`} className="inline-flex h-9 items-center gap-2 rounded-control bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700">
-            <FlaskConical className="size-3.5" /> Workspace
-          </Link>
+          {/* The public page that sells what this category offers (category-extras.ts). */}
+          {extrasFor(header.slug).offeringSlug ? (
+            <Link href={`/${extrasFor(header.slug).offeringSlug}`} className="inline-flex h-9 items-center gap-2 rounded-control border hairline px-3 text-xs font-semibold hover:bg-white/[0.03]">
+              <ExternalLink className="size-3.5" /> /{extrasFor(header.slug).offeringSlug}
+            </Link>
+          ) : null}
           <Link href={`/admin/categories/${header.id}`} className="inline-flex h-9 items-center gap-2 rounded-control border hairline px-3 text-xs font-semibold hover:bg-white/[0.03]">
             <Pencil className="size-3.5" /> Edit
           </Link>
@@ -326,29 +353,6 @@ function NodeHeader({
     );
   }
 
-  if (selection.pillar) {
-    const pillar = PILLAR_BY_ID[selection.pillar];
-    return (
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1">
-          <p className="eyebrow mb-1">Market</p>
-          <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: pillar.color }} />
-            {pillar.label}
-            <Badge tone={pillar.status === 'live' ? 'green' : 'slate'}>{pillar.status === 'live' ? 'Sold now' : 'Planned'}</Badge>
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">{pillar.description}</p>
-          <p className="mt-1 font-mono text-xs text-slate-500">
-            {tree.categories.length} {tree.categories.length === 1 ? 'category' : 'categories'} · {tree.all.live}/{tree.all.total} bots live
-          </p>
-        </div>
-        <Link href={`/admin/markets/${pillar.id}`} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-control border hairline px-3 text-xs font-semibold hover:bg-white/[0.03]">
-          Market page
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="mb-4">
       <h2 className="text-xl font-bold tracking-tight">All categories</h2>
@@ -356,54 +360,6 @@ function NodeHeader({
         {tree.categories.length} categories · {tree.sectorCount} sectors · {tree.all.live}/{tree.all.total} bots live
       </p>
     </div>
-  );
-}
-
-/**
- * The six markets as chips above the tree. Picking one narrows the tree to
- * the fields that serve it and the list to its bots (`?pillar=`).
- */
-function MarketPicker({
-  bots,
-  selection,
-  params,
-  config,
-}: {
-  bots: Awaited<ReturnType<typeof botPillars>>;
-  selection: Selection;
-  params: Params;
-  config: Config;
-}) {
-  const chip = 'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors';
-  return (
-    <nav aria-label="Markets" className="mb-3 flex flex-wrap gap-1">
-      <Link
-        href={selectionHref(params, config, selection, { pillar: null })}
-        scroll={false}
-        aria-current={selection.pillar === null ? 'page' : undefined}
-        className={`${chip} ${selection.pillar === null ? 'border-brand-500/60 bg-brand-500/15 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-200 dark:border-white/10'}`}
-      >
-        All markets
-      </Link>
-      {PILLARS.map((pillar) => {
-        const mine = bots.filter((b) => b.pillar === pillar.id);
-        const current = selection.pillar === pillar.id;
-        return (
-          <Link
-            key={pillar.id}
-            href={selectionHref(params, config, selection, { pillar: pillar.id })}
-            scroll={false}
-            aria-current={current ? 'page' : undefined}
-            title={`${pillar.label} — ${mine.filter((b) => b.isActive).length} of ${mine.length} bots live${pillar.status === 'planned' ? ' · planned' : ''}`}
-            className={`${chip} ${current ? 'border-brand-500/60 bg-brand-500/15 text-white' : 'border-slate-200 text-slate-400 hover:text-slate-200 dark:border-white/10'} ${pillar.status === 'planned' && !current ? 'opacity-70' : ''}`}
-          >
-            <span aria-hidden className="size-1.5 rounded-full" style={{ backgroundColor: pillar.color }} />
-            {pillar.short}
-            <span className="font-mono text-[10px] text-slate-500">{mine.length}</span>
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -504,4 +460,69 @@ function StepLink({ href, label, icon }: { href?: string; label: string; icon: R
       {icon}
     </Link>
   );
+}
+
+/**
+ * The right-hand side for a picked category's own tabs (not a list). Each tab
+ * reads only its own data. The homeschool hub tabs (Tutors, Curriculum,
+ * Families) moved here from the retired Markets pages on 2026-11-16: the
+ * category is the pillar now.
+ */
+async function CategoryTab({
+  tab,
+  categoryId,
+  brief,
+}: {
+  tab: Selection['tab'];
+  categoryId: number;
+  brief: Awaited<ReturnType<typeof categoryBrief>>;
+}) {
+  if (!brief) return null;
+
+  if (tab === 'audiences') {
+    return <AudiencesTab categoryId={categoryId} linked={brief.audiences.map((a) => ({ code: a.code, note: a.note }))} />;
+  }
+  if (tab === 'agent') {
+    return <Workbench categoryId={categoryId} categoryName={brief.name} sectors={brief.sectors} />;
+  }
+  if (tab === 'brief') {
+    return <CategoryBriefTab brief={brief} />;
+  }
+
+  // The homeschool hub. The banner sets the public page's promise against the live tutors.
+  const offeringSlug = extrasFor(brief.slug).offeringSlug ?? null;
+  const [tutors, dict, page] = await Promise.all([
+    hubTutors(),
+    tab === 'tutors' || tab === 'curriculum' ? getSubjectsDictionary() : null,
+    offeringSlug
+      ? db.select({ slug: pages.slug, published: pages.isPublished }).from(pages).where(eq(pages.slug, offeringSlug)).limit(1)
+      : [],
+  ]);
+  const banner = <PromiseBanner liveTutors={tutors.filter((t) => t.isActive).length} page={page[0] ?? null} />;
+
+  if (tab === 'tutors') {
+    return (
+      <>
+        {banner}
+        <TutorsTab tutors={tutors} options={subjectOptions(dict)} />
+      </>
+    );
+  }
+  if (tab === 'curriculum') {
+    return (
+      <>
+        {banner}
+        <CurriculumTab status={await curriculumStatus()} coverage={coverageGrid(tutors, dict)} tutors={tutors} />
+      </>
+    );
+  }
+  if (tab === 'families') {
+    return (
+      <>
+        {banner}
+        <FamiliesTab counts={await familyCounts()} />
+      </>
+    );
+  }
+  return null;
 }

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { ChevronRight, Search, X } from 'lucide-react';
 import type { ListConfig, ListParams } from '@/lib/admin/list-query';
 import { RISK_MEANING, selectionHref, type Count, type Selection, type Tree } from '@/lib/taxonomy/browser';
-import { PILLAR_BY_ID, type PillarId } from '@/lib/taxonomy/pillars';
 import { cn } from '@/lib/utils';
 
 /**
@@ -22,14 +21,11 @@ export function TaxonomyTree({
   selection,
   params,
   config,
-  pillarsByCategory = {},
 }: {
   tree: Tree;
   selection: Selection;
   params: ListParams;
   config: ListConfig;
-  /** The markets each category serves — a dot per market beside its name. */
-  pillarsByCategory?: Record<number, PillarId[]>;
 }) {
   const selectedCat = typeof selection.cat === 'number' ? selection.cat : null;
   const [filter, setFilter] = useState('');
@@ -119,7 +115,6 @@ export function TaxonomyTree({
                   count={category}
                   dot={category.color ?? '#6366f1'}
                   risk={category.riskLevel}
-                  pillars={selection.pillar ? undefined : pillarsByCategory[category.id]}
                   muted={!category.isActive}
                   title={category.isActive ? undefined : 'Hidden from the site'}
                 />
@@ -172,7 +167,6 @@ function Node({
   muted,
   strong,
   title,
-  pillars,
 }: {
   href: string;
   current: boolean;
@@ -180,7 +174,6 @@ function Node({
   count: Count;
   dot?: string;
   risk?: string | null;
-  pillars?: PillarId[];
   muted?: boolean;
   strong?: boolean;
   title?: string;
@@ -200,13 +193,6 @@ function Node({
     >
       {dot ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: dot }} /> : null}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {pillars?.length ? (
-        <span className="flex shrink-0 gap-0.5" title={`Serves: ${pillars.map((id) => PILLAR_BY_ID[id].label).join(', ')}`}>
-          {pillars.map((id) => (
-            <span key={id} aria-hidden className="size-1 rounded-full" style={{ backgroundColor: PILLAR_BY_ID[id].color }} />
-          ))}
-        </span>
-      ) : null}
       {risk && risk !== 'R0' ? (
         <span title={RISK_MEANING[risk]} className="shrink-0 font-mono text-[10px] text-amber-400/80">
           {risk}

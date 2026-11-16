@@ -12,7 +12,7 @@ import { actCount, attentionItems } from '@/lib/admin/attention';
 export async function AttentionBadge() {
   let count = 0;
   try {
-    count = actCount(attentionItems(await attentionFacts({ markets: null })));
+    count = actCount(attentionItems(await attentionFacts()));
   } catch {
     return null;
   }

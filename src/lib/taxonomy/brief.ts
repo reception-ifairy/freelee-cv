@@ -51,9 +51,8 @@ export async function categoryBrief(categoryId: number): Promise<CategoryBrief |
       .select()
       .from(categoryAudienceSegments)
       .where(eq(categoryAudienceSegments.categoryId, categoryId))
-      // Code breaks ties, as in pillar-queries.ts: positions repeat (five of
-      // Education's links share 0), and the first of each kind decides a bot's
-      // market, so both places must agree on which is first.
+      // Code breaks ties: positions repeat (five of Education's links share 0),
+      // and the brief must read the same way every time.
       .orderBy(asc(categoryAudienceSegments.position), asc(categoryAudienceSegments.segmentCode)),
   ]);
 

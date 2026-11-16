@@ -37,7 +37,7 @@ export function TabNav({
   return (
     <nav
       aria-label={label}
-      className={cn('mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/10', className)}
+      className={cn('mb-6 flex gap-0.5 overflow-x-auto border-b border-slate-200 dark:border-white/10', className)}
     >
       {tabs.map((tab) => (
         <Link
@@ -46,7 +46,7 @@ export function TabNav({
           scroll={false}
           aria-current={active === tab.id ? 'page' : undefined}
           className={cn(
-            '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors',
+            '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors',
             active === tab.id
               ? 'border-brand-500 text-brand-700 dark:text-brand-300'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',

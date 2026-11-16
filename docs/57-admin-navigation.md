@@ -131,7 +131,9 @@ Checked by `npm run taxonomy:verify-browser` (20 checks):
 - **Phone:** the tree is folded and the page does not scroll sideways (the table scrolls inside its frame).
 - No page errors.
 
-## Markets (freelee #81)
+## Markets (freelee #81) — retired in #88
+
+> **Retired on 2026-11-16 (#88).** The owner decided the taxonomy's categories are the pillars; the six computed markets, their pages, the `?pillar=` filter and the market dots are gone. The section stays as the record of what was built and why it was removed.
 
 **Owner decisions, 2026-11-14:** six markets ("pillars") based on the audience, not just Business and Homeschooling; and they are computed, not assigned. They live in `src/lib/taxonomy/pillars.ts`, with no migration.
 
@@ -192,7 +194,7 @@ Checked by `npm run taxonomy:verify-pillars` (15 checks):
 
 The browser's market links are in `taxonomy:verify-browser` (now 24 checks).
 
-## A field's workspace (freelee #82)
+## A field's workspace (freelee #82) — folded into the browser in #88
 
 `/admin/taxonomy/[id]` used to be one long page, with the workbench, sector tiles, the audience picker and three fact cards stacked on top of each other. It is now a workspace with three tabs (`?tab=`, via `TabNav`):
 - **Overview:**
@@ -227,7 +229,7 @@ The browser's market links are in `taxonomy:verify-browser` (now 24 checks).
 - **AI tab and phone:** the AI tab renders the workbench (no message sent). On a phone the page does not scroll sideways.
 - No page errors.
 
-## The homeschool hub (freelee #83)
+## The homeschool hub (freelee #83) — moved to Education and Training in #88
 
 The owner said "homeschooling is starting to look like a maze": its tutors, its curriculum and its families had no place in the admin, and the curriculum connection sat three levels down in Settings. `/admin/markets/homeschooling` is now the hub, with four tabs (`?tab=`, each reading only its own data):
 - **Overview:** the market page every market has (fields, audience groups, risk floor).
@@ -399,6 +401,29 @@ Checked by `npm run admin:verify-attention` (10 checks):
 - every key a section or connection names exists in the schema;
 - every form section declares its fields;
 - a moved section redirects.
+
+## Categories are the pillars (freelee #88)
+
+**Owner decision, 2026-11-16:** the twenty taxonomy categories are the platform's pillars. Homeschooling belongs to *Education and Training*, the business offer to *Business and Finance*. The six markets computed from audiences (#81) were removed: `pillars.ts`, `pillar-queries.ts`, `/admin/markets`, the `?pillar=` filter, the market dots in the tree and on audience groups, the "decides" marker, the Markets card and the risk-floor items in the attention list. The 70 audience segments stay; nothing is computed from them any more.
+
+**The sidebar's first group is Categories** (`categoryNavSection`, `src/lib/admin/nav.ts`). It is built at request time: the layout reads the categories with their live/total bots (`treeInputs` + `treeCounts`, the tree's own two queries) and passes them to `AdminNav` and the phone drawer. Each item has the category's colour and `live/total`; a category with no bot is dimmed. An item opens `/admin/taxonomy?cat=<id>` and is current there (`isCategoryItemCurrent`, by id or slug, via `useSearchParams`); while it is, the Taxonomy item is not also marked. Folded, the group shows the dots of categories that have bots. `DEFAULT_OPEN_GROUPS` is Categories and Catalogue.
+
+**A category is a view of the taxonomy browser, not a separate page.** The tree stays on the left. `browser.ts` gains category tabs:
+- lists: `personas` (labelled Bots) and `sectors`;
+- a picked category (no sector): `audiences`, `agent` (the workbench, the future AI agent), `brief` (the market facts, `category-brief.tsx`);
+- the category with the homeschool hub: `tutors`, `curriculum`, `families` (`homeschool.tsx`, moved unchanged; families stay numbers only).
+
+`validTab` keeps a tab only where it means something, so a hand-edited URL falls back to the bot list. `cat` also takes a slug (`?cat=education-and-training`), so links survive a database move; the kept params are rewritten to the id. Moving to another category keeps the tab.
+
+**What a category carries beyond the taxonomy** is in `src/lib/taxonomy/category-extras.ts`, by slug: `education-and-training` has the offering page `/homeschooling` and the hub; `business-and-finance` has `/business`. The header links the offering page.
+
+**Redirects.** `/admin/taxonomy/[id]?tab=` → `/admin/taxonomy?cat=<id>&tab=` (`overview`→`brief`, `ai`→`agent`). `/admin/markets` → the taxonomy; `/admin/markets/homeschooling[?tab=tutors|curriculum|families]` → Education with that tab; `/business` market → Business and Finance; the other four → the taxonomy. `NAV_ADOPTIONS` keeps the redirect pages under Taxonomy.
+
+**The dashboard** shows a Categories card (live/total per category, busiest first, linking into the browser) where the Markets card was.
+
+**Width.** With eight tabs beside the 15rem tree, `TabNav` padding went from `px-4` to `px-3`, and the category tabs carry no counts (the header says them). Measured at 1280px: 696 of 696px.
+
+Checks: `admin:verify-nav` (the category items, current by id or slug, the retired markets under Taxonomy), `taxonomy:verify-browser` (slug, category tabs, hub tabs only where the hub is), `admin:verify-attention`. `taxonomy:verify-pillars` is gone with the pillars.
 
 ## First use: the Audiences screen (freelee #78)
 

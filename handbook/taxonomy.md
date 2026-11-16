@@ -14,28 +14,20 @@ Under **Catalogue** in the sidebar, three screens:
 - **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
 - **Audiences** — seventy groups of people, and what each of them needs.
 
-## Markets
+## Categories are the pillars
 
-**Admin → Markets** shows the six markets Freelee is built for:
-- **sold now:** Business, and Homeschooling & family;
-- **planned:** Schools & educators, Adults, Interests and Public sector.
+The twenty categories are what Freelee is organised around. They sit at the top of the sidebar under
+**Categories**, each with its colour and **live/all** bots; a category with no bot yet is dimmed. Click
+one and it opens in the taxonomy browser with its own tabs (below).
 
-You never assign a bot to a market. Its market follows from who it is for:
-- a curriculum tutor goes to Homeschooling & family;
-- otherwise the bot's own audience groups decide;
-- otherwise its field's groups decide.
+Two categories carry more than the rest:
 
-So when you change a bot's audience, its market follows by itself.
+- **Education and Training** holds homeschooling: the public page */homeschooling* and the homeschool
+  hub (Tutors, Curriculum, Families — see *Child profiles and privacy*).
+- **Business and Finance** links the public page */business*.
 
-Each market shows:
-- how many of its bots are live;
-- which fields serve it;
-- how many of its audience groups are linked to a field;
-- whether its public page exists.
-
-Some markets have a **risk floor**. For example, anything serving children should be at least **R2**. A market's page warns you when a field serving it is below that.
-
-**Browse its bots** opens the taxonomy browser filtered to that market. There the chips above the tree switch between markets: the tree shows only the fields that serve the market, and the list only its bots. Outside a market, the small coloured dots beside a field show which markets it serves.
+(Until 16 November 2026 there were six "markets" worked out from each bot's audience. They are gone;
+old links to them land on the matching category.)
 
 ## Browsing the taxonomy
 
@@ -69,31 +61,25 @@ fields to see where the maths bots are.
 
 Everything you pick is in the page address, so you can bookmark a view or send it to someone.
 
-When you pick a field, its header has **Workspace**, which opens the field's brief (below), and
-**Edit**.
+When you pick a field, its header shows its live/all bots, sectors, audiences and risk, its public
+page if it has one, and **Edit**. Under it, the field's tabs:
+
+- **Bots** and **Sectors** — the lists described above, for this field.
+- **Audiences** — the groups this field serves, and why (below).
+- **AI agent** — where you design a new bot with the field's assistant.
+- **Brief** — the researched facts: market size and growth, regulation, industry bodies, risk level,
+  how the field leans towards consumers, businesses or government, and what its web address decides
+  (the chat layout bots here get and the tools they are offered — which is why the address never
+  changes when you rename a category).
+- **Tutors**, **Curriculum**, **Families** — only on Education and Training: the homeschool hub.
 
 On a phone, the tree folds into a **Browse** line above the list.
 
-## Opening a field
-
-Press **Workspace** on a field (or open */admin/taxonomy/34* directly). Under its name you see how many of
-its bots are live, its risk level and the markets it serves. Three tabs:
-
-- **Overview** — the field at a glance:
-  - **Bots** — how many are live, split by market. **Browse them** opens the taxonomy browser at this
-    field.
-  - **Specialisms** — every sector with its live/all bots; click one to see its bots in the browser.
-  - **Who it serves** — the audiences attached.
-  - **The market** — size, growth, regulation, industry bodies, risk level.
-  - **What the address decides** — the chat layout bots in this field get, and the tools they are
-    offered. These are keyed to the category's web address, which is why that address never changes
-    when you rename a category. Renaming is safe; the address is fixed.
-- **Audiences** — the groups this field serves, and why (below).
-- **AI workbench** — where you design a new bot.
+(*/admin/taxonomy/34* still works: it opens the same field in the browser.)
 
 ## Designing a bot
 
-Press **Open workbench**. You get a conversation with an assistant that has already read everything
+On a field's **AI agent** tab, press **Open workbench**. You get a conversation with an assistant that has already read everything
 above — the market, the regulations, the risk level, the specialisms and the audiences.
 
 It is a working conversation, not a form. Ask it what kind of specialist is missing, who would pay
@@ -113,16 +99,12 @@ whatever you like, and publish it when it is ready.
 ## Attaching audiences
 
 The **Audiences** tab of a field lists the groups it serves, by kind (consumers, businesses, public
-sector), each with its market and **a note on why it matters to this field**. Press **Edit note** to
+sector), each with **a note on why it matters to this field**. Press **Edit note** to
 write or change one: notes go into the field's brief, beside the group. **Ctrl+Enter** saves; **Esc**
 cancels.
 
-The first group of each kind is marked **decides**. A bot in this field that names no group of its own
-kind takes its market from that one. Groups you add later go to the end, so adding never changes
-which one decides.
-
 **Choose audiences** opens all seventy, folded by family. Type in the box to find a group (*parents*,
-*SEND*, *councils*). Each shows what those people actually need, with a dot for its market.
+*SEND*, *councils*). Each shows what those people actually need.
 
 This matters more than it looks. Whatever you attach here becomes part of the brief every bot in this
 field is designed against, and a wrong audience is worse than none.

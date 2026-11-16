@@ -103,15 +103,16 @@ Only the adaptations are saved, and you can untick them later.
 
 ## In the admin: the homeschool hub
 
-**Admin → Markets → Homeschooling & family** is the one place for homeschooling. Four tabs:
+Homeschooling lives in the **Education and Training** category: **Admin → Categories → Education and
+Training**. Next to the field's usual tabs (Bots, Sectors, Audiences, AI agent, Brief) it has three of
+its own:
 
-- **Overview** — the fields serving the market and its audience groups.
 - **Tutors** — every curriculum tutor, with the key stages and subjects it teaches and whether it is live.
   A tutor is any bot with a curriculum scope: you give it one in the bot's editor, under Curriculum.
 - **Curriculum** — two things:
   - **The connection.** What freelee holds from the curriculum: whether the connection works, the subject
     list, the exams and the objectives, with when each was last fetched. **Manage the connection** takes
-    you to the card in Settings.
+    you to its card in Connections.
   - **Who teaches what.** A grid of every subject a parent can choose against Key Stages 1–4:
     - **green** — a live tutor teaches it;
     - **amber** — only a tutor that is not live yet;

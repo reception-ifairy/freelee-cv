@@ -32,9 +32,26 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-16
+
+### #88 · `pending` — The categories are the pillars: twenty in the sidebar, homeschooling under Education and Training, the computed markets gone
+
+Owner decision, 2026-11-16: the taxonomy's categories are the pillars, not six markets computed from
+audiences. Homeschooling goes under Education and Training, business under Business and Finance. The
+sidebar opens with **Categories** — all twenty from the database, each with its colour and live/total
+bots, the empty ones dimmed — and a category is now a view of the taxonomy browser (the tree stays on
+the left) with its own tabs: Bots, Sectors, Audiences, AI agent, Brief, and on Education the
+homeschool hub's Tutors, Curriculum and Families. `cat` accepts a slug; `category-extras.ts` says
+which category links which offering page and carries the hub. Removed: `pillars.ts`,
+`pillar-queries.ts`, the Markets pages (they redirect), the `?pillar=` filter, market dots, the
+"decides" marker, the Markets card (now a Categories card) and the risk-floor attention items.
+`/admin/taxonomy/[id]` redirects into the browser. Checks updated; `verify-pillars` removed.
+
+📄 docs/57-admin-navigation.md · handbook/taxonomy.md · handbook/child-profiles.md · handbook/welcome.md
+
 ## 2026-11-14
 
-### #87 · `pending` — Release notes in plain words, a README that says what freelee is now, and GitHub Releases
+### #87 · `7416556` — Release notes in plain words, a README that says what freelee is now, and GitHub Releases
 
 The owner asked for every change to be readable, here and on GitHub. The CHANGELOG records each
 commit's reasoning but reads as a ledger, the README still described the August product, and GitHub
