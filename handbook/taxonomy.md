@@ -1,18 +1,23 @@
 # Taxonomy
 
-**Admin → Catalogue → Taxonomy** is where the twenty fields your bots work in are described — and where you
-design new ones.
+**Admin → Catalogue → Bots & taxonomy** is where every bot lives, filed under the twenty fields it works
+in — and where you design new ones.
 
 A *category* is a field: Marketing and Advertising, Legal and Compliance, Health and Medicine. A
 *sector* is a specialism inside it: Search Engine Optimisation, Contract Review. Each field carries
 real research — how big the UK market is, how fast it grows, which regulations apply, which industry
 bodies matter, how risky the work is, and who it serves.
 
-Under **Catalogue** in the sidebar, three screens:
+Under **Catalogue** in the sidebar:
 
-- **Taxonomy** — the twenty fields, their sectors and the bots filed there, as a browser (below).
-- **Drafts** — bots that are not live: switched off, or designed in the workbench and not yet published. (Called Prototypes until November 2026.)
+- **Bots & taxonomy** — every bot, filed under the twenty fields and their sectors, as a browser
+  (below). This is the one list of bots: the old *Personas* page opens it, keeping your search and
+  filters. **New bot** and **Convert a bot** are at the top.
 - **Audiences** — seventy groups of people, and what each of them needs.
+- **Drafts** — the same browser showing only bots that are not live: switched off, or designed with an
+  AI agent and not yet published. Open one and **Publish** it from its card.
+- **Prompt modifiers** — the tones, styles and formats customers can layer onto a chat, in the same
+  layout: the five types on the left, the list, the full instruction on each card.
 
 ## Categories are the pillars
 
@@ -41,7 +46,7 @@ sector by name: type *nutri* and only Lifestyle and Wellness › Nutrition Coach
 
 **On the right, the list** for whatever you picked in the tree:
 
-- **Personas** — the bots filed there, with their sector, audience type and whether they are live.
+- **Bots** — the bots filed there, with their sector, audience type and whether they are live.
   Search, filter (live or not, audience type, curriculum tutors) and sort; click **Name** to sort by
   it.
 - **Sectors** — the specialisms, with how many of their bots are live and their risk level.
@@ -49,7 +54,8 @@ sector by name: type *nutri* and only Lifestyle and Wellness › Nutrition Coach
 **Click a row and its card slides in** from the right:
 
 - a bot's card shows where it is filed, its audience and audience groups, its model, how much it is
-  used, and its description;
+  used, and its description — and its actions: **Publish** (or **Unpublish**), **Mark as featured**,
+  **Duplicate**, **Delete**, and **Edit** for everything else;
 - a sector's card shows its risk, who it suits and its description, and **Show its bots** jumps to
   that sector in the tree.
 

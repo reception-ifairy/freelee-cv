@@ -44,7 +44,7 @@ turning. Nothing is lost.
 
 ## Categories and sectors, in one place
 
-**Admin → Catalogue → Taxonomy.** Categories and sectors used to be two separate screens; they are now one,
+**Admin → Catalogue → Bots & taxonomy.** Categories and sectors used to be two separate screens; they are now one,
 because a sector only means anything inside its category.
 
 A category is the field — *Marketing and advertising*, *Legal*, *Health*. A sector is the speciality

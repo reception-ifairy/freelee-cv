@@ -118,10 +118,11 @@ export const ADMIN_NAV: AdminNavSection[] = [
     heading: 'Catalogue',
     tone: 'violet',
     items: [
-      { href: '/admin/personas', label: 'Personas', icon: Sparkles },
-      { href: '/admin/taxonomy', label: 'Taxonomy', icon: Tags },
+      // One list of bots since #90: the taxonomy browser. The old Personas grid redirects there.
+      { href: '/admin/taxonomy', label: 'Bots & taxonomy', icon: Sparkles },
       { href: '/admin/taxonomy/audiences', label: 'Audiences', icon: Users2 },
-      { href: '/admin/taxonomy/drafts', label: 'Drafts', icon: FlaskConical },
+      // The same browser, filtered to bots that are not live; current only with that filter.
+      { href: '/admin/taxonomy?status=draft', label: 'Drafts', icon: FlaskConical },
       { href: '/admin/modifiers', label: 'Prompt modifiers', icon: SlidersHorizontal },
     ],
   },
@@ -226,6 +227,31 @@ export function categoryNavSection(categories: readonly NavCategory[]): AdminNav
   };
 }
 
+/** An href's path, without its query. */
+export const hrefPath = (href: string) => href.split('?')[0];
+
+/** Whether the URL's query has everything an item's href asks for (`/admin/taxonomy?status=draft` needs `status=draft`). */
+function queryMatches(item: AdminNavItem, search: URLSearchParams): boolean {
+  for (const [key, value] of new URLSearchParams(item.href.split('?')[1] ?? '')) if (search.get(key) !== value) return false;
+  return true;
+}
+
+/**
+ * Whether an item owns the page, query included (freelee #90).
+ *
+ * An item whose href carries a query — Drafts is the taxonomy browser with
+ * `status=draft` — is current only on its path with that query, and then it
+ * wins over the plain item at the same path. Every other item falls back to
+ * the path rules (`isNavItemCurrent`). Category items have their own rule.
+ */
+export function isNavItemCurrentAt(item: AdminNavItem, pathname: string, search: URLSearchParams): boolean {
+  if (item.category) return isCategoryItemCurrent(item, pathname, search.get('cat'));
+  const queried = ADMIN_NAV.flatMap((s) => s.items).filter((i) => i.href.includes('?') && hrefPath(i.href) === pathname && queryMatches(i, search));
+  if (queried.length) return queried.includes(item);
+  if (item.href.includes('?')) return false;
+  return isNavItemCurrent(item, pathname);
+}
+
 /** Whether a category item is the open one: the taxonomy browser with its `cat` (id or slug). */
 export function isCategoryItemCurrent(item: AdminNavItem, pathname: string, cat: string | null): boolean {
   return Boolean(item.category) && pathname === '/admin/taxonomy' && cat !== null && (cat === String(item.category!.id) || cat === item.category!.slug);
@@ -309,6 +335,7 @@ export const ADMIN_NAV_ALIASES: Record<string, string> = {
   // Redirected into Taxonomy, but their [id] edit routes are still real pages.
   '/admin/categories': 'Categories',
   '/admin/sectors': 'Sectors',
+  '/admin/personas': 'Bots',
   '/admin/markets': 'Markets (retired)',
 };
 
@@ -324,6 +351,8 @@ export const ADMIN_NAV_ALIASES: Record<string, string> = {
 const NAV_ADOPTIONS: { prefix: string; href: string }[] = [
   { prefix: '/admin/categories', href: '/admin/taxonomy' },
   { prefix: '/admin/sectors', href: '/admin/taxonomy' },
+  // A bot's editor, New bot and the converter belong to the one list of bots (#90).
+  { prefix: '/admin/personas', href: '/admin/taxonomy' },
   { prefix: '/admin/ai-models', href: '/admin/settings' },
   // Retired 2026-11-16 (the categories are the pillars); the pages only redirect into the taxonomy.
   { prefix: '/admin/markets', href: '/admin/taxonomy' },

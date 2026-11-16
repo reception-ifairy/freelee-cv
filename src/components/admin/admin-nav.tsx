@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import {
   ADMIN_NAV, CATEGORY_GROUP_ID, NAV_GROUPS_COOKIE, TONE_CLASSES, categoryNavSection, groupOfPath, isCategoryItemCurrent,
-  isNavItemCurrent, type AdminNavItem, type AdminNavSection, type NavCategory,
+  isNavItemCurrentAt, hrefPath, type AdminNavItem, type AdminNavSection, type NavCategory,
 } from '@/lib/admin/nav';
 import { cn } from '@/lib/utils';
 
@@ -36,14 +36,16 @@ export function AdminNav({
   categories?: readonly NavCategory[];
 }) {
   const pathname = usePathname();
-  const cat = useSearchParams().get('cat');
+  const search = useSearchParams();
+  const cat = search.get('cat');
   const [open, setOpen] = useState<Set<string>>(() => new Set(initialOpen));
   const sections = [ADMIN_NAV[0], categoryNavSection(categories), ...ADMIN_NAV.slice(1)];
   const categoryOpen = sections[1].items.some((item) => isCategoryItemCurrent(item, pathname, cat));
   // A picked category is the current page, not the Taxonomy item it is a view of.
   const current = categoryOpen ? CATEGORY_GROUP_ID : groupOfPath(pathname);
   const isCurrent = (item: AdminNavItem) =>
-    item.category ? isCategoryItemCurrent(item, pathname, cat) : isNavItemCurrent(item, pathname) && !(categoryOpen && item.href === '/admin/taxonomy');
+    // An open category is the more precise answer than the browser's own items.
+    isNavItemCurrentAt(item, pathname, search) && !(categoryOpen && !item.category && hrefPath(item.href) === '/admin/taxonomy');
 
   function toggle(id: string) {
     const next = new Set(open);

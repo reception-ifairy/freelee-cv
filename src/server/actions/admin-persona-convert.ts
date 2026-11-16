@@ -169,6 +169,6 @@ export async function importConvertedPersonaAction(formData: FormData) {
   // the editor asks for it on the very next screen.
   await db.delete(personaCategories).where(eq(personaCategories.personaId, personaId));
 
-  revalidatePath('/admin/personas');
+  revalidatePath('/admin', 'layout');
   redirect(`/admin/personas/${personaId}`);
 }

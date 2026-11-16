@@ -271,7 +271,7 @@ export async function savePersonaAction(_prev: PersonaSaveState, formData: FormD
     }
   }
 
-  revalidatePath('/admin/personas');
+  revalidatePath('/admin', 'layout');
   revalidatePath(`/admin/personas/${saved.id}`);
   revalidatePath('/personas');
   // Back to the persona, not the list: the person sees what happened (saved
@@ -293,14 +293,16 @@ export async function togglePersonaAction(formData: FormData) {
     )
     .where(eq(personas.id, id));
 
-  revalidatePath('/admin/personas');
+  // The taxonomy browser and the sidebar's live counts list bots too (freelee #90).
+  revalidatePath('/admin', 'layout');
 }
 
 export async function deletePersonaAction(formData: FormData) {
   await requireAdmin();
   const id = z.coerce.number().int().parse(formData.get('id'));
   await db.delete(personas).where(eq(personas.id, id));
-  revalidatePath('/admin/personas');
+  // The taxonomy browser and the sidebar's live counts list bots too (freelee #90).
+  revalidatePath('/admin', 'layout');
 }
 
 export async function duplicatePersonaAction(formData: FormData) {
@@ -357,7 +359,7 @@ export async function duplicatePersonaAction(formData: FormData) {
     await tx.update(personas).set({ currentVersionId: version.id }).where(eq(personas.id, copy.id));
   });
 
-  revalidatePath('/admin/personas');
+  revalidatePath('/admin', 'layout');
 }
 
 /** Publishes the current draft: snapshots it into an immutable version and makes it current. */

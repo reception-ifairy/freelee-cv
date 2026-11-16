@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { promptModifiers } from '@/db/schema';
 import { PageHeader } from '@/components/admin/page-header';
 import { InlineForm } from '@/components/admin/inline-form';
-import { getAdminView } from '@/lib/admin/view-preference-server';
+import { Disclosure } from '@/components/ui/disclosure';
 import { ModifiersList } from './modifiers-list';
 import { Input, Textarea, Label, Checkbox, Hint } from '@/components/ui/field';
 import { saveModifierAction } from '@/server/actions/admin';
-import { cn } from '@/lib/utils';
 
 /**
  * Per-user content: never prerendered, never cached at the edge.
@@ -29,12 +27,13 @@ export default async function AdminModifiersPage({
   const { type } = await searchParams;
   const active: ModifierType = TYPES.includes(type as ModifierType) ? (type as ModifierType) : 'tone';
 
-  const view = await getAdminView(`modifiers-${active}`);
-  const rows = await db
-    .select()
-    .from(promptModifiers)
-    .where(eq(promptModifiers.type, active))
-    .orderBy(asc(promptModifiers.position));
+  const [rows, perType] = await Promise.all([
+    db.select().from(promptModifiers).where(eq(promptModifiers.type, active)).orderBy(asc(promptModifiers.position)),
+    db.select({ type: promptModifiers.type, count: sql<number>`count(*)::int` }).from(promptModifiers).groupBy(promptModifiers.type),
+  ]);
+  const count = new Map(perType.map((r) => [r.type, r.count]));
+  // The rail is the five types, as the taxonomy browser's tree is its categories (#90).
+  const rail = TYPES.map((item) => ({ label: item, href: `/admin/modifiers?type=${item}`, count: count.get(item) ?? 0, active: item === active }));
 
   return (
     <div>
@@ -43,57 +42,45 @@ export default async function AdminModifiersPage({
         description="Reusable instructions users can layer onto any conversation — tone, writing style, output format."
       />
 
-      <div className="mb-6 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/60">
-        {TYPES.map((item) => (
-          <Link
-            key={item}
-            href={`/admin/modifiers?type=${item}`}
-            className={cn(
-              'rounded-lg px-4 py-2 text-sm font-medium capitalize transition',
-              item === active
-                ? 'bg-white shadow-sm dark:bg-slate-900'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white',
-            )}
-          >
-            {item}
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <InlineForm action={saveModifierAction} title={`New ${active} modifier`}>
-          <input type="hidden" name="type" value={active} />
-          <div>
-            <Label htmlFor="name">Name *</Label>
-            <Input id="name" name="name" required placeholder="Friendly" />
+      <ModifiersList
+        rows={rows}
+        kind={active}
+        rail={rail}
+        form={
+          <div className="rounded-card border hairline px-2">
+            <Disclosure title={`New ${active} modifier`}>
+              <InlineForm action={saveModifierAction} title={`New ${active} modifier`}>
+                <input type="hidden" name="type" value={active} />
+                <div>
+                  <Label htmlFor="name">Name *</Label>
+                  <Input id="name" name="name" required placeholder="Friendly" />
+                </div>
+                <div>
+                  <Label htmlFor="value">Instruction *</Label>
+                  <Textarea
+                    id="value"
+                    name="value"
+                    rows={4}
+                    required
+                    placeholder="Write in a warm, conversational tone. Use contractions and short sentences."
+                  />
+                  <Hint>Appended to the system prompt when the user selects this option.</Hint>
+                </div>
+                <div>
+                  <Label htmlFor="position">Position</Label>
+                  <Input id="position" name="position" type="number" defaultValue={0} />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox name="isActive" defaultChecked /> Active
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox name="isDefault" /> Default for this type
+                </label>
+              </InlineForm>
+            </Disclosure>
           </div>
-          <div>
-            <Label htmlFor="value">Instruction *</Label>
-            <Textarea
-              id="value"
-              name="value"
-              rows={4}
-              required
-              placeholder="Write in a warm, conversational tone. Use contractions and short sentences."
-            />
-            <Hint>Appended to the system prompt when the user selects this option.</Hint>
-          </div>
-          <div>
-            <Label htmlFor="position">Position</Label>
-            <Input id="position" name="position" type="number" defaultValue={0} />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox name="isActive" defaultChecked /> Active
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox name="isDefault" /> Default for this type
-          </label>
-        </InlineForm>
-
-        <div className="lg:col-span-2">
-          <ModifiersList rows={rows} view={view} kind={active} />
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }

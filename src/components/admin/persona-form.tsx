@@ -233,7 +233,7 @@ export function PersonaForm({
         </h1>
         <div className="flex items-center gap-2">
           <Link
-            href="/admin/personas"
+            href="/admin/taxonomy"
             className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
           >
             Cancel

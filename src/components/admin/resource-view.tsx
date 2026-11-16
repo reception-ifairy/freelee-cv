@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowDown, ArrowUp, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, LayoutGrid, List } from 'lucide-react';
+import { Sheet } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
 import { EmptyState, type EmptyStateProps } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +35,7 @@ export type ResourceItem = {
    * Shown as fields in the card and as columns in the table, in this order.
    * `key` names the column for `sortHrefs` (the label is used when it is absent).
    */
-  meta?: { key?: string; label: string; value: React.ReactNode }[];
+  meta?: { key?: string; label: string; value: React.ReactNode; /** Only on the browser's card, never a table column (a long text). */ cardOnly?: boolean }[];
   actions?: ActionItem[];
 };
 
@@ -54,6 +55,7 @@ export function ResourceView({
   openInPlace = false,
   toggle = true,
   dense = false,
+  browser = false,
 }: {
   /** Cookie key for the grid/list preference. */
   module: string;
@@ -93,7 +95,17 @@ export function ResourceView({
    * columns out of sight.
    */
   dense?: boolean;
+  /**
+   * The taxonomy browser's layout for any list (owner, 2026-11-16: "the
+   * taxonomy view is the model for the whole admin"): a left rail of groups
+   * with counts, a dense table, and the row's card in a sheet on demand.
+   * See ResourceBrowser below. `true` groups rows by their first badge; the
+   * object form can group by something else, or replace the rail with links
+   * the page owns (another table, another query), and put a form above the table.
+   */
+  browser?: boolean | BrowserOptions;
 }) {
+  if (browser) return <ResourceBrowser items={items} empty={empty} badgeHeader={badgeHeader} {...(browser === true ? {} : browser)} />;
   const rowOptions = { selectedId: selectedId ?? null, openInPlace };
   return (
     <div>
@@ -190,9 +202,9 @@ function ResourceGrid({ items, columns, selectedId, openInPlace }: { items: Reso
             </div>
           ) : null}
 
-          {item.meta?.length ? (
+          {listMeta(item).length ? (
             <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
-              {item.meta.map((field) => (
+              {listMeta(item).map((field) => (
                 <div key={field.label} className="min-w-0">
                   <dt className="truncate text-slate-400">{field.label}</dt>
                   <dd className="truncate font-medium">{field.value}</dd>
@@ -240,7 +252,7 @@ function ResourceTable({
   // Columns come from the first item, so every item must describe the same
   // `meta` keys — which is a property of how a page builds its items, not
   // something this component can enforce.
-  const columns = items[0]?.meta?.map((field) => ({ key: field.key ?? field.label, label: field.label })) ?? [];
+  const columns = items[0] ? listMeta(items[0]).map((field) => ({ key: field.key ?? field.label, label: field.label })) : [];
 
   return (
     <Card className="overflow-hidden">
@@ -278,7 +290,7 @@ function ResourceTable({
                     </span>
                   </span>
                 </TD>
-                {(item.meta ?? []).map((field) => (
+                {listMeta(item).map((field) => (
                   <TD key={field.key ?? field.label} className={cell}>
                     {/* max-width on a <td> itself is not honoured in an auto-layout table; on a block inside it is. */}
                     {dense ? <span className="block max-w-[8.5rem] truncate">{field.value}</span> : field.value}
@@ -345,6 +357,247 @@ export function ViewToggle({ module, view }: { module: string; view: AdminView }
           {option.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The fields a table or grid shows: all but the card-only ones. */
+const listMeta = (item: ResourceItem) => (item.meta ?? []).filter((field) => !field.cardOnly);
+
+/** The group a row belongs to in the browser rail, by default: its first badge — on nearly every list, its status. */
+const firstBadge = (item: ResourceItem) => item.badges?.[0]?.label ?? 'Other';
+
+/** A rail entry the page owns: a link, its count, and whether it is the page's current one. */
+export type BrowserRailLink = { label: string; href: string; count?: number; active: boolean };
+
+export type BrowserOptions = {
+  /** Groups rows in the rail; default the first badge. */
+  groupBy?: (item: ResourceItem) => string;
+  /** Rail links instead of groups made from the rows (e.g. modifier types, each its own query). */
+  rail?: BrowserRailLink[];
+  /** The rail's label for screen readers and its heading. */
+  railLabel?: string;
+  /** Above the table: a create form, a note. */
+  before?: React.ReactNode;
+};
+
+/**
+ * Any admin list in the taxonomy browser's layout, with no code per list
+ * (2026-11-16). The rail groups rows by their first badge (Active / Off,
+ * Published / Draft, Paid / Pending…) with counts; a row opens its card in a
+ * sheet — the item's own description, badges, fields and actions, and Open
+ * for its editor. State is in the URL (`?group=`, `?open=`), so Back closes
+ * the card and a view can be linked.
+ */
+function ResourceBrowser({
+  items,
+  empty,
+  badgeHeader,
+  groupBy = firstBadge,
+  rail,
+  railLabel = 'Groups',
+  before,
+}: {
+  items: ResourceItem[];
+  empty: string | EmptyStateProps;
+  badgeHeader?: string;
+} & BrowserOptions) {
+  const groupOf = groupBy;
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const group = search.get('group');
+  const open = search.get('open');
+
+  const hrefWith = (changes: Record<string, string | null>) => {
+    const next = new URLSearchParams(search.toString());
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+    }
+    const query = next.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  };
+
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(groupOf(item), (counts.get(groupOf(item)) ?? 0) + 1);
+  // With page-owned rail links the rows are already the selection; `group` is not used.
+  const visible = group && !rail ? items.filter((item) => groupOf(item) === group) : items;
+  const rows = visible.map((item) => ({ ...item, href: hrefWith({ open: String(item.id) }) }));
+  const index = visible.findIndex((item) => String(item.id) === open);
+  const current = index >= 0 ? visible[index] : null;
+  const step = (to: ResourceItem | undefined) => (to ? () => router.replace(hrefWith({ open: String(to.id) }), { scroll: false }) : undefined);
+  const close = () => {
+    router.replace(hrefWith({ open: null }), { scroll: false });
+    // Back on the row that was open, as in the taxonomy browser.
+    if (current) requestAnimationFrame(() => document.getElementById(`row-${current.id}`)?.focus());
+  };
+
+  const railLink = (key: string | null, label: string, count: number) => {
+    const active = group === key;
+    return (
+      <Link
+        key={key ?? 'all'}
+        href={hrefWith({ group: key, open: null })}
+        scroll={false}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'flex items-center gap-2 rounded-control px-2 py-1 text-sm transition-colors duration-[--duration-fast]',
+          active ? 'bg-brand-500/15 text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200',
+          key === null && 'font-semibold',
+        )}
+      >
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="font-mono text-[11px] text-slate-500">{count}</span>
+      </Link>
+    );
+  };
+
+  return (
+    <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
+      <nav aria-label={railLabel} className="mb-4 lg:mb-0">
+        <div className="flex flex-wrap gap-1 lg:sticky lg:top-20 lg:flex-col lg:flex-nowrap">
+          <p className="eyebrow mb-1 hidden px-2 lg:block">{railLabel}</p>
+          {rail
+            ? rail.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  scroll={false}
+                  aria-current={link.active ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-2 rounded-control px-2 py-1 text-sm capitalize transition-colors duration-[--duration-fast]',
+                    link.active ? 'bg-brand-500/15 text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200',
+                  )}
+                >
+                  <span className="min-w-0 flex-1 truncate">{link.label}</span>
+                  {link.count !== undefined ? <span className="font-mono text-[11px] text-slate-500">{link.count}</span> : null}
+                </Link>
+              ))
+            : [railLink(null, 'All', items.length), ...[...counts.entries()].map(([key, count]) => railLink(key, key, count))]}
+        </div>
+      </nav>
+
+      <div className="min-w-0">
+        {before ? <div className="mb-4">{before}</div> : null}
+        {visible.length === 0 ? (
+          typeof empty === 'string' ? <EmptyState title={empty} /> : <EmptyState {...empty} />
+        ) : (
+          <ResourceTable items={rows} badgeHeader={badgeHeader} dense selectedId={current?.id ?? null} openInPlace />
+        )}
+      </div>
+
+      {current ? (
+        <Sheet
+          open
+          onClose={close}
+          title={current.title}
+          // A list that puts the whole text on the card (cardOnly) needs no teaser of it in the header.
+          subtitle={current.meta?.some((field) => field.cardOnly) ? undefined : current.subtitle ?? undefined}
+          actions={
+            <>
+              <span className="mr-1 font-mono text-[11px] text-slate-500">
+                {index + 1}/{visible.length}
+              </span>
+              <StepButton label="Previous" onClick={step(visible[index - 1])} icon={<ChevronUp className="size-4" />} />
+              <StepButton label="Next" onClick={step(visible[index + 1])} icon={<ChevronDown className="size-4" />} />
+            </>
+          }
+          footer={
+            items.find((i) => i.id === current.id)?.href ? (
+              <Link
+                href={items.find((i) => i.id === current.id)!.href!}
+                className="inline-flex h-9 items-center gap-2 rounded-control bg-brand-600 px-3 text-xs font-semibold text-on-brand hover:bg-brand-700"
+              >
+                <ExternalLink className="size-3.5" /> Open
+              </Link>
+            ) : undefined
+          }
+        >
+          <ItemCard item={current} />
+        </Sheet>
+      ) : null}
+    </div>
+  );
+}
+
+function StepButton({ label, onClick, icon }: { label: string; onClick?: () => void; icon: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      aria-label={label}
+      title={label}
+      className="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors enabled:hover:bg-white/5 enabled:hover:text-slate-200 disabled:opacity-30"
+    >
+      {icon}
+    </button>
+  );
+}
+
+/** The card in the sheet, from what the list already knows about the row. */
+function ItemCard({ item }: { item: ResourceItem }) {
+  return (
+    <div className="space-y-5 text-sm">
+      <div className="flex items-start gap-3">
+        {item.media ? <div className="shrink-0">{item.media}</div> : null}
+        {item.badges?.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {item.badges.map((badge) => (
+              <Badge key={badge.label} tone={badge.tone} title={badge.title}>
+                {badge.label}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {item.meta?.length ? (
+        <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2">
+          {item.meta.map((field) => (
+            <div key={field.key ?? field.label} className="contents">
+              <dt className="text-slate-500 dark:text-slate-400">{field.label}</dt>
+              <dd className="min-w-0 break-words">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {item.actions?.length ? (
+        <div>
+          <p className="eyebrow mb-2">Actions</p>
+          <div className="flex flex-wrap gap-2">
+            {item.actions.map((action) =>
+              action.href ? (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-control border border-slate-200 px-2.5 text-xs font-semibold hover:bg-white/[0.03] dark:border-white/10"
+                >
+                  {action.icon}
+                  {action.label}
+                </Link>
+              ) : (
+                <button
+                  key={action.label}
+                  type="button"
+                  disabled={action.disabled}
+                  onClick={() => {
+                    if (action.danger && !window.confirm(`${action.label}: are you sure?`)) return;
+                    action.onSelect?.();
+                  }}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 rounded-control border px-2.5 text-xs font-semibold transition-colors disabled:opacity-40',
+                    action.danger ? 'border-rose-500/40 text-rose-300 hover:bg-rose-500/10' : 'border-slate-200 hover:bg-white/[0.03] dark:border-white/10',
+                  )}
+                >
+                  {action.icon}
+                  {action.label}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

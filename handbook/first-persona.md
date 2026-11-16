@@ -1,7 +1,7 @@
 # Create your first persona
 
 We'll build a real one end to end: **a friendly maths tutor for primary-school children.** Every
-step below is a real field you'll find in **Personas → New persona**.
+step below is a real field you'll find in **Bots & taxonomy → New bot**.
 
 ## 1. Basics
 
