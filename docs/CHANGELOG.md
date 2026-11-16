@@ -34,7 +34,16 @@ Conventions used throughout:
 
 ## 2026-11-16
 
-### #93 · `pending` — Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card
+### #94 · `pending` — Release notes for v2026.11.16: the day's title, the last hash, what was not checked
+
+Docs only. The v2026.11.16 section gets its full title (the pillars *and* one layout for the whole
+admin), its range and tag (`#88–#93` → `6860ddb`), the Integrations wording where it still said
+Connections, and what could not be checked: the category agent without an Anthropic key, and the
+lists that are empty on this site. The GitHub Release `v2026.11.16` carries the same text.
+
+📄 docs/RELEASES.md
+
+### #93 · `6860ddb` — Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card
 
 Owner, 2026-11-16: integrations belong in Settings. Connections becomes Settings → Integrations — All
 plus one section per connection group, each a list with health and last test whose row opens the

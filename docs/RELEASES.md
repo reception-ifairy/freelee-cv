@@ -11,9 +11,9 @@ These notes start on 2026-11-11. Earlier history is in the CHANGELOG. The same t
 
 ---
 
-## v2026.11.16 — The categories are the pillars
+## v2026.11.16 — The categories are the pillars, and one layout for the whole admin
 
-Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
+Updates #88–#93 · tag `v2026.11.16` → `6860ddb`
 
 **In short**
 
@@ -28,7 +28,7 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 - **Every category has an AI agent** on Anthropic (Claude Opus 5.5). It knows the field and every bot
   in it, and proposes new bots, sector descriptions and audience groups; nothing changes until you
   approve (a new bot is always an inactive draft). The cost of each conversation is on screen. It
-  needs an Anthropic key in Connections.
+  needs an Anthropic key in Settings → Integrations.
 - **One list of bots, in the taxonomy's layout.** *Personas* and *Drafts* open the taxonomy browser
   (Drafts is it filtered to bots that are not live), and a bot's card can publish, feature, duplicate
   and delete it. **Prompt modifiers** use the same layout: types on the left, the list, a card.
@@ -51,9 +51,13 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 | #90 | `9e987f5` | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
 | #91 | `6e1397d` | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
 | #92 | `2d62468` | Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card |
-| #93 | (this update) | Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card |
+| #93 | `6860ddb` | Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card |
 
 **Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*, *Knowledgebase*, *AI models*, *Tutors that teach from the curriculum*.
+
+**Not checked yet:** the category agent has not answered a single question — there is no Anthropic
+key, so no paid call was made. Lists with no rows on this site (orders, leads, marketplace listings,
+plans, passes, showcase, external sources, rooms, projects) were seen only empty.
 
 **Changed outside git:** nothing.
 
