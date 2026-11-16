@@ -1,8 +1,10 @@
 # Settings
 
-**System → Settings.** The values that apply to the whole site, grouped into tabs. Keys and outside
-services — AI providers, web search, voice, the curriculum, email, payments, storage — are on their
-own page, **System → Connections** (below).
+**System → Settings.** The values that apply to the whole site, and every key and outside service.
+On the left is a tree, like the taxonomy's: **Platform**, **AI**, **Money & messages**,
+**Integrations** — AI providers, web search, voice, the curriculum, email, payments, storage (below) —
+and **Appearance**. Hover an entry to see what it holds. On a phone the tree folds into one line at the
+top.
 
 ## General
 
@@ -13,14 +15,17 @@ own page, **System → Connections** (below).
 | **Support email** | Where customers are told to write. |
 | **Allow new registrations** | Turn off to close signups without taking the site down. |
 
-## Connections
+## Integrations
 
-**System → Connections** holds every key and outside service on one page, in groups: AI providers,
-tools for bots (Tavily web search, ElevenLabs voice), Knowledge (the Curriculum that tutor bots
-teach from), Email (Resend), Payments (Stripe, PayPal) and Storage (the image bucket).
+**Settings → Integrations** holds every key and outside service (until 16 November 2026 this was its own
+page, *System → Connections*; old links still work and open the right card). The tree lists the
+groups — AI providers, Tools for bots (Tavily web search, ElevenLabs voice), Knowledge (the Curriculum
+that tutor bots teach from), Email (Resend), Payments (Stripe, PayPal) and Storage (the image bucket) —
+each with how many of its connections work, **1/6** for example; **All integrations** lists all
+thirteen.
 
-At the top, a summary shows each one as **Working**, **Failing**, **Never tested** or **Not set up**;
-click one to jump to its card. Each card works the same way: **Save** the key, press **Test**, and
+The list shows each connection as **Working**, **Failing**, **Never tested** or **Not set up**, and
+when it was last tested. Click one and its card slides in. Each card works the same way: **Save** the key, press **Test**, and
 once the test passes, **Fetch** what the service offers (models; voices for ElevenLabs — pick one to
 make it the default voice; the key stages and subjects the curriculum key may see). See
 [AI models](/admin/handbook/ai-models) and [Tutors that teach from the curriculum](/admin/handbook/curriculum-tutors).
@@ -49,12 +54,12 @@ Bank transfer instructions and the invoice vendor name, then **Free use**:
 - **Free messages before signup** — how much a visitor gets before registering. Three to five.
 - **Credits given at signup** — granted on registration.
 
-(The Stripe and PayPal checks are under Connections.)
+(The Stripe and PayPal checks are under Integrations → Payments.)
 
 ## Email
 
 The From address mail is sent from. The Resend key, its **Test** and **Fetch domains** (which sender
-domains are verified) are under Connections.
+domains are verified) are under Integrations → Email.
 
 ## Analytics
 

@@ -37,6 +37,10 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
   and suspended listings too.
 - **Site, Knowledge and Teamwork too** — pages, blog, showcase, menus, library, shelves, external
   sources, bot teams, rooms and projects. Every list in the sidebar now looks and works the same way.
+- **Integrations live in Settings.** Connections is now *Settings → Integrations*: the groups in the
+  Settings tree with how many of their connections work, a list with each one's health, and the
+  connection's card (Save → Test → Fetch) beside it. Settings' menu is a tree like the taxonomy's. Old
+  links still open the right card.
 
 **Updates**
 
@@ -46,9 +50,10 @@ Updates #88– · tag `v2026.11.16` (published at the end of the day's work)
 | #89 | `bfba892` | Every category gets its AI agent on Anthropic: it knows the field and its bots, proposes, and the owner approves |
 | #90 | `9e987f5` | Catalogue in the taxonomy's layout: one list of bots, Drafts as its filter, prompt modifiers with a rail and cards |
 | #91 | `6e1397d` | Commerce in the taxonomy's layout: statuses on the left, the list, a card — packs, plans, passes, sales, customers, marketplace, leads |
-| #92 | (this update) | Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card |
+| #92 | `2d62468` | Site, Knowledge and Teamwork in the taxonomy's layout: every list in the sidebar now has the rail, the list and the card |
+| #93 | (this update) | Settings as a tree, with Integrations inside it: Connections moves into Settings, old links open the right card |
 
-**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*, *Knowledgebase*.
+**Docs:** `57-admin-navigation.md`; handbook *Taxonomy*, *Child profiles*, *Welcome*, *Settings*, *Persona cards*, *First persona*, *Bot teams*, *Packs, plans and passes*, *Knowledgebase*, *AI models*, *Tutors that teach from the curriculum*.
 
 **Changed outside git:** nothing.
 

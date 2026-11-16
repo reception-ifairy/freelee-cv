@@ -15,6 +15,16 @@ const config: NextConfig = {
     // framework-level 413 with no explanation.
     serverActions: { bodySizeLimit: '10mb' },
   },
+  async redirects() {
+    return [
+      // Connections moved into Settings → Integrations (freelee #93). A redirect
+      // here is a real HTTP 307, and a browser keeps the old link's
+      // `#conn-<id>` across it — the Integrations list opens that card. A
+      // redirect() in the page cannot do that: it may arrive inside a stream,
+      // and the fragment is lost.
+      { source: '/admin/connections', destination: '/admin/settings?section=integrations', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

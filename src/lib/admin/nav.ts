@@ -31,7 +31,6 @@ import {
   FlaskConical,
   Users2,
   type LucideIcon,
-  Plug,
 } from 'lucide-react';
 
 /**
@@ -183,7 +182,6 @@ export const ADMIN_NAV: AdminNavSection[] = [
     tone: 'slate',
     items: [
       { href: '/admin/settings', label: 'Settings', icon: Settings },
-      { href: '/admin/connections', label: 'Connections', icon: Plug },
       { href: '/admin/handbook', label: 'Handbook', icon: LifeBuoy },
       { href: '/admin/docs', label: 'Documentation', icon: BookOpen },
     ],
@@ -337,6 +335,7 @@ export const ADMIN_NAV_ALIASES: Record<string, string> = {
   '/admin/sectors': 'Sectors',
   '/admin/personas': 'Bots',
   '/admin/markets': 'Markets (retired)',
+  '/admin/connections': 'Connections (now Integrations)',
 };
 
 /**
@@ -354,6 +353,8 @@ const NAV_ADOPTIONS: { prefix: string; href: string }[] = [
   // A bot's editor, New bot and the converter belong to the one list of bots (#90).
   { prefix: '/admin/personas', href: '/admin/taxonomy' },
   { prefix: '/admin/ai-models', href: '/admin/settings' },
+  // Connections moved into Settings as Integrations (#93); the page only redirects.
+  { prefix: '/admin/connections', href: '/admin/settings' },
   // Retired 2026-11-16 (the categories are the pillars); the pages only redirect into the taxonomy.
   { prefix: '/admin/markets', href: '/admin/taxonomy' },
 ];

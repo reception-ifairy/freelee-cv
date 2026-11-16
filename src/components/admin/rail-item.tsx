@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -17,8 +18,17 @@ export function RailItem({
   onClick,
   strong = false,
   className,
+  icon: Icon,
+  meta,
+  title,
 }: {
   label: string;
+  /** A small icon before the label (the Settings tree). */
+  icon?: LucideIcon;
+  /** Text in the count's place, when it is not a plain number ("2/6"). */
+  meta?: string;
+  /** Tooltip: what the entry is, when the label alone does not say. */
+  title?: string;
   count?: number;
   active: boolean;
   href?: string;
@@ -34,16 +44,17 @@ export function RailItem({
   );
   const body = (
     <>
+      {Icon ? <Icon aria-hidden className="size-3.5 shrink-0 opacity-70" /> : null}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {count !== undefined ? <span className="font-mono text-[11px] text-slate-500">{count}</span> : null}
+      {count !== undefined || meta ? <span className="font-mono text-[11px] text-slate-500">{meta ?? count}</span> : null}
     </>
   );
   return href ? (
-    <Link href={href} scroll={false} aria-current={active ? 'page' : undefined} className={classes}>
+    <Link href={href} scroll={false} aria-current={active ? 'page' : undefined} title={title} className={classes}>
       {body}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} aria-pressed={active} className={classes}>
+    <button type="button" onClick={onClick} aria-pressed={active} title={title} className={classes}>
       {body}
     </button>
   );

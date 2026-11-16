@@ -153,7 +153,7 @@ export function AiDefaultsForm({ values, providers, keys }: Props) {
           <div>
             <h4 className="font-semibold">Category agents</h4>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Each category&apos;s AI agent runs on Anthropic, paid from the Anthropic key in Connections. Every
+              Each category&apos;s AI agent runs on Anthropic, paid from the Anthropic key in Integrations. Every
               reply shows what it cost.
             </p>
           </div>

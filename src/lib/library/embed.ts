@@ -70,7 +70,7 @@ export async function embedPassages(texts: string[]): Promise<EmbedResult> {
   if (!keys.apiKey && choice.providerId !== 'ollama') {
     return {
       ok: false,
-      error: `The ${choice.providerId} API key is missing. Add it under Admin → System → Connections, then try again.`,
+      error: `The ${choice.providerId} API key is missing. Add it under Admin → Settings → Integrations, then try again.`,
     };
   }
 

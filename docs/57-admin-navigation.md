@@ -518,6 +518,22 @@ With #90–#92 every list in the sidebar is in the browser layout. Not converted
 
 **Verified live** (1280, 1600, 390): all nine pages answer 200 with their rails and counts — pages 5/5/0, posts 3/3/0/0, menus 7/5/0, shelves 3/3/0, bot teams 2; the cards of a page, a post, a footer link, a shelf and a bot team; the Library's rail (132 · 0 · 132 · 0; folders 4 / 14 / 114), *Ready* and a folder filtering the list; no horizontal scroll, no page errors. Showcase, external sources, rooms and projects are empty here, so only their empty states and folds were seen.
 
+## Settings as a tree, Integrations inside it (freelee #93)
+
+**Owner, 2026-11-16:** "polish the Settings section while you are at it — integrations should live there."
+
+**Connections is now Settings → Integrations.** `SETTINGS_MAP` gains the group *Integrations*: **All integrations** (`?section=integrations`) and one section per `CONNECTION_GROUPS` entry (`?section=integrations-<group>`: AI providers, Tools for bots, Knowledge, Email, Payments, Storage). The *Elsewhere* group is gone; Branding sits under *Appearance*. The sidebar's System group loses *Connections*.
+- An Integrations section is the browser list without a rail (`browser.hideRail` — its groups are Settings' own sections): name and description, group (on All), last test, health badge. A row opens the connection's card in the sheet: `ConnectionCardFor` (`connections-list.tsx`, the actions bound on the server) passed as `ResourceItem.detail`.
+- **Addresses** (`connection-groups.ts`): `connectionHref(id)` → `/admin/settings?section=integrations-<group>&open=<id>`, `integrationsHref(group?)`. Every link that pointed at `/admin/connections#…` uses them (the homeschool hub, the category agent's no-key notice, the persona form's curriculum hint, the Settings hints, the dashboard's attention items go to *All integrations*).
+- **Old links.** `/admin/connections` redirects in `next.config.ts` (HTTP 307), because only an HTTP redirect keeps the fragment: a `redirect()` in the page can arrive inside a stream, and `#conn-anthropic` was lost (seen live before the fix). `IntegrationsList` reads the fragment once (`hrefForConnectionsHash`): `#conn-<id>` opens that card, `#group-<id>` that group. `MOVED_SECTIONS` sends `?section=connections` and `?section=storage` there too. The page file remains as a fallback.
+- **"One key, one home" is unchanged:** the same 13 connections in the same groups, the same `SECTION_FIELDS`; only the address and the layout moved.
+
+**The Settings tree.** `SettingsNav` is the taxonomy's rail: eyebrow headings, one compact `RailItem` per section with its icon (`RailItem` gained `icon`, `meta`, `title`), the description as the tooltip and as the heading over the form. Integrations entries show **working/total** (`2/13`, `1/6`), the tooltip the full breakdown. From `lg` it is a sticky 15rem column, below that a fold (*Settings: AI defaults*), as the taxonomy's tree.
+
+Checks (`admin:verify-settings-map`): a section per group plus All; `connectionHref` for Anthropic and the curriculum; the old anchors map to the card or group and nothing else; the moved sections redirect into Integrations.
+
+**Verified live** (1280, 1600, 390): the tree (General … Branding, `2/13`, `1/6`, `0/2`, `1/1`, `0/1`, `0/2`, `0/1`); `/admin/connections#conn-anthropic` → `?section=integrations-ai&open=anthropic` with the Anthropic card open; `#group-payments` → Payments; `?section=storage` → the S3 card; All integrations lists 13; Esc closes; the AI defaults hint links *Integrations → AI providers*; the sidebar has no Connections; no horizontal scroll, no page errors. **Not verified:** Save, Test and Fetch from inside the sheet — they are the same card and actions as before, but no key was changed.
+
 ## First use: the Audiences screen (freelee #78)
 
 `/admin/taxonomy/audiences` used to be 70 expanded cards in one column. Now:

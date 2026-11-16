@@ -16,13 +16,14 @@
  */
 
 import type { SettingsGroup } from '@/lib/settings-schema';
+import { CONNECTION_GROUPS, INTEGRATIONS_SECTION, integrationsSectionId } from '@/lib/admin/connection-groups';
 
 export type SettingsSection = {
   id: string;
   label: string;
   description: string;
   /** Curated icon key, resolved in the nav — same trade-off as branding fonts. */
-  icon: 'sliders' | 'globe' | 'chart' | 'storage' | 'cpu' | 'layers' | 'bot' | 'mail' | 'card' | 'palette' | 'plug' | 'shield';
+  icon: 'sliders' | 'globe' | 'chart' | 'storage' | 'cpu' | 'layers' | 'bot' | 'mail' | 'card' | 'palette' | 'plug' | 'shield' | 'sparkles' | 'wrench' | 'book';
   /** The `SETTINGS_SCHEMA` group this renders, when it is a plain settings form. */
   schemaGroup?: SettingsGroup;
   /** Set when the section lives on its own route rather than inside settings. */
@@ -34,6 +35,18 @@ export type SettingsGroupBlock = {
   blurb: string;
   sections: SettingsSection[];
 };
+
+const INTEGRATION_ICONS: Record<string, SettingsSection['icon']> = {
+  ai: 'sparkles',
+  tools: 'wrench',
+  knowledge: 'book',
+  email: 'mail',
+  payments: 'card',
+  storage: 'storage',
+};
+
+/** Whether a section is one of Settings → Integrations (all, or one group). */
+export const isIntegrationsSection = (id: string) => id === INTEGRATIONS_SECTION || id.startsWith(`${INTEGRATIONS_SECTION}-`);
 
 export const SETTINGS_MAP: SettingsGroupBlock[] = [
   {
@@ -64,21 +77,32 @@ export const SETTINGS_MAP: SettingsGroupBlock[] = [
     ],
   },
   {
-    heading: 'Elsewhere',
-    blurb: 'Configured on their own pages.',
+    // Owner, 2026-11-16: "integrations should live in Settings". The keys and
+    // outside services (Connections until #93), one section per group.
+    heading: 'Integrations',
+    blurb: 'Keys and outside services: save a key, press Test, and Fetch where there is something to bring in.',
     sections: [
-      // Every key and outside service — AI providers, tools, the curriculum, email, payments, storage.
-      { id: 'connections', label: 'Connections', description: 'Keys and outside services: Save, Test, Fetch.', icon: 'plug', href: '/admin/connections' },
-      { id: 'branding', label: 'Branding & theme', description: 'Palette, logo, favicon and fonts.', icon: 'palette', href: '/admin/theme' },
+      { id: INTEGRATIONS_SECTION, label: 'All integrations', description: 'Every key and outside service, with whether it works.', icon: 'plug' },
+      ...CONNECTION_GROUPS.map((group) => ({
+        id: integrationsSectionId(group.id),
+        label: group.heading,
+        description: group.blurb,
+        icon: INTEGRATION_ICONS[group.id] ?? ('plug' as const),
+      })),
     ],
+  },
+  {
+    heading: 'Appearance',
+    blurb: 'Configured on its own page.',
+    sections: [{ id: 'branding', label: 'Branding & theme', description: 'Palette, logo, favicon and fonts.', icon: 'palette', href: '/admin/theme' }],
   },
 ];
 
 /**
  * The settings keys each section edits, and so the one place each key lives
  * (2026-11-14). The page renders exactly these; keys belonging to a
- * connection (a provider's key, the curriculum's address) live on
- * /admin/connections instead, and `scripts/verify-settings-map.ts` checks
+ * connection (a provider's key, the curriculum's address) live in
+ * Settings → Integrations instead (/admin/connections until #93), and `scripts/verify-settings-map.ts` checks
  * that every key in SETTINGS_SCHEMA has exactly one home.
  *
  * Free use moved from AI to Billing: what a visitor gets for nothing is a
@@ -98,8 +122,8 @@ export const SECTION_FIELDS: Record<string, readonly string[]> = {
 
 /** Old section ids that moved off this page, and where they went. */
 export const MOVED_SECTIONS: Record<string, string> = {
-  storage: '/admin/connections#conn-s3',
-  connections: '/admin/connections',
+  storage: '/admin/settings?section=integrations-storage&open=s3',
+  connections: '/admin/settings?section=integrations',
 };
 
 export const SETTINGS_SECTIONS: SettingsSection[] = SETTINGS_MAP.flatMap((group) => group.sections);

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { connectionHref } from '@/lib/admin/connection-groups';
 import { Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -104,7 +105,7 @@ export function CurriculumTab({ status, coverage, tutors }: { status: Curriculum
       <section>
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <h2 className="eyebrow">What freelee holds from the curriculum</h2>
-          <Link href="/admin/connections#conn-curriculum" className="text-xs font-semibold text-brand-400 hover:underline">
+          <Link href={connectionHref('curriculum')} className="text-xs font-semibold text-brand-400 hover:underline">
             Manage the connection →
           </Link>
         </div>

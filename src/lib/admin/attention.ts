@@ -84,7 +84,7 @@ export function attentionItems(f: AttentionFacts): AttentionItem[] {
     count: f.failingConnections.length,
     title: `${plural(f.failingConnections.length, 'connection', 'connections')} failing`,
     detail: `Last test did not pass: ${f.failingConnections.join(', ')}.`,
-    href: '/admin/connections',
+    href: '/admin/settings?section=integrations',
   });
   add({
     id: 'tutors',
@@ -100,7 +100,7 @@ export function attentionItems(f: AttentionFacts): AttentionItem[] {
     count: f.untestedConnections.length,
     title: `${plural(f.untestedConnections.length, 'connection', 'connections')} never tested`,
     detail: `A key is saved but nobody pressed Test: ${f.untestedConnections.join(', ')}.`,
-    href: '/admin/connections',
+    href: '/admin/settings?section=integrations',
   });
   add({
     id: 'fields-no-bots',
