@@ -32,9 +32,24 @@ Conventions used throughout:
 
 ---
 
+## 2026-11-17
+
+### #97 · `pending` — The category agent's scan answered only "error": its system prompt now goes through `instructions`
+
+Owner, 2026-11-17: opening a category's agent and starting the scan showed nothing but an error. The
+route (#95) put the system prompt and the saved plan into `messages` as `role: 'system'`; AI SDK v7
+rejects that before any request leaves the server (`AI_InvalidPromptError: System messages are not
+allowed in the prompt or messages fields. Use the instructions option instead.`, in the pm2 log). Both
+now go through `instructions: [system, planNow]` — the same `SystemModelMessage`s, so the cache
+breakpoint on the brief is kept (checked on a mock model: the provider receives `cacheControl`). The
+stream's `onError` also returns the real reason instead of the SDK's masked "An error occurred.", so the
+next failure says what it is (admin-only route), and logs it.
+
+🧪 `taxonomy:verify-agent` (+2; the old checks passed with the bug, these would not)
+
 ## 2026-11-16
 
-### #96 · `pending` — Release notes for v2026.11.16 take in the category agent's chat: #88–#95, tag moved to #95
+### #96 · `eaebf71` — Release notes for v2026.11.16 take in the category agent's chat: #88–#95, tag moved to #95
 
 Docs only. #94 and #95 were made the same day after v2026.11.16 was tagged at #93, so they join that
 release rather than wait in "Not released yet": the title names the agent you talk to, the summary gains

@@ -1,4 +1,4 @@
-import { streamText, convertToModelMessages, stepCountIs, tool, type ModelMessage, type UIMessage, type LanguageModelUsage } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs, tool, type SystemModelMessage, type UIMessage, type LanguageModelUsage } from 'ai';
 import { z } from 'zod';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
@@ -123,7 +123,10 @@ export async function POST(request: Request) {
     await db.insert(conversationMessages).values({ conversationId, authorType: 'user', authorId: admin.id, content: userText, position: next });
   }
 
-  const system: ModelMessage = {
+  // AI SDK v7 rejects system messages inside `messages` ("Use the instructions
+  // option instead"), so both go through `instructions`, which keeps their
+  // providerOptions — the cache breakpoint on the first one survives.
+  const system: SystemModelMessage = {
     role: 'system',
     content: `${SYSTEM}\n\n---\n\n${context.text}`,
     // Cached: the brief and the bot list are the long, stable part of every request.
@@ -131,7 +134,7 @@ export async function POST(request: Request) {
   };
   // The plan changes as the work goes on, so it sits after the cached block.
   const sectorName = (id: number) => context.sectors.find((s) => s.id === id)?.name ?? `sector ${id}`;
-  const planNow: ModelMessage = { role: 'system', content: `## The plan of first bots, as saved\n${planForModel(thread.plan ?? [], sectorName)}` };
+  const planNow: SystemModelMessage = { role: 'system', content: `## The plan of first bots, as saved\n${planForModel(thread.plan ?? [], sectorName)}` };
 
   const scan_category = tool({
     description: 'Scan this category: its sectors (ids, risk, B2C/B2B/B2G suitability), every bot filed here with its audience groups, and the gaps. Read-only.',
@@ -203,7 +206,8 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: getModel(registry, 'anthropic', modelId, keys),
-    messages: [system, planNow, ...history],
+    instructions: [system, planNow],
+    messages: history,
     tools: { scan_category, scan_audiences, read_bot, save_plan, propose },
     // Room for: two scans, a plan, a proposal and its retry, and the answer; a loop cannot run away.
     stopWhen: stepCountIs(8),
@@ -233,5 +237,11 @@ export async function POST(request: Request) {
     },
   });
 
-  return result.toUIMessageStreamResponse();
+  // Admin-only: show the real reason instead of the SDK's masked "An error occurred."
+  return result.toUIMessageStreamResponse({
+    onError: (error) => {
+      console.error('[workbench] category agent stream failed', error);
+      return error instanceof Error ? error.message : String(error);
+    },
+  });
 }

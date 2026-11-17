@@ -155,6 +155,10 @@ check('earlier thinking is not sent back (Opus 5.5 binds it to a prefix that cha
   route.includes("part.type !== 'reasoning'") && route.includes('convertToModelMessages(withoutReasoning(uiMessages))'));
 check('the newest message is a cache breakpoint too, so the scans are not paid for twice', () => route.includes('last.providerOptions'));
 check('no key: a clear 503, never a silent switch to another provider', () => route.includes('if (!keyReady)') && route.includes('status: 503'));
+// AI SDK v7 throws "System messages are not allowed in the prompt or messages fields" otherwise (#97).
+check('the system prompt and the plan go through `instructions`, not `messages`', () =>
+  route.includes('instructions: [system, planNow]') && route.includes('messages: history') && !/messages:\s*\[\s*system/.test(route));
+check('a failed stream shows its real reason, not the SDK’s masked "An error occurred."', () => /toUIMessageStreamResponse\(\{\s*onError/.test(route));
 
 if (failed) {
   console.log(`\n${failed} check(s) failed.`);
