@@ -34,7 +34,46 @@ Conventions used throughout:
 
 ## 2026-11-17
 
-### #97 · `pending` — The category agent's scan answered only "error": its system prompt now goes through `instructions`
+### #98 · `pending` — The B2C foundation of every field: three everyday audience groups, a field's everyday uses, and the agent designs them
+
+Owner, 2026-11-17: "start with the B2C design in every category as the foundation". The aim is to
+interest ordinary people in AI and give every field more everyday use, including for people on a low
+income. Measured first:
+
+- 15 of 20 fields have sectors scored well suited to consumers, but only Education links any B2C group.
+- 37 of the 87 live bots are B2C, but none is tagged with a B2C group.
+- No group covered low income or the general public.
+
+The owner chose new groups, a new table, and the category agent as the author.
+
+- **Groups.** A new family, *Everyday life*: `B2C-EVD-01` Households on a Tight Budget, `B2C-EVD-02`
+  Everyday Adults, `B2C-EVD-03` First-time AI Users. 73 groups now.
+- **`category_use_cases`** (migration `0044`, applied). One row per everyday use: title, situation, the
+  first message, B2C groups, `budget_friendly`, sector, and the bot that serves it. They are read
+  through `categoryBrief().useCases`, rendered with ids for the agent, and reported as gaps by
+  `scan_category`.
+- **Proposal kind `b2c_design`.** The groups, each with a note, and 3–6 uses. It is refused if:
+  - a group is not B2C;
+  - no use is budget-friendly;
+  - a use is filed under another field's sector;
+  - a use repeats a title already in the field.
+
+  Approve links the groups and appends the uses. A bot proposal may name its `useCaseId`; approving
+  links the bot to that use.
+- **The agent's order** becomes scan → B2C foundation → plan → draft. It always weighs the three
+  everyday groups, and in a regulated field a use is the everyday part, never the regulated advice.
+- **On screen.** The AI agent tab gets *Everyday uses · B2C* with a *Design the B2C foundation* button
+  and first suggestion. The proposal card shows the uses and their first messages. The Brief tab gets
+  a card of uses.
+- `taxonomy-workbench` module goes to 1.1.0 with the capabilities `taxonomy.use_cases` and
+  `taxonomy.agent.b2c_design`.
+
+Not done: no field has a foundation yet, because each agent has to be asked. The public "find me a
+bot" comes next.
+
+🗄️ `drizzle/0044_category_use_cases.sql` · 🧪 `taxonomy:verify-agent` (+6), `verify-taxonomy-brief` (+2), live round trip through brief and scan · 📄 docs/58-b2c-foundation.md, docs/00-overview.md, handbook *Taxonomy*
+
+### #97 · `71d37a2` — The category agent's scan answered only "error": its system prompt now goes through `instructions`
 
 Owner, 2026-11-17: opening a category's agent and starting the scan showed nothing but an error. The
 route (#95) put the system prompt and the saved plan into `messages` as `role: 'system'`; AI SDK v7

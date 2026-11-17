@@ -91,7 +91,13 @@ export async function recordUsage(conversationId: string, modelId: string, usage
  */
 export async function agentContext(
   categoryId: number,
-): Promise<{ text: string; sectorIds: number[]; sectors: { id: number; name: string }[]; linkedCodes: string[] } | null> {
+): Promise<{
+  text: string;
+  sectorIds: number[];
+  sectors: { id: number; name: string }[];
+  linkedCodes: string[];
+  useCases: { id: number; title: string }[];
+} | null> {
   const brief = await categoryBrief(categoryId);
   if (!brief) return null;
 
@@ -135,5 +141,6 @@ export async function agentContext(
     sectorIds: brief.sectors.map((s) => s.id),
     sectors: brief.sectors.map((s) => ({ id: s.id, name: s.name })),
     linkedCodes: brief.audiences.map((a) => a.code),
+    useCases: brief.useCases.map((u) => ({ id: u.id, title: u.title })),
   };
 }

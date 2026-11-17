@@ -8,7 +8,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import {
-  categories, categoryAudienceSegments, conversations, conversationMessages, sectors,
+  categories, categoryAudienceSegments, categoryUseCases, conversations, conversationMessages, sectors,
   personas, personaVersions, personaCategories,
 } from '@/db/schema';
 import { requireAdmin } from '@/lib/auth';
@@ -333,6 +333,13 @@ export async function decideProposalAction(
       const created = await createDraftPersona(admin.id, categoryId, payload.sectorId, payload.persona, payload.segments);
       if (created === null) return { error: 'That category is no longer here.' };
       personaId = created;
+      // The everyday use this bot was drafted for is served now (a use case of another field is never touched).
+      if (payload.useCaseId !== undefined) {
+        await db
+          .update(categoryUseCases)
+          .set({ personaId: created })
+          .where(and(eq(categoryUseCases.id, payload.useCaseId), eq(categoryUseCases.categoryId, categoryId)));
+      }
     } else if (payload.kind === 'sector_description') {
       const updated = await db
         .update(sectors)
@@ -340,6 +347,47 @@ export async function decideProposalAction(
         .where(and(eq(sectors.id, payload.sectorId), eq(sectors.categoryId, categoryId)))
         .returning({ id: sectors.id });
       if (updated.length === 0) return { error: 'That sector is no longer in this category.' };
+    } else if (payload.kind === 'b2c_design') {
+      // The B2C foundation: groups after the existing ones, each with its own
+      // note; uses after the existing ones, a title already here skipped.
+      await db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ code: categoryAudienceSegments.segmentCode, position: categoryAudienceSegments.position })
+          .from(categoryAudienceSegments)
+          .where(eq(categoryAudienceSegments.categoryId, categoryId));
+        const have = new Set(existing.map((e) => e.code));
+        let position = existing.reduce((max, e) => Math.max(max, e.position), -1);
+        const fresh = payload.groups.filter((g) => !have.has(g.code) && isAudienceSegmentCode(g.code));
+        if (fresh.length) {
+          await tx.insert(categoryAudienceSegments).values(fresh.map((g) => ({ categoryId, segmentCode: g.code, note: g.note, position: ++position })));
+        }
+
+        const uses = await tx
+          .select({ title: categoryUseCases.title, position: categoryUseCases.position })
+          .from(categoryUseCases)
+          .where(eq(categoryUseCases.categoryId, categoryId));
+        const titles = new Set(uses.map((u) => u.title.trim().toLowerCase()));
+        const sectorIds = new Set(
+          (await tx.select({ id: sectors.id }).from(sectors).where(eq(sectors.categoryId, categoryId))).map((s) => s.id),
+        );
+        let usePosition = uses.reduce((max, u) => Math.max(max, u.position), -1);
+        const newUses = payload.useCases.filter((u) => !titles.has(u.title.trim().toLowerCase()));
+        if (newUses.length) {
+          await tx.insert(categoryUseCases).values(
+            newUses.map((u) => ({
+              categoryId,
+              // A sector deleted since the proposal is dropped, not an error.
+              sectorId: u.sectorId !== null && sectorIds.has(u.sectorId) ? u.sectorId : null,
+              title: u.title,
+              situation: u.situation,
+              firstMessage: u.firstMessage,
+              segmentCodes: u.segmentCodes.filter(isAudienceSegmentCode),
+              budgetFriendly: u.budgetFriendly,
+              position: ++usePosition,
+            })),
+          );
+        }
+      });
     } else {
       // New groups go after the existing ones, each with the agent's note.
       await db.transaction(async (tx) => {

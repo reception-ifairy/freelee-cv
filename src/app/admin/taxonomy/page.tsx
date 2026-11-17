@@ -496,7 +496,7 @@ async function CategoryTab({
     return <AudiencesTab categoryId={categoryId} linked={brief.audiences.map((a) => ({ code: a.code, note: a.note }))} />;
   }
   if (tab === 'agent') {
-    return <Workbench categoryId={categoryId} categoryName={brief.name} sectors={brief.sectors} />;
+    return <Workbench categoryId={categoryId} categoryName={brief.name} sectors={brief.sectors} useCases={brief.useCases} />;
   }
   if (tab === 'brief') {
     return <CategoryBriefTab brief={brief} />;

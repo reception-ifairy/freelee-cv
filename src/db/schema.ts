@@ -808,6 +808,45 @@ export const categoryAudienceSegments = pgTable(
 
 export type CategoryAudienceSegmentRow = typeof categoryAudienceSegments.$inferSelect;
 
+/**
+ * A field's everyday uses for consumers — the B2C foundation (owner,
+ * 2026-11-17: "B2C in every category as the foundation"; migration 0044).
+ *
+ * One row is one concrete situation a member of the public is in, and what
+ * they would type first: "my energy bill went up and I can't pay it" rather
+ * than "a finance bot". The category agent designs them (proposal kind
+ * `b2c_design`) and the owner approves; nothing here is public yet.
+ *
+ * - `segmentCodes` — B2C groups from the catalogue (no FK, as above).
+ * - `budgetFriendly` — useful to someone with little money: the filter a
+ *   "find me a bot" on a tight budget will use.
+ * - `personaId` — the bot that serves it, once one is approved; null is a gap
+ *   the agent can plan a bot for.
+ */
+export const categoryUseCases = pgTable(
+  'category_use_cases',
+  {
+    id: serial('id').primaryKey(),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    sectorId: integer('sector_id').references(() => sectors.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    /** Who, and when they would need it — one or two sentences. */
+    situation: text('situation').notNull(),
+    /** What the person would type first, in their own words. */
+    firstMessage: text('first_message'),
+    segmentCodes: jsonb('segment_codes').$type<string[]>().notNull().default([]),
+    budgetFriendly: boolean('budget_friendly').notNull().default(false),
+    personaId: integer('persona_id').references(() => personas.id, { onDelete: 'set null' }),
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('category_use_cases_category_idx').on(t.categoryId, t.position)],
+);
+
+export type CategoryUseCaseRow = typeof categoryUseCases.$inferSelect;
+
 export const personaCategories = pgTable(
   'persona_categories',
   {

@@ -2,6 +2,7 @@ import { LayoutTemplate, ShieldCheck, Wrench } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { MeterGroup } from '@/components/ui/meter';
 import type { CategoryBrief } from '@/lib/taxonomy/types';
+import { AUDIENCE_SEGMENTS } from '@/lib/persona/audience-segments';
 
 const RISK_LABEL: Record<string, string> = {
   R0: 'R0 — ordinary commercial work',
@@ -54,6 +55,32 @@ export function CategoryBriefTab({ brief }: { brief: CategoryBrief }) {
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
               Averaged across its {brief.sectors.length} specialisms.
             </p>
+          </Card>
+
+          <Card padding="md" className="md:col-span-2">
+            <p className="eyebrow mb-3">Everyday uses · the B2C foundation</p>
+            {brief.useCases.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                None yet. Open the AI agent tab and ask it to design the B2C foundation; it proposes the consumer groups and three to six
+                everyday uses, and you approve them.
+              </p>
+            ) : (
+              <ul className="grid gap-3 text-sm sm:grid-cols-2">
+                {brief.useCases.map((u) => (
+                  <li key={u.id} className="min-w-0">
+                    <p className="font-medium">
+                      {u.title}
+                      {u.budgetFriendly ? <span className="ms-2 text-xs font-normal text-emerald-500">budget-friendly</span> : null}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{u.situation}</p>
+                    {u.firstMessage ? <p className="mt-0.5 text-xs italic text-slate-400">“{u.firstMessage}”</p> : null}
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {u.segmentCodes.map((c) => AUDIENCE_SEGMENTS[c]?.name ?? c).join(', ')} · {u.personaId ? 'has a bot' : 'no bot yet'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
 
           <Card padding="md">

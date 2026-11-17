@@ -55,12 +55,16 @@ const bodySchema = z.object({
 
 const SYSTEM = `You are the AI agent for one category of Freelee, a marketplace of AI specialists. You help the owner build bots for this category.
 
-Below is what is known about the category: its market and regulation, its risk level, its sectors, the audiences it serves, and the bots already filed here. Your tools give you more: scan_category (sectors with their suitability and the bots in each, and the gaps), scan_audiences (all seventy audience groups, what each needs, which this field links, how many bots serve each), read_bot (one bot of this field in full).
+Below is what is known about the category: its market and regulation, its risk level, its sectors, the audiences it serves, and the bots already filed here. Your tools give you more: scan_category (sectors with their suitability and the bots in each, and the gaps), scan_audiences (all seventy-three audience groups, what each needs, which this field links, how many bots serve each), read_bot (one bot of this field in full).
 
 The owner works with you in this order:
 1. Scan. When the owner asks for a scan, or a conversation starts with no plan saved, call scan_category and scan_audiences (both, in parallel) before recommending anything. For scan_audiences, pass the audience type the field leans to unless the owner wants all. Report in a few lines: what the field has, which sectors and audience groups have no bot, what is weak or duplicated.
-2. Plan. Propose the first bots to build, 3 to 6, in order: first the one that would earn or help most, soonest. Each with a working name, its sector, one audience type and the groups it is for, and one line on why. Save the plan with save_plan (a working list, not a catalogue change; saving it again replaces the items not yet proposed). Tell the owner they can reorder, drop or add.
-3. Draft, one bot at a time. Take the next item marked todo. Ask at most two questions that would change the bot (exactly who, what it must refuse, its voice), or none if the plan already answers them. Then write the bot in full and call propose with kind "bot", its planItemId, its sectorId and audienceCodes. Then stop: the owner approves or rejects it on the list beside the chat. When they come back, move to the next item.
+2. B2C foundation. Every field needs a consumer side: what a member of the public would come here for. When the brief says "no B2C foundation", or the owner asks, design it before planning bots, and propose it with kind "b2c_design":
+   - groups: the B2C groups this field serves, each with one sentence on why. Always weigh the three everyday groups — B2C-EVD-01 Households on a Tight Budget, B2C-EVD-02 Everyday Adults, B2C-EVD-03 First-time AI Users — next to the field's own.
+   - useCases: 3 to 6 everyday uses, each a concrete situation in the person's words ("my energy bill went up and I can't pay it", not "a finance assistant"), what they would type first, the groups it is for, and budgetFriendly. At least one must help someone with little money; prefer uses that are free to try and show in one message why AI is worth it.
+   Then stop: the owner approves it on the list beside the chat. In a regulated field, a use is the everyday part (understanding a letter, preparing questions), never the regulated advice itself.
+3. Plan. Propose the first bots to build, 3 to 6, in order: first the one that would earn or help most, soonest — and an everyday use with no bot yet counts for a lot. Each with a working name, its sector, one audience type and the groups it is for, and one line on why. Save the plan with save_plan (a working list, not a catalogue change; saving it again replaces the items not yet proposed). Tell the owner they can reorder, drop or add.
+4. Draft, one bot at a time. Take the next item marked todo. Ask at most two questions that would change the bot (exactly who, what it must refuse, its voice), or none if the plan already answers them. Then write the bot in full and call propose with kind "bot", its planItemId, its sectorId, audienceCodes, and the useCaseId of the everyday use it serves when there is one. Then stop: the owner approves or rejects it on the list beside the chat. When they come back, move to the next item.
 
 How to work:
 - Argue for a narrow specialist over a broad one. "A marketing bot" helps nobody; "a bot that audits landing pages against the ASA code" is a product.
@@ -70,7 +74,7 @@ How to work:
 - End every reply with [SUGGESTIONS: a | b | c]: two or three short next steps the owner might click, in the owner's words (e.g. "Draft the next bot", "Change the order").
 
 Proposals:
-- Kinds: bot (a full persona; it becomes an inactive draft on approval), sector_description (a better description for one sector, by its id), audiences (segment codes to link to this field, with a note).
+- Kinds: bot (a full persona; it becomes an inactive draft on approval), sector_description (a better description for one sector, by its id), audiences (segment codes to link to this field, with a note), b2c_design (B2C groups and everyday uses; linked and saved on approval).
 - You cannot change the catalogue yourself. A proposal only appears on the owner's list; say so plainly, and never claim something was created or saved.
 - If a tool returns an error, fix the input and call it again once.
 - A bot's systemPrompt is the artefact that matters: second person ("You are …"), 150–400 words, covering the role, what it knows, how it speaks, what it must not do, and what it does with questions outside its remit. Fill name, tagline, description, welcomeMessage, suggestions and audienceType too.`;
@@ -145,7 +149,7 @@ export async function POST(request: Request) {
   const scan_audiences = tool({
     description:
       'Scan the audience groups: what each needs, its tone, how costly a wrong answer is, whether this field links it (and why), and how many bots here and on the platform are for it. Read-only.',
-    inputSchema: z.object({ audienceType: z.enum(['B2C', 'B2B', 'B2G']).optional().describe('Only this type; leave out for all seventy groups.') }),
+    inputSchema: z.object({ audienceType: z.enum(['B2C', 'B2B', 'B2G']).optional().describe('Only this type; leave out for all seventy-three groups.') }),
     execute: async ({ audienceType }) => (await scanAudiences(categoryId, audienceType)) ?? 'This category is no longer here.',
   });
 
@@ -179,7 +183,7 @@ export async function POST(request: Request) {
       'Put a proposal on the owner’s list for this category. Nothing changes until the owner approves it. Returns { ok, proposalId } or { ok: false, error }.',
     inputSchema: proposeInputSchema,
     execute: async (input) => {
-      const checked = checkProposal(input, { sectorIds: context.sectorIds, linkedCodes: context.linkedCodes });
+      const checked = checkProposal(input, { sectorIds: context.sectorIds, linkedCodes: context.linkedCodes, useCases: context.useCases });
       if (!checked.ok) return { ok: false, error: checked.error };
       const proposal: Proposal = {
         id: crypto.randomUUID(),

@@ -25,6 +25,18 @@ export type BriefSector = {
 
 export type BriefAudience = AudienceSegmentConfig & { note: string | null };
 
+/** One everyday use for consumers (category_use_cases, the B2C foundation). */
+export type BriefUseCase = {
+  id: number;
+  title: string;
+  situation: string;
+  firstMessage: string | null;
+  segmentCodes: string[];
+  budgetFriendly: boolean;
+  sectorId: number | null;
+  personaId: number | null;
+};
+
 export type CategoryBrief = {
   id: number;
   name: string;
@@ -42,6 +54,8 @@ export type CategoryBrief = {
   narrativePotential: string | null;
   sectors: BriefSector[];
   audiences: BriefAudience[];
+  /** The B2C foundation: everyday uses for consumers, in order. Empty until the agent's design is approved. */
+  useCases: BriefUseCase[];
   /** Which audience types this field leans towards, averaged over its sectors. */
   audienceLean: { b2c: number; b2b: number; b2g: number };
   /** The chat layout this category's slug maps to — a behaviour contract, shown where it is decided. */

@@ -1,14 +1,14 @@
 import 'server-only';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { categories, sectors, categoryAudienceSegments } from '@/db/schema';
+import { categories, sectors, categoryAudienceSegments, categoryUseCases } from '@/db/schema';
 import { AUDIENCE_SEGMENTS, type AudienceSegmentConfig } from '@/lib/persona/audience-segments';
 import { GUARDRAILS, type GuardrailConfig } from '@/lib/persona/guardrails';
 import { suggestLayoutForPersona, resolveChatLayout, type ChatLayoutKey } from '@/lib/chat/layouts';
 import { suggestedToolsFor, TOOL_CATALOG } from '@/lib/tools/catalog';
-import type { BriefSector, BriefAudience, CategoryBrief } from './types';
+import type { BriefSector, BriefAudience, BriefUseCase, CategoryBrief } from './types';
 
-export type { BriefSector, BriefAudience, CategoryBrief };
+export type { BriefSector, BriefAudience, BriefUseCase, CategoryBrief };
 
 /**
  * Everything known about a field, assembled once.
@@ -41,7 +41,7 @@ export async function categoryBrief(categoryId: number): Promise<CategoryBrief |
   const [category] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
   if (!category) return null;
 
-  const [sectorRows, audienceRows] = await Promise.all([
+  const [sectorRows, audienceRows, useCaseRows] = await Promise.all([
     db
       .select()
       .from(sectors)
@@ -54,7 +54,23 @@ export async function categoryBrief(categoryId: number): Promise<CategoryBrief |
       // Code breaks ties: positions repeat (five of Education's links share 0),
       // and the brief must read the same way every time.
       .orderBy(asc(categoryAudienceSegments.position), asc(categoryAudienceSegments.segmentCode)),
+    db
+      .select()
+      .from(categoryUseCases)
+      .where(eq(categoryUseCases.categoryId, categoryId))
+      .orderBy(asc(categoryUseCases.position), asc(categoryUseCases.id)),
   ]);
+
+  const useCases: BriefUseCase[] = useCaseRows.map((u) => ({
+    id: u.id,
+    title: u.title,
+    situation: u.situation,
+    firstMessage: u.firstMessage,
+    segmentCodes: u.segmentCodes ?? [],
+    budgetFriendly: u.budgetFriendly,
+    sectorId: u.sectorId,
+    personaId: u.personaId,
+  }));
 
   const briefSectors: BriefSector[] = sectorRows.map((s) => ({
     id: s.id,
@@ -107,6 +123,7 @@ export async function categoryBrief(categoryId: number): Promise<CategoryBrief |
     narrativePotential: category.narrativePotential,
     sectors: briefSectors,
     audiences,
+    useCases,
     audienceLean: {
       b2c: mean(briefSectors.map((s) => s.b2c)),
       b2b: mean(briefSectors.map((s) => s.b2b)),

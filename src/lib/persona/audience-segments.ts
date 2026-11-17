@@ -60,6 +60,13 @@ export const AUDIENCE_SEGMENTS: Record<string, AudienceSegmentConfig> = {
   'B2C-INT-05': { code: 'B2C-INT-05', audienceType: 'B2C', name: 'Gamers', description: 'Gaming enthusiasts', ukContext: 'Video games, tabletop', keyNeeds: ['immersion', 'lore', 'interactive_storytelling', 'entertainment'], riskSensitivity: 'low', narrativeFit: 'very_high' },
   'B2C-INT-06': { code: 'B2C-INT-06', audienceType: 'B2C', name: 'Faith Communities', description: 'Religious practice groups', ukContext: 'Religious communities', keyNeeds: ['respectful', 'values_aligned', 'supportive', 'community'], riskSensitivity: 'medium', narrativeFit: 'high' },
 
+  // --- B2C: Everyday life (owner, 2026-11-17: B2C as the foundation of every field) ---
+  // Cut across age and family: a person on a tight budget or new to AI can be any age.
+  // A field links whichever fit; a bot for them speaks plainly and costs little to use.
+  'B2C-EVD-01': { code: 'B2C-EVD-01', audienceType: 'B2C', name: 'Households on a Tight Budget', description: 'People on a low income or squeezed by the cost of living', ukContext: 'Universal Credit, cost of living, low pay', keyNeeds: ['saving_money', 'bills_and_debt', 'benefits_and_entitlements', 'free_alternatives', 'plain_language'], decisionFactors: ['free_or_cheap', 'trust', 'no_jargon'], riskSensitivity: 'high', narrativeFit: 'medium', preferredTone: ['plain', 'respectful', 'non_judgmental', 'practical'] },
+  'B2C-EVD-02': { code: 'B2C-EVD-02', audienceType: 'B2C', name: 'Everyday Adults', description: 'Members of the public with a task to get done today', ukContext: 'Daily life: letters, forms, plans, quick answers', keyNeeds: ['everyday_tasks', 'quick_answers', 'letters_and_forms', 'planning', 'saving_time'], decisionFactors: ['ease_of_use', 'speed', 'price'], riskSensitivity: 'medium', narrativeFit: 'medium', preferredTone: ['friendly', 'plain', 'practical', 'brief'] },
+  'B2C-EVD-03': { code: 'B2C-EVD-03', audienceType: 'B2C', name: 'First-time AI Users', description: 'People who have not used an AI assistant before, or tried once and gave up', ukContext: 'Digital inclusion, curiosity about AI', keyNeeds: ['confidence_with_ai', 'simple_first_steps', 'worked_examples', 'trust', 'knowing_the_limits'], decisionFactors: ['free_to_try', 'ease_of_use', 'trust'], riskSensitivity: 'medium_high', narrativeFit: 'high', preferredTone: ['patient', 'encouraging', 'jargon_free', 'warm'] },
+
   // --- B2B: By organisation size ---
   'B2B-SIZE-01': { code: 'B2B-SIZE-01', audienceType: 'B2B', name: 'Solo/Freelance', description: 'One-person businesses', ukContext: '1 person', ukMarketSize: '4.2 million in UK', keyNeeds: ['efficiency', 'affordability', 'ease_of_use', 'time_saving'], decisionFactors: ['price', 'ease_of_use', 'immediate_value'], riskSensitivity: 'medium' },
   'B2B-SIZE-02': { code: 'B2B-SIZE-02', audienceType: 'B2B', name: 'Micro Business', description: 'Very small businesses', ukContext: '1-9 employees', ukMarketSize: '5.5 million in UK', keyNeeds: ['time_saving', 'multi_function', 'low_cost', 'simplicity'], decisionFactors: ['price', 'ROI', 'ease_of_implementation'], riskSensitivity: 'medium' },
@@ -136,6 +143,7 @@ export const AUDIENCE_FAMILY_LABEL: Record<string, string> = {
   'B2C-GK': 'Gatekeepers',
   'B2C-ADU': 'Adults',
   'B2C-INT': 'Interest groups',
+  'B2C-EVD': 'Everyday life',
   'B2B-SIZE': 'By organisation size',
   'B2B-SEC': 'By industry',
   'B2B-FUN': 'By function',

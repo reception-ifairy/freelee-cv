@@ -50,6 +50,9 @@ function makeBrief(over: Partial<CategoryBrief> = {}): CategoryBrief {
       { ...AUDIENCE_SEGMENTS['B2C-CYP-01'], note: 'The youngest readers.' },
       { ...AUDIENCE_SEGMENTS['B2B-SEC-01'], note: null },
     ],
+    useCases: [
+      { id: 7, title: 'Help with homework on a budget', situation: 'A parent on Universal Credit whose child is stuck on fractions.', firstMessage: 'My son does not get fractions', segmentCodes: ['B2C-EVD-01', 'B2C-GK-01'], budgetFriendly: true, sectorId: 1, personaId: null },
+    ],
     audienceLean: { b2c: 70, b2b: 90, b2g: 60 },
     layout: { key: 'learning', label: 'Learning' },
     suggestedTools: [{ key: 'calculator', label: 'Calculator' }],
@@ -73,6 +76,7 @@ check('carries the operator’s own note', full.includes('The youngest readers.'
 check('carries what an audience needs', full.includes('play based learning'));
 check('carries how to speak to them', full.includes('playful'));
 check('lists the safeguards', full.includes('## Safeguards expected here'));
+check('carries the B2C foundation: use case id, budget flag, first message, gap', full.includes('use case id 7') && full.includes('budget-friendly') && full.includes('My son does not get fractions') && full.includes('no bot yet'));
 
 console.log('\nNever leaks a placeholder');
 check('no "undefined" anywhere', !full.includes('undefined'), 'a model would read it as content');
@@ -87,10 +91,12 @@ const bare = briefForModel(makeBrief({
   narrativePotential: null,
   sectors: [],
   audiences: [],
+  useCases: [],
   guardrails: [],
 }));
 check('an empty field still produces a brief', bare.includes('Education and Training'));
 check('and says plainly that nobody chose an audience', bare.includes('Nobody has recorded an audience'));
+check('and that it has no B2C foundation yet', bare.includes('no B2C foundation'));
 check('and still leaks no placeholder', !bare.includes('undefined') && !/\bnull\b/.test(bare));
 
 console.log('\nBudget');

@@ -15,7 +15,7 @@ import { categoryBrief, type CategoryBrief } from './brief';
  *   the bots filed in each (live or not, their audience type and groups), and
  *   the gaps: sectors with no bot, sectors well suited to an audience type
  *   that no bot here serves.
- * - `scanAudiences` — the 70 audience groups (or one type of them): what each
+ * - `scanAudiences` — the 73 audience groups (or one type of them): what each
  *   needs, its tone and how much a wrong answer costs, whether this field
  *   links it and why, and how many bots here and on the whole platform are
  *   for it.
@@ -67,7 +67,10 @@ export async function scanCategory(categoryId: number): Promise<string | null> {
   return renderCategoryScan(brief, bots);
 }
 
-export function renderCategoryScan(brief: Pick<CategoryBrief, 'name' | 'riskLevel' | 'audienceLean' | 'sectors'>, bots: BotRow[]): string {
+export function renderCategoryScan(
+  brief: Pick<CategoryBrief, 'name' | 'riskLevel' | 'audienceLean' | 'sectors' | 'useCases' | 'audiences'>,
+  bots: BotRow[],
+): string {
   const live = bots.filter((b) => b.isActive).length;
   const lines: string[] = [
     `# Scan of ${brief.name}`,
@@ -103,6 +106,20 @@ export function renderCategoryScan(brief: Pick<CategoryBrief, 'name' | 'riskLeve
   if (unfiled) gaps.push(`${unfiled} bot(s) here have no sector.`);
   const notLive = bots.filter((b) => !b.isActive).length;
   if (notLive) gaps.push(`${notLive} bot(s) are not live — drafts to finish, or ones to drop.`);
+
+  // The B2C foundation (#98): consumer groups and everyday uses, and which have a bot.
+  const b2cGroups = brief.audiences.filter((a) => a.audienceType === 'B2C').length;
+  lines.push('', '## B2C foundation', `${b2cGroups} B2C group(s) linked; ${brief.useCases.length} everyday use(s).`);
+  for (const u of brief.useCases) {
+    lines.push(`- use case id ${u.id} · ${u.title}${u.budgetFriendly ? ' · budget-friendly' : ''} · ${u.personaId ? `bot id ${u.personaId}` : 'no bot yet'}`);
+  }
+  if (brief.useCases.length === 0) gaps.push('No B2C foundation yet: no everyday uses for consumers (propose a b2c_design).');
+  else {
+    const unserved = brief.useCases.filter((u) => !u.personaId);
+    if (unserved.length) gaps.push(`${unserved.length} everyday use(s) have no bot: ${unserved.map((u) => `${u.title} (id ${u.id})`).join(', ')}.`);
+    if (!brief.useCases.some((u) => u.budgetFriendly)) gaps.push('No everyday use is budget-friendly.');
+  }
+  if (b2cGroups === 0) gaps.push('No B2C group is linked to this field.');
 
   lines.push('', '## Gaps', ...(gaps.length ? gaps.map((g) => `- ${g}`) : ['- None found by the scan.']));
   return lines.join('\n');

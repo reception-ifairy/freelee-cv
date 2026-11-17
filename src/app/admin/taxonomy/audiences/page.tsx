@@ -72,7 +72,7 @@ export default async function AudiencesPage({
     <div>
       <PageHeader
         title="Audiences"
-        description="Seventy groups of people the bots might serve — who they are, what they need, and how they want to be spoken to. Attach the relevant ones to a category and they become part of the brief a specialist is designed against. Open a family, then a row for the whole card."
+        description="Seventy-three groups of people the bots might serve — who they are, what they need, and how they want to be spoken to. Attach the relevant ones to a category and they become part of the brief a specialist is designed against. Open a family, then a row for the whole card."
       />
 
       {byType.map(({ type, count, families }) => (

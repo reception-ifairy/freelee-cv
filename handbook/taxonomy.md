@@ -13,7 +13,7 @@ Under **Catalogue** in the sidebar:
 - **Bots & taxonomy** — every bot, filed under the twenty fields and their sectors, as a browser
   (below). This is the one list of bots: the old *Personas* page opens it, keeping your search and
   filters. **New bot** and **Convert a bot** are at the top.
-- **Audiences** — seventy groups of people, and what each of them needs.
+- **Audiences** — seventy-three groups of people, and what each of them needs.
 - **Drafts** — the same browser showing only bots that are not live: switched off, or designed with an
   AI agent and not yet published. Open one and **Publish** it from its card.
 - **Prompt modifiers** — the tones, styles and formats customers can layer onto a chat, in the same
@@ -96,22 +96,30 @@ key in *Settings → Integrations* — without a key the screen says so and poin
 the audiences attached and why — and every bot already filed here, live or not. In Education and
 Training it also knows the tutors and which subjects and key stages have no live tutor.
 
-**The way to work with it — three steps:**
+**The way to work with it — four steps:**
 
 1. **Scan.** Click *Scan … and its audiences, then plan the first bots*. The agent reads the field —
    every sector with how well it suits consumers, businesses and the public sector, every bot with the
-   groups it is for, and the gaps — and the seventy audience groups: what each needs, how much a wrong
+   groups it is for, and the gaps — and the seventy-three audience groups: what each needs, how much a wrong
    answer costs them, whether this field links them, and how many bots here and on the whole platform
    already serve them. While it works, the chat says so (*Scanning the audiences…*).
-2. **Plan.** It tells you in a few lines what it found and saves a **plan of the first bots** — three to
+2. **The B2C foundation.** Every field needs a side for ordinary people: what someone would come here
+   for on an ordinary day. If the field has none yet, the side panel says so under **Everyday uses ·
+   B2C** — press **Design the B2C foundation**. The agent proposes, in one go, the consumer groups this
+   field serves (always weighing *Households on a Tight Budget*, *Everyday Adults* and *First-time AI
+   Users*) and three to six everyday uses, each in the person's own words with what they would type
+   first; at least one helps someone with little money. **Approve** links the groups and saves the uses;
+   no bot is created. You then see them on the **Brief** tab too, each saying whether a bot serves it.
+3. **Plan.** It tells you in a few lines what it found and saves a **plan of the first bots** — three to
    six, in the order worth building them, each with its sector, audience and one line on why. The plan
    is beside the chat (under it on a smaller screen). It is a working list, not a change to the
    catalogue: say *change the order* or *drop the third one*, or press **Skip** on an item yourself.
-3. **One bot at a time.** Press **Draft the next bot** (or **Draft this** on any item). The agent asks
+4. **One bot at a time.** Press **Draft the next bot** (or **Draft this** on any item). The agent asks
    at most two questions that would change the bot, then writes it in full — instructions, welcome
    message, suggestions, the audience groups it is for — and puts it under **Waiting for you**.
    **Approve** saves it as an **inactive draft** in this category and ticks it off the plan; **Reject**
-   puts the item back to *To do*. Then *Draft the next bot* again.
+   puts the item back to *To do*. Then *Draft the next bot* again. A bot drafted for an everyday use is
+   linked to it when you approve, and the use stops saying *no bot yet*.
 
 The buttons under each reply are the agent's suggested next steps; a click sends one.
 
@@ -146,10 +154,11 @@ field is designed against, and a wrong audience is worse than none.
 
 ## The Audiences screen
 
-Seventy groups, in three families:
+Seventy-three groups, in three families:
 
 - **Consumer (B2C)** — children and young people, the adults who decide for them, adults in general,
-  and interest groups.
+  interest groups, and **everyday life**: households on a tight budget, everyday adults and first-time
+  AI users, who can be any age.
 - **Business (B2B)** — by size, by industry, by function.
 - **Public sector (B2G)** — central government, local government, public services.
 

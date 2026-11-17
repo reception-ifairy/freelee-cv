@@ -17,6 +17,7 @@ const { AGENT_DEFAULT_MODEL, addUsage, estimateUsd, ZERO_USAGE } = await import(
 const { checkProposal, decide } = await import('../src/lib/taxonomy/agent-proposals');
 const { checkPlan, afterDecision, updatePlanItem, planForModel } = await import('../src/lib/taxonomy/agent-plan');
 const { renderCategoryScan, renderAudienceScan } = await import('../src/lib/taxonomy/agent-scan');
+const { AUDIENCE_SEGMENTS, AUDIENCE_FAMILY_LABEL } = await import('../src/lib/persona/audience-segments');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 let failed = 0;
@@ -76,6 +77,38 @@ check('a bot carries the groups it is for, all of its own type; the type follows
   );
 });
 
+console.log('The B2C foundation (#98)');
+const use = (over: Record<string, unknown> = {}) => ({
+  title: 'Cut the weekly food shop',
+  situation: 'A family on Universal Credit that wants a week of meals for under £40.',
+  firstMessage: 'Plan 7 dinners for 4 people for £40',
+  audienceCodes: ['b2c-evd-01'],
+  budgetFriendly: true,
+  ...over,
+});
+const ctxB2c = { ...ctx, useCases: [{ id: 5, title: 'Understand a council letter' }] };
+check('the three everyday groups are in the catalogue, all B2C, in their own family', () =>
+  ['B2C-EVD-01', 'B2C-EVD-02', 'B2C-EVD-03'].every((c) => AUDIENCE_SEGMENTS[c]?.audienceType === 'B2C') && AUDIENCE_FAMILY_LABEL['B2C-EVD'] === 'Everyday life');
+check('a b2c_design is accepted: codes normalised, linked groups dropped, sector kept', () => {
+  const r = checkProposal(
+    { kind: 'b2c_design', summary: 'Everyday side', groups: [{ code: 'b2c-evd-01', note: 'Money is tight.' }, { code: 'B2C-CYP-08' }], useCases: [use({ sectorId: 42 }), use({ title: 'Try AI for the first time', budgetFriendly: false, audienceCodes: ['B2C-EVD-03'] })] },
+    ctxB2c,
+  );
+  return r.ok && r.payload.kind === 'b2c_design' && JSON.stringify(r.payload.groups) === '[{"code":"B2C-EVD-01","note":"Money is tight."}]' &&
+    r.payload.useCases[0].segmentCodes[0] === 'B2C-EVD-01' && r.payload.useCases[0].sectorId === 42 && r.payload.useCases[1].sectorId === null;
+});
+check('a b2c_design refuses non-B2C groups, no uses, no budget-friendly use, another field’s sector, a title already here', () =>
+  !checkProposal({ kind: 'b2c_design', summary: 'x', groups: [{ code: 'B2B-SIZE-01' }], useCases: [use()] }, ctxB2c).ok &&
+  !checkProposal({ kind: 'b2c_design', summary: 'x', useCases: [use({ audienceCodes: ['B2G-PUB-05'] })] }, ctxB2c).ok &&
+  !checkProposal({ kind: 'b2c_design', summary: 'x', useCases: [] }, ctxB2c).ok &&
+  !checkProposal({ kind: 'b2c_design', summary: 'x', useCases: [use({ budgetFriendly: false })] }, ctxB2c).ok &&
+  !checkProposal({ kind: 'b2c_design', summary: 'x', useCases: [use({ sectorId: 7 })] }, ctxB2c).ok &&
+  !checkProposal({ kind: 'b2c_design', summary: 'x', useCases: [use({ title: 'understand a COUNCIL letter' })] }, ctxB2c).ok);
+check('a bot may name the everyday use it serves — only one of this field', () => {
+  const ok = checkProposal({ kind: 'bot', summary: 'Letters', persona, useCaseId: 5 }, ctxB2c);
+  return ok.ok && ok.payload.kind === 'bot' && ok.payload.useCaseId === 5 && !checkProposal({ kind: 'bot', summary: 'x', persona, useCaseId: 99 }, ctxB2c).ok;
+});
+
 console.log('The plan of first bots');
 let n = 0;
 const ids = () => `i${++n}`;
@@ -121,9 +154,13 @@ const scan = renderCategoryScan(
       { id: 42, name: 'Early Years', b2c: 90, b2b: 20, b2g: 70 },
       { id: 43, name: 'Tutoring', b2c: 80, b2b: 10, b2g: 10 },
     ] as never,
+    audiences: [],
+    useCases: [],
   },
   bots,
 );
+check('the category scan says when a field has no B2C foundation', () =>
+  scan.includes('## B2C foundation') && scan.includes('No B2C foundation yet') && scan.includes('No B2C group is linked'));
 check('the category scan lists sectors with ids and bots, and finds the gaps', () =>
   scan.includes('id 42 · Early Years') && scan.includes('Tutoring (id 43) has no bot at all.') &&
   scan.includes('Early Years suits B2G (70) but no B2G bot is filed there.') && scan.includes('1 bot(s) here have no sector.') && scan.includes('1 bot(s) are not live'));
@@ -158,6 +195,8 @@ check('no key: a clear 503, never a silent switch to another provider', () => ro
 // AI SDK v7 throws "System messages are not allowed in the prompt or messages fields" otherwise (#97).
 check('the system prompt and the plan go through `instructions`, not `messages`', () =>
   route.includes('instructions: [system, planNow]') && route.includes('messages: history') && !/messages:\s*\[\s*system/.test(route));
+check('the agent designs the B2C foundation and weighs the three everyday groups', () =>
+  route.includes('b2c_design') && route.includes('B2C-EVD-01') && route.includes('B2C-EVD-03') && route.includes('useCases: context.useCases'));
 check('a failed stream shows its real reason, not the SDK’s masked "An error occurred."', () => /toUIMessageStreamResponse\(\{\s*onError/.test(route));
 
 if (failed) {

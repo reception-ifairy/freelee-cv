@@ -88,6 +88,20 @@ export function briefForModel(brief: CategoryBrief, options: { maxSectors?: numb
     lines.push('\n## Who this field serves\nNobody has recorded an audience for this field yet.');
   }
 
+  // The B2C foundation (#98): what a member of the public would come here for.
+  lines.push('\n## Everyday uses for consumers (the B2C foundation)');
+  if (brief.useCases.length) {
+    for (const u of brief.useCases) {
+      const groups = u.segmentCodes.length ? ` For: ${u.segmentCodes.join(', ')}.` : '';
+      const first = u.firstMessage ? ` They would type: “${u.firstMessage}”` : '';
+      lines.push(
+        `- use case id ${u.id} · **${u.title}**${u.budgetFriendly ? ' · budget-friendly' : ''} · ${u.personaId ? `served by bot id ${u.personaId}` : 'no bot yet'} — ${u.situation}${groups}${first}`,
+      );
+    }
+  } else {
+    lines.push('None designed yet: this field has no B2C foundation.');
+  }
+
   if (brief.guardrails.length) {
     lines.push(
       `\n## Safeguards expected here\n${brief.guardrails.map((g) => `- ${g.name}: ${g.description}`).join('\n')}`,

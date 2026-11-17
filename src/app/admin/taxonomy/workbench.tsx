@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { connectionHref } from '@/lib/admin/connection-groups';
 import type { UIMessage } from 'ai';
-import { ArrowRight, Bot, Check, ExternalLink, KeyRound, ListOrdered, RotateCcw, SkipForward, X } from 'lucide-react';
+import { ArrowRight, Bot, Check, ExternalLink, House, KeyRound, ListOrdered, RotateCcw, SkipForward, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { AGENT_MODELS, formatUsd } from '@/lib/taxonomy/agent-pricing';
 import type { AgentThreadState } from '@/lib/taxonomy/category-agent';
 import type { Proposal } from '@/lib/taxonomy/agent-proposals';
 import type { PlanItem } from '@/lib/taxonomy/agent-plan';
+import type { BriefUseCase } from '@/lib/taxonomy/types';
 import {
   agentStateAction,
   buildDraftFromWorkbenchAction,
@@ -52,10 +53,13 @@ export function Workbench({
   categoryId,
   categoryName,
   sectors,
+  useCases,
 }: {
   categoryId: number;
   categoryName: string;
   sectors: { id: number; name: string }[];
+  /** The B2C foundation, as saved (category_use_cases); refreshed with the page after an approval. */
+  useCases: BriefUseCase[];
 }) {
   const router = useRouter();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -149,7 +153,11 @@ export function Workbench({
     router.refresh();
   };
 
-  const starters = plan.length
+  // With no B2C foundation the first thing to do is design it (#98).
+  const designB2c = `Design the B2C foundation of ${categoryName}: who comes here day to day, and what helps someone on a tight budget.`;
+  const starters = useCases.length === 0
+    ? [designB2c, `Scan ${categoryName} and its audiences, then plan the first bots.`, 'Which bots here need work before they go live?']
+    : plan.length
     ? [
         nextItem ? `Let’s draft the next bot: ${nextItem.name}.` : 'Everything on the plan is drafted. What should come next?',
         `Scan ${categoryName} again and update the plan.`,
@@ -192,6 +200,41 @@ export function Workbench({
       </Card>
 
       <aside className="min-w-0 space-y-5">
+        <section>
+          <h3 className="eyebrow mb-2 flex items-center gap-1.5">
+            <House className="size-3.5" /> Everyday uses · B2C · {useCases.length}
+          </h3>
+          {useCases.length === 0 ? (
+            <>
+              <p className="text-sm text-slate-500">
+                No B2C foundation yet: nothing a member of the public would come here for. The agent designs it — the consumer groups and
+                three to six everyday uses, at least one for a tight budget — and you approve it.
+              </p>
+              {pending.length === 0 ? (
+                <Button size="sm" className="mt-2 w-full" onClick={() => say(designB2c)}>
+                  Design the B2C foundation <ArrowRight className="size-3.5" />
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <ul className="space-y-1.5 text-sm">
+              {useCases.map((u) => (
+                <li key={u.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="min-w-0 font-medium">{u.title}</span>
+                  {u.budgetFriendly ? <Badge tone="green">budget</Badge> : null}
+                  {u.personaId ? (
+                    <Link href={`/admin/personas/${u.personaId}`} className="text-xs font-semibold text-brand-400 hover:underline">
+                      its bot
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-slate-500">no bot yet</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section>
           <h3 className="eyebrow mb-2 flex items-center gap-1.5">
             <ListOrdered className="size-3.5" /> First bots · plan
@@ -336,6 +379,7 @@ const KIND_LABEL: Record<Proposal['payload']['kind'], string> = {
   bot: 'New bot',
   sector_description: 'Sector description',
   audiences: 'Audience groups',
+  b2c_design: 'B2C foundation',
 };
 
 function ProposalCard({
@@ -395,6 +439,35 @@ function ProposalCard({
           <p>
             <strong className="text-slate-200">{sectorName(p.sectorId)}:</strong> {p.description}
           </p>
+        ) : p.kind === 'b2c_design' ? (
+          <>
+            {p.groups.length ? (
+              <p className="text-xs">
+                Link: {p.groups.map((g) => AUDIENCE_SEGMENTS[g.code]?.name ?? g.code).join(', ')}
+              </p>
+            ) : null}
+            <ul className="mt-1 space-y-1.5">
+              {p.useCases.map((u) => (
+                <li key={u.title}>
+                  <strong className="text-slate-200">{u.title}</strong>
+                  {u.budgetFriendly ? ' · budget-friendly' : ''} — {u.situation}
+                  {u.firstMessage ? <span className="block text-xs italic">“{u.firstMessage}”</span> : null}
+                </li>
+              ))}
+            </ul>
+            {p.groups.some((g) => g.note) ? (
+              <Disclosure title="Why these groups" className="mt-1">
+                <ul className="space-y-1 text-xs">
+                  {p.groups.filter((g) => g.note).map((g) => (
+                    <li key={g.code}>
+                      <strong>{AUDIENCE_SEGMENTS[g.code]?.name ?? g.code}:</strong> {g.note}
+                    </li>
+                  ))}
+                </ul>
+              </Disclosure>
+            ) : null}
+            <p className="mt-1 text-xs">Approving links the groups and saves the uses to this category; no bot is created.</p>
+          </>
         ) : (
           <p>
             Link {p.codes.map((c) => AUDIENCE_SEGMENTS[c]?.name ?? c).join(', ')}
